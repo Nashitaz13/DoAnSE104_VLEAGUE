@@ -18,7 +18,6 @@
 
 - **Backend:** Express + Javascript
 - **Auth:** JWT
-- **File Storage:** Cloudinary / AWS S3
 - **Database:** Postgresql
 - **Email:** Mailgun
 
