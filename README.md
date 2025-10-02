@@ -14,7 +14,7 @@
 
 ---
 
-## 🏗️ Công nghệ sử dụng: Kotlin & Jetpack Compose
+## 🏗️ Công nghệ sử dụng: 
 
 - **Backend:** Express + Javascript
 - **Auth:** JWT
