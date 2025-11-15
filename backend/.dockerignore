@@ -1,0 +1,39 @@
+# Python
+__pycache__/
+*.py[cod]
+*.pyo
+*.pyd
+*.so
+*.egg-info/
+
+# Environments
+.venv/
+.env
+.env.*
+
+# VCS
+.git/
+.gitignore
+
+# Editors
+.vscode/
+.idea/
+
+# Caches
+.mypy_cache/
+.pytest_cache/
+.ruff_cache/
+
+# Byte-compiled
+*.pyc
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Tests
+coverage/
+htmlcov/
+
+# Node (if frontend assets ever appear)
+node_modules/
