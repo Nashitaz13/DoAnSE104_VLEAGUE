@@ -1,75 +1,128 @@
-from __future__ import annotations
+import secrets
+import warnings
+from typing import Annotated, Any, Literal
 
-from pathlib import Path
-from typing import Any, List, Optional
-from enum import Enum
-
-from pydantic import Field, field_validator, computed_field
-from pydantic_settings import BaseSettings
-
-
-class StrEnum(str, Enum):
-    pass
-
-
-class Environment(StrEnum):
-    dev = "dev"
-    prod = "prod"
+from pydantic import (
+    AnyUrl,
+    BeforeValidator,
+    EmailStr,
+    HttpUrl,
+    PostgresDsn,
+    computed_field,
+    model_validator,
+)
+from pydantic_settings import BaseSettings, SettingsConfigDict
+from typing_extensions import Self
 
 
-class Paths:
-    # vleague_api
-    ROOT_DIR: Path = Path(__file__).parent.parent.parent
-    BASE_DIR: Path = ROOT_DIR / "app"
-    LOGIN_PATH: str = "/auth/login"
+def parse_cors(v: Any) -> list[str] | str:
+    if isinstance(v, str) and not v.startswith("["):
+        return [i.strip() for i in v.split(",") if i.strip()]
+    elif isinstance(v, list | str):
+        return v
+    raise ValueError(v)
 
 
 class Settings(BaseSettings):
+    model_config = SettingsConfigDict(
+        # Use top level .env file (one level above ./backend/)
+        env_file="../.env",
+        env_ignore_empty=True,
+        extra="ignore",
+    )
+    API_V1_STR: str = "/api/v1"
+    SECRET_KEY: str = secrets.token_urlsafe(32)
+    # 60 minutes * 24 hours * 8 days = 8 days
+    ACCESS_TOKEN_EXPIRE_MINUTES: int = 60 * 24 * 8
+    FRONTEND_HOST: str = "http://localhost:5173"
+    ENVIRONMENT: Literal["local", "staging", "production"] = "local"
+
+    BACKEND_CORS_ORIGINS: Annotated[
+        list[AnyUrl] | str, BeforeValidator(parse_cors)
+    ] = []
+
+    @computed_field  # type: ignore[prop-decorator]
     @property
-    def PATHS(self) -> Paths:
-        return Paths()
+    def all_cors_origins(self) -> list[str]:
+        return [str(origin).rstrip("/") for origin in self.BACKEND_CORS_ORIGINS] + [
+            self.FRONTEND_HOST
+        ]
 
-    ENVIRONMENT: Environment = Environment.dev
-    SECRET_KEY: str = "your-secret-key-change-in-production"
-    DEBUG: bool = True
-    AUTH_TOKEN_LIFETIME_SECONDS: int = 3600
-    SERVER_HOST: str = "http://localhost:8000"
-    PAGINATION_PER_PAGE: int = 20
-
-    BACKEND_CORS_ORIGINS: List[str] = []
-
-    @field_validator("BACKEND_CORS_ORIGINS", mode="before")
-    @classmethod
-    def assemble_cors_origins(cls, v: str | List[str]) -> List[str] | str:
-        if isinstance(v, str) and not v.startswith("["):
-            return [i.strip() for i in v.split(",")]
-        elif isinstance(v, (list, str)):
-            return v
-        raise ValueError(v)
-
-    # PostgreSQL Configuration
-    POSTGRESQL_HOST: str = "localhost"
+    PROJECT_NAME: str = "V-League API"
+    SENTRY_DSN: HttpUrl | None = None
+    
+    # PostgreSQL configuration (V-League Azure Database)
+    # SECURITY: No defaults - must be set in .env file
+    POSTGRESQL_HOST: str
     POSTGRESQL_PORT: int = 5432
-    POSTGRESQL_USER: str = "postgres"
-    POSTGRESQL_PASSWORD: str = "postgres"
-    POSTGRESQL_DB: str = "vleague"
-    POSTGRESQL_SSLMODE: str = "disable"
+    POSTGRESQL_USER: str
+    POSTGRESQL_PASSWORD: str
+    POSTGRESQL_DB: str
+    POSTGRESQL_SSLMODE: str = "disable"  # For Azure: "require" or "enable"
+    
+    # JWT Settings
+    ALGORITHM: str = "HS256"
 
-    @computed_field
+    @computed_field  # type: ignore[prop-decorator]
     @property
-    def DATABASE_URI(self) -> str:
-        """Build database URI from individual components"""
-        ssl_param = f"?sslmode={self.POSTGRESQL_SSLMODE}" if self.POSTGRESQL_SSLMODE else ""
-        return (
-            f"postgres://{self.POSTGRESQL_USER}:{self.POSTGRESQL_PASSWORD}"
-            f"@{self.POSTGRESQL_HOST}:{self.POSTGRESQL_PORT}/{self.POSTGRESQL_DB}{ssl_param}"
+    def SQLALCHEMY_DATABASE_URI(self) -> PostgresDsn:
+        # Build connection string with SSL mode for Azure PostgreSQL
+        return PostgresDsn.build(
+            scheme="postgresql+psycopg",
+            username=self.POSTGRESQL_USER,
+            password=self.POSTGRESQL_PASSWORD,
+            host=self.POSTGRESQL_HOST,
+            port=self.POSTGRESQL_PORT,
+            path=self.POSTGRESQL_DB,
         )
 
-    class Config:
-        env_file = ".env"
-        extra = "ignore"
+    SMTP_TLS: bool = True
+    SMTP_SSL: bool = False
+    SMTP_PORT: int = 587
+    SMTP_HOST: str | None = None
+    SMTP_USER: str | None = None
+    SMTP_PASSWORD: str | None = None
+    EMAILS_FROM_EMAIL: EmailStr | None = None
+    EMAILS_FROM_NAME: str | None = None
+
+    @model_validator(mode="after")
+    def _set_default_emails_from(self) -> Self:
+        if not self.EMAILS_FROM_NAME:
+            self.EMAILS_FROM_NAME = self.PROJECT_NAME
+        return self
+
+    EMAIL_RESET_TOKEN_EXPIRE_HOURS: int = 48
+
+    @computed_field  # type: ignore[prop-decorator]
+    @property
+    def emails_enabled(self) -> bool:
+        return bool(self.SMTP_HOST and self.EMAILS_FROM_EMAIL)
+
+    EMAIL_TEST_USER: EmailStr = "test@example.com"
+    # SECURITY: No defaults - must be set in .env file
+    FIRST_SUPERUSER: EmailStr
+    FIRST_SUPERUSER_PASSWORD: str
+
+    def _check_default_secret(self, var_name: str, value: str | None) -> None:
+        if value == "changethis":
+            message = (
+                f'The value of {var_name} is "changethis", '
+                "for security, please change it, at least for deployments."
+            )
+            if self.ENVIRONMENT == "local":
+                warnings.warn(message, stacklevel=1)
+            else:
+                raise ValueError(message)
+
+    @model_validator(mode="after")
+    def _enforce_non_default_secrets(self) -> Self:
+        self._check_default_secret("SECRET_KEY", self.SECRET_KEY)
+        self._check_default_secret("POSTGRESQL_PASSWORD", self.POSTGRESQL_PASSWORD)
+        self._check_default_secret(
+            "FIRST_SUPERUSER_PASSWORD", self.FIRST_SUPERUSER_PASSWORD
+        )
+
+        return self
 
 
-settings = Settings()
-
-
+settings = Settings()  # type: ignore
