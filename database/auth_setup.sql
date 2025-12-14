@@ -83,14 +83,12 @@ $$;
 
 -- ====================================================
 -- Tạo các nhóm người dùng (roles) mặc định
--- ====================================================
-INSERT INTO nhomnguoidung (tennhom, mota) 
-VALUES ('BTC', 'Ban tổ chức - Quản trị viên cao cấp')
-ON CONFLICT (tennhom) DO NOTHING;
-
-INSERT INTO nhomnguoidung (tennhom, mota) 
-VALUES ('QuanLyDoi', 'Quản lý đội bóng')
-ON CONFLICT (tennhom) DO NOTHING;
+-- ==================================================== 
+INSERT INTO NhomNguoiDung (TenNhom, MoTa) VALUES 
+('Admin', 'Quản trị viên hệ thống'),
+('BTC', 'Ban tổ chức giải đấu'),
+('TrongTai', 'Tổ trọng tài'),
+('CLB', 'Đại diện câu lạc bộ');
 
 INSERT INTO nhomnguoidung (tennhom, mota) 
 VALUES ('Viewer', 'Người xem - Chỉ đọc')

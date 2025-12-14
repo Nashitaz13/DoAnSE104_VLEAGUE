@@ -1,7 +1,7 @@
 # API Specification - Hệ Thống Quản Lý Giải Bóng Đá Vô Địch Quốc Gia (V-League)
 
 ## 1. Tổng Quan
-* **Base URL:** `/api/v1`
+* **Base URL:** `/api`
 * **Format:** JSON
 * **Authentication:** Bearer Token (JWT)
 

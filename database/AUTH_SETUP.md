@@ -21,7 +21,7 @@ Script sẽ tạo 3 tài khoản test:
 Sau khi chạy migration, test login:
 
 ```bash
-curl -X POST http://localhost:8000/api/v1/auth/login \
+curl -X POST http://localhost:8000/api/auth/login \
   -H "Content-Type: application/json" \
   -d '{"username":"admin","password":"admin123"}'
 ```
@@ -39,12 +39,12 @@ Expected response:
 ## 4. Swagger UI
 
 1. Mở `http://localhost:8000/docs`
-2. Test endpoint `POST /api/v1/auth/login`:
+2. Test endpoint `POST /api/auth/login`:
    - username: `admin`
    - password: `admin123`
 3. Copy token từ response
 4. Click "Authorize" → paste token
-5. Test `GET /api/v1/auth/me`
+5. Test `GET /api/auth/me`
 
 ## 5. Tạo user mới (trong PostgreSQL)
 
