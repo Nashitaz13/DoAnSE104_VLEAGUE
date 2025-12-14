@@ -1,29 +1,44 @@
-FROM python:3.10-alpine
+FROM python:3.10
 
-WORKDIR /code
+ENV PYTHONUNBUFFERED=1
 
-# Install build dependencies for asyncpg (PostgreSQL support)
-RUN apk update && apk add --no-cache \
-    postgresql-dev \
-    postgresql-libs \
-    libffi-dev \
-    gcc \
-    musl-dev
+WORKDIR /app/
 
-# Upgrade pip
-RUN pip install --upgrade pip
+# Install uv
+# Ref: https://docs.astral.sh/uv/guides/integration/docker/#installing-uv
+COPY --from=ghcr.io/astral-sh/uv:0.5.11 /uv /uvx /bin/
 
-# Copy requirements.txt and install dependencies
-COPY requirements.txt /code/
+# Place executables in the environment at the front of the path
+# Ref: https://docs.astral.sh/uv/guides/integration/docker/#using-the-environment
+ENV PATH="/app/.venv/bin:$PATH"
 
-RUN pip install --no-cache-dir -r requirements.txt
+# Compile bytecode
+# Ref: https://docs.astral.sh/uv/guides/integration/docker/#compiling-bytecode
+ENV UV_COMPILE_BYTECODE=1
 
-# Copy application code
-COPY . /code
+# uv Cache
+# Ref: https://docs.astral.sh/uv/guides/integration/docker/#caching
+ENV UV_LINK_MODE=copy
 
-ENV PORT=8000
-EXPOSE 8000
+# Install dependencies
+# Ref: https://docs.astral.sh/uv/guides/integration/docker/#intermediate-layers
+RUN --mount=type=cache,target=/root/.cache/uv \
+    --mount=type=bind,source=uv.lock,target=uv.lock \
+    --mount=type=bind,source=pyproject.toml,target=pyproject.toml \
+    uv sync --frozen --no-install-project
 
-# Run with uvicorn (simplified for student project)
-CMD ["uvicorn", "app.main:app", "--host", "0.0.0.0", "--port", "8000"]
+ENV PYTHONPATH=/app
 
+COPY ./scripts /app/scripts
+
+COPY ./pyproject.toml ./uv.lock ./alembic.ini /app/
+
+COPY ./app /app/app
+COPY ./tests /app/tests
+
+# Sync the project
+# Ref: https://docs.astral.sh/uv/guides/integration/docker/#intermediate-layers
+RUN --mount=type=cache,target=/root/.cache/uv \
+    uv sync
+
+CMD ["fastapi", "run", "--workers", "4", "app/main.py"]

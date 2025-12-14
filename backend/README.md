@@ -1,230 +1,172 @@
-# vleague_api
+# FastAPI Project - Backend
 
-API for Vleague management system - FastAPI + PostgreSQL
+## Requirements
 
+* [Docker](https://www.docker.com/).
+* [uv](https://docs.astral.sh/uv/) for Python package and environment management.
 
-## Prerequisites
+## Docker Compose
 
-- `Docker 20.10+`
-- `Docker Compose 1.29+`
-- (hoặc) `Python 3.10+` + `PostgreSQL 15+` để chạy locally
+Start the local development environment with Docker Compose following the guide in [../development.md](../development.md).
 
+## General Workflow
 
-## Quick Start với Docker (Khuyến nghị)
+By default, the dependencies are managed with [uv](https://docs.astral.sh/uv/), go there and install it.
 
-### 1. Chuẩn bị file `.env`
+From `./backend/` you can install all the dependencies with:
 
-Tạo file `.env` tại thư mục `backend/` với nội dung:
-
-```shell
-DEBUG=True
-SERVER_HOST=http://localhost:8000
-SECRET_KEY=your-secret-key-here-change-this
-ENVIRONMENT=dev
-BACKEND_CORS_ORIGINS=["http://localhost","http://localhost:3000"]
-DATABASE_URI=postgresql://postgres:password@db:5432/vleague
+```console
+$ uv sync
 ```
 
-**Lưu ý:** 
-- `db` là tên service PostgreSQL trong docker-compose
-- Thay đổi `SECRET_KEY` thành một chuỗi ngẫu nhiên an toàn
-- `DATABASE_URI` không nên đổi host nếu chạy trong Docker
+Then you can activate the virtual environment with:
 
-### 2. Build và chạy ứng dụng
+```console
+$ source .venv/bin/activate
+```
+
+Make sure your editor is using the correct Python virtual environment, with the interpreter at `backend/.venv/bin/python`.
+
+Modify or add SQLModel models for data and SQL tables in `./backend/app/models.py`, API endpoints in `./backend/app/api/`, CRUD (Create, Read, Update, Delete) utils in `./backend/app/crud.py`.
+
+## VS Code
+
+There are already configurations in place to run the backend through the VS Code debugger, so that you can use breakpoints, pause and explore variables, etc.
+
+The setup is also already configured so you can run the tests through the VS Code Python tests tab.
+
+## Docker Compose Override
+
+During development, you can change Docker Compose settings that will only affect the local development environment in the file `docker-compose.override.yml`.
+
+The changes to that file only affect the local development environment, not the production environment. So, you can add "temporary" changes that help the development workflow.
+
+For example, the directory with the backend code is synchronized in the Docker container, copying the code you change live to the directory inside the container. That allows you to test your changes right away, without having to build the Docker image again. It should only be done during development, for production, you should build the Docker image with a recent version of the backend code. But during development, it allows you to iterate very fast.
+
+There is also a command override that runs `fastapi run --reload` instead of the default `fastapi run`. It starts a single server process (instead of multiple, as would be for production) and reloads the process whenever the code changes. Have in mind that if you have a syntax error and save the Python file, it will break and exit, and the container will stop. After that, you can restart the container by fixing the error and running again:
+
+```console
+$ docker compose watch
+```
+
+There is also a commented out `command` override, you can uncomment it and comment the default one. It makes the backend container run a process that does "nothing", but keeps the container alive. That allows you to get inside your running container and execute commands inside, for example a Python interpreter to test installed dependencies, or start the development server that reloads when it detects changes.
+
+To get inside the container with a `bash` session you can start the stack with:
+
+```console
+$ docker compose watch
+```
+
+and then in another terminal, `exec` inside the running container:
+
+```console
+$ docker compose exec backend bash
+```
+
+You should see an output like:
+
+```console
+root@7f2607af31c3:/app#
+```
+
+that means that you are in a `bash` session inside your container, as a `root` user, under the `/app` directory, this directory has another directory called "app" inside, that's where your code lives inside the container: `/app/app`.
+
+There you can use the `fastapi run --reload` command to run the debug live reloading server.
+
+```console
+$ fastapi run --reload app/main.py
+```
+
+...it will look like:
+
+```console
+root@7f2607af31c3:/app# fastapi run --reload app/main.py
+```
+
+and then hit enter. That runs the live reloading server that auto reloads when it detects code changes.
+
+Nevertheless, if it doesn't detect a change but a syntax error, it will just stop with an error. But as the container is still alive and you are in a Bash session, you can quickly restart it after fixing the error, running the same command ("up arrow" and "Enter").
+
+...this previous detail is what makes it useful to have the container alive doing nothing and then, in a Bash session, make it run the live reload server.
+
+## Backend tests
+
+To test the backend run:
+
+```console
+$ bash ./scripts/test.sh
+```
+
+The tests run with Pytest, modify and add tests to `./backend/tests/`.
+
+If you use GitHub Actions the tests will run automatically.
+
+### Test running stack
+
+If your stack is already up and you just want to run the tests, you can use:
 
 ```bash
-# Build image và khởi động tất cả services
-docker compose up -d --build
-
-# Kiểm tra trạng thái services
-docker compose ps
-
-# Xem logs của API
-docker compose logs -f api
-
-# Xem logs của Database
-docker compose logs -f db
+docker compose exec backend bash scripts/tests-start.sh
 ```
 
-### 3. Truy cập ứng dụng
+That `/app/scripts/tests-start.sh` script just calls `pytest` after making sure that the rest of the stack is running. If you need to pass extra arguments to `pytest`, you can pass them to that command and they will be forwarded.
 
-- **API Root**: http://localhost:8000
-- **Swagger API Docs**: http://localhost:8000/docs
-- **ReDoc**: http://localhost:8000/redoc
-
-### 4. Các lệnh Docker hữu ích
+For example, to stop on first error:
 
 ```bash
-# Dừng tất cả services
-docker compose down
-
-# Dừng services nhưng giữ lại data
-docker compose down -v
-
-# Xem logs realtime
-docker compose logs -f
-
-# Chạy lệnh trong container API
-docker compose exec api python manage.py --help
-
-# Kiểm tra database connection
-docker compose exec db psql -U postgres -d vleague -c "SELECT 1"
+docker compose exec backend bash scripts/tests-start.sh -x
 ```
 
----
+### Test Coverage
 
-## Development Setup (Chạy locally)
+When the tests are run, a file `htmlcov/index.html` is generated, you can open it in your browser to see the coverage of the tests.
 
-### Prerequisites (Local)
+## Migrations
 
-- `Python 3.10+`
-- `PostgreSQL 15+`
+As during local development your app directory is mounted as a volume inside the container, you can also run the migrations with `alembic` commands inside the container and the migration code will be in your app directory (instead of being only inside the container). So you can add it to your git repository.
 
-### Installation
+Make sure you create a "revision" of your models and that you "upgrade" your database with that revision every time you change them. As this is what will update the tables in your database. Otherwise, your application will have errors.
 
-```bash
-# 1. Tạo virtual environment
-python -m venv venv
+* Start an interactive session in the backend container:
 
-# 2. Kích hoạt virtual environment
-# Windows:
-venv\Scripts\activate
-# macOS/Linux:
-source venv/bin/activate
-
-# 3. Cài dependencies
-pip install -r requirements.txt
-
-# 4. Tạo file .env
-cp .env.template .env
-# Chỉnh sửa .env với database URI của máy local
+```console
+$ docker compose exec backend bash
 ```
 
-### `.env` example (Local Development)
+* Alembic is already configured to import your SQLModel models from `./backend/app/models.py`.
 
-```shell
-DEBUG=True
-SERVER_HOST=http://localhost:8000
-SECRET_KEY=qwtqwubYA0pN1GMmKsFKHMw_WCbboJvdTAgM9Fq-UyM
-ENVIRONMENT=dev
-BACKEND_CORS_ORIGINS=["http://localhost","http://localhost:3000"]
-DATABASE_URI=postgresql://postgres:password@localhost:5432/vleague
-```
-### Database setup (Local)
+* After changing a model (for example, adding a column), inside the container, create a revision, e.g.:
 
-Create your first migration
-
-```shell
-aerich init-db
+```console
+$ alembic revision --autogenerate -m "Add column last_name to User model"
 ```
 
-Adding new migrations.
+* Commit to the git repository the files generated in the alembic directory.
 
-```shell
-aerich migrate --name <migration_name>
+* After creating the revision, run the migration in the database (this is what will actually change the database):
+
+```console
+$ alembic upgrade head
 ```
 
-Upgrading the database when new migrations are created.
+If you don't want to use migrations at all, uncomment the lines in the file at `./backend/app/core/db.py` that end in:
 
-```shell
-aerich upgrade
+```python
+SQLModel.metadata.create_all(engine)
 ```
 
-### Run the fastapi app (Local)
+and comment the line in the file `scripts/prestart.sh` that contains:
 
-```shell
-python manage.py run-server
+```console
+$ alembic upgrade head
 ```
 
-Server sẽ chạy tại: http://localhost:8000
+If you don't want to start with the default models and want to remove them / modify them, from the beginning, without having any previous revision, you can remove the revision files (`.py` Python files) under `./backend/app/alembic/versions/`. And then create a first migration as described above.
 
-### CLI Commands
+## Email Templates
 
-```shell
-# Xem tất cả các lệnh có sẵn
-python manage.py --help
+The email templates are in `./backend/app/email-templates/`. Here, there are two directories: `build` and `src`. The `src` directory contains the source files that are used to build the final email templates. The `build` directory contains the final email templates that are used by the application.
 
-# Chạy migration
-python manage.py migrate-db
+Before continuing, ensure you have the [MJML extension](https://marketplace.visualstudio.com/items?itemName=attilabuti.vscode-mjml) installed in your VS Code.
 
-# Chạy server development
-python manage.py run-server
-
-# Tạo SECRET_KEY mới
-python manage.py secret-key
-```
-
----
-
-## Docker Compose Architecture
-
-File `docker-compose.yml` bao gồm 2 services:
-
-### 1. **PostgreSQL Database** (`db`)
-- Image: `postgres:15-alpine`
-- Port: `5432` (không expose ra ngoài)
-- Volume: `pgdata` (persistence data)
-- Healthcheck: Kiểm tra database sẵn sàng trước khi API khởi động
-- Environment: `POSTGRES_USER`, `POSTGRES_PASSWORD`, `POSTGRES_DB`
-
-### 2. **FastAPI API** (`api`)
-- Build từ `Dockerfile` (Alpine Linux + Python 3.10)
-- Port: `8000:8000` (expose ra host)
-- Depends on: `db` (chờ database healthy)
-- Environment: Từ `.env` file
-- Auto-reload: Enabled cho development
-
----
-
-## Troubleshooting
-
-### 1. Port 8000 đã được sử dụng
-
-```bash
-# Tìm process sử dụng port 8000
-netstat -ano | findstr :8000  # Windows
-lsof -i :8000                  # macOS/Linux
-
-# Hoặc sử dụng port khác trong docker-compose.yml
-# Thay "8000:8000" thành "8001:8000"
-```
-
-### 2. Database connection error
-
-```bash
-# Kiểm tra database logs
-docker compose logs db
-
-# Kiểm tra connection
-docker compose exec db psql -U postgres -c "SELECT 1"
-```
-
-### 3. Container không start
-
-```bash
-# Xem full logs
-docker compose logs api
-
-# Rebuild image
-docker compose down
-docker compose up -d --build --no-cache
-```
-
-### 4. Xóa toàn bộ data và start lại fresh
-
-```bash
-# Stop services
-docker compose down
-
-# Remove volumes (xóa database data)
-docker volume prune
-
-# Start lại
-docker compose up -d --build
-```
-
----
-
-## Credits
-
-This package was created with [Cookiecutter](https://github.com/cookiecutter/cookiecutter) and the [cookiecutter-fastapi](https://github.com/tobi-de/cookiecutter-fastapi) project template.
+Once you have the MJML extension installed, you can create a new email template in the `src` directory. After creating the new email template and with the `.mjml` file open in your editor, open the command palette with `Ctrl+Shift+P` and search for `MJML: Export to HTML`. This will convert the `.mjml` file to a `.html` file and now you can save it in the build directory.
