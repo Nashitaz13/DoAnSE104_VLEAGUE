@@ -316,3 +316,133 @@ class Token(SQLModel):
 # Contents of JWT token
 class TokenPayload(SQLModel):
     sub: str | None = None
+
+
+# =============================================
+# PLAYER POSITION ENUM
+# =============================================
+class ViTriThiDau:
+    """Player positions - Constants for position validation"""
+    THU_MON = "GK"  # Goalkeeper
+    HAU_VE = "DF"  # Defender
+    TIEN_VE = "MF"  # Midfielder
+    TIEN_DAO = "FW"  # Forward
+    
+    @classmethod
+    def all_positions(cls):
+        return [cls.THU_MON, cls.HAU_VE, cls.TIEN_VE, cls.TIEN_DAO]
+
+
+# =============================================
+# PLAYER (CauThu) - Database Table
+# =============================================
+class CauThu(SQLModel, table=True):
+    __tablename__ = "cauthu"
+    
+    macauthu: str = Field(primary_key=True, max_length=50)
+    tencauthu: str = Field(max_length=100)
+    ngaysinh: Optional[datetime] = None
+    noisinh: Optional[str] = Field(default=None, max_length=100)
+    quoctich: Optional[str] = Field(default=None, max_length=50)  # "VN" for Vietnamese
+    quoctichkhac: Optional[str] = Field(default=None, max_length=50)
+    vitrithidau: Optional[str] = Field(default=None, max_length=50)  # GK, DF, MF, FW
+    chieucao: Optional[float] = None  # in cm
+    cannang: Optional[float] = None  # in kg
+
+
+# Player registration to club (ChiTietDoiBong) - Composite PK
+class ChiTietDoiBong(SQLModel, table=True):
+    __tablename__ = "chitietdoibong"
+    
+    # Composite primary key
+    macauthu: str = Field(primary_key=True, foreign_key="cauthu.macauthu", max_length=50)
+    maclb: str = Field(primary_key=True, max_length=50)
+    muagiai: str = Field(primary_key=True, foreign_key="muagiai.muagiai", max_length=50)
+    
+    # Shirt number (1-99, unique within club+season, NOT NULL required)
+    soaothidau: int = Field(ge=1, le=99)
+    
+    # ⚠️ COMPOSITE FK: (maclb, muagiai) → CauLacBo(maclb, muagiai)
+    # ⚠️ UNIQUE CONSTRAINT: (maclb, muagiai, soaothidau)
+    # Database constraint exists but SQLModel doesn't support composite FK declaration
+    # Validation must be done manually in CRUD layer
+
+
+# =============================================
+# PLAYER SCHEMAS (API Request/Response)
+# =============================================
+
+class CauThuPublic(SQLModel):
+    """Public player data"""
+    macauthu: str
+    tencauthu: str
+    ngaysinh: Optional[datetime] = None
+    noisinh: Optional[str] = None
+    quoctich: Optional[str] = None
+    quoctichkhac: Optional[str] = None
+    vitrithidau: Optional[str] = None
+    chieucao: Optional[float] = None
+    cannang: Optional[float] = None
+
+
+class CauThuCreate(SQLModel):
+    """Create player"""
+    macauthu: str
+    tencauthu: str
+    ngaysinh: Optional[datetime] = None
+    noisinh: Optional[str] = None
+    quoctich: Optional[str] = "VN"  # Default Vietnamese
+    quoctichkhac: Optional[str] = None
+    vitrithidau: Optional[str] = None
+    chieucao: Optional[float] = None
+    cannang: Optional[float] = None
+
+
+class CauThuUpdate(SQLModel):
+    """Update player (partial update)"""
+    tencauthu: Optional[str] = None
+    ngaysinh: Optional[datetime] = None
+    noisinh: Optional[str] = None
+    quoctich: Optional[str] = None
+    quoctichkhac: Optional[str] = None
+    vitrithidau: Optional[str] = None
+    chieucao: Optional[float] = None
+    cannang: Optional[float] = None
+
+
+# =============================================
+# ROSTER (ChiTietDoiBong) SCHEMAS
+# =============================================
+
+class ChiTietDoiBongPublic(SQLModel):
+    """Public roster entry"""
+    macauthu: str
+    maclb: str
+    muagiai: str
+    soaothidau: int  # NOT NULL required
+
+
+class ChiTietDoiBongCreate(SQLModel):
+    """Register player to club roster"""
+    macauthu: str
+    maclb: str
+    muagiai: str
+    soaothidau: int = Field(ge=1, le=99, description="Shirt number (1-99, required)")
+
+
+class RosterPlayerDetail(SQLModel):
+    """Roster entry with player details"""
+    macauthu: str
+    tencauthu: str
+    quoctich: Optional[str] = None
+    vitrithidau: Optional[str] = None
+    soaothidau: int  # NOT NULL required
+    ngaysinh: Optional[datetime] = None
+
+
+class RosterValidationResult(SQLModel):
+    """Result of roster validation"""
+    valid: bool
+    violations: list[str] = Field(default_factory=list)
+    warnings: list[str] = Field(default_factory=list)
+    stats: dict[str, int | None] = Field(default_factory=dict)  # Values can be None (e.g., min_required from season)
