@@ -11,7 +11,13 @@ from app.models import (
     CauLacBo, CauLacBoCreate, CauLacBoUpdate,
     CauThu, CauThuCreate, CauThuUpdate,
     ChiTietDoiBong, ChiTietDoiBongCreate,
-    ViTriThiDau
+    ViTriThiDau,
+    LichThiDau, LichThiDauCreate, LichThiDauUpdate, LichThiDauDetail,
+    DoiHinhXuatPhat, DoiHinhXuatPhatCreate, DoiHinhXuatPhatUpdate, LineupResponse, LineupPlayerDetail,
+    SuKienTranDau, SuKienTranDauCreate, SuKienTranDauUpdate,
+    ChiTietTrongTai, ChiTietTrongTaiCreate,
+    ScheduleGenerateRequest, ScheduleGenerationResult,
+    ScheduleValidateRequest, ScheduleValidationResult,
 )
 
 
@@ -672,3 +678,959 @@ def validate_goalkeeper_count(
         "goalkeeper_count": goalkeeper_count,
         "min_required": min_goalkeepers
     }
+
+
+# =============================================
+# MATCHES (LichThiDau) CRUD
+# =============================================
+
+def get_matches(
+    *,
+    session: Session,
+    muagiai: Optional[str] = None,
+    vong: Optional[int] = None,
+    maclb: Optional[str] = None,  # Filter by club (home OR away)
+    tungay: Optional[datetime] = None,  # Date from
+    denngay: Optional[datetime] = None,  # Date to
+    skip: int = 0,
+    limit: int = 100
+) -> list["LichThiDau"]:
+    """
+    Get matches with optional filters
+    maclb: Get matches where club is home OR away
+    """
+    from app.models import LichThiDau
+    
+    statement = select(LichThiDau)
+    
+    if muagiai:
+        statement = statement.where(LichThiDau.muagiai == muagiai)
+    if vong is not None:
+        statement = statement.where(LichThiDau.vong == vong)
+    if maclb:
+        statement = statement.where(
+            (LichThiDau.maclbnha == maclb) | (LichThiDau.maclbkhach == maclb)
+        )
+    if tungay:
+        statement = statement.where(LichThiDau.thoigianthidau >= tungay)
+    if denngay:
+        statement = statement.where(LichThiDau.thoigianthidau <= denngay)
+    
+    statement = statement.order_by(LichThiDau.thoigianthidau).offset(skip).limit(limit)
+    return list(session.exec(statement).all())
+
+
+def get_match_by_id(*, session: Session, matran: str) -> Optional["LichThiDau"]:
+    """Get match by ID"""
+    from app.models import LichThiDau
+    return session.get(LichThiDau, matran)
+
+
+def get_match_detail(*, session: Session, matran: str) -> Optional["LichThiDauDetail"]:
+    """
+    Get match details with lineup, events, and referees embedded
+    """
+    from app.models import LichThiDau, LichThiDauDetail
+    
+    match = session.get(LichThiDau, matran)
+    if not match:
+        return None
+    
+    # Build LichThiDauDetail with embedded data
+    match_detail = LichThiDauDetail(**match.model_dump())
+    
+    # Get events
+    match_detail.events = get_match_events(session=session, matran=matran)
+    
+    # Get lineup (home and away)
+    lineup_all = get_match_lineup(session=session, matran=matran)
+    match_detail.lineup_home = [
+        entry for entry in lineup_all 
+        if get_player_club(session, entry.macauthu, match.muagiai) == match.maclbnha
+    ]
+    match_detail.lineup_away = [
+        entry for entry in lineup_all 
+        if get_player_club(session, entry.macauthu, match.muagiai) == match.maclbkhach
+    ]
+    
+    # Get referees
+    match_detail.referees = get_match_referees(session=session, matran=matran)
+    
+    return match_detail
+
+
+def get_player_club(session: Session, macauthu: str, muagiai: str) -> Optional[str]:
+    """Helper: Get club for player in season (from ChiTietDoiBong)"""
+    from app.models import ChiTietDoiBong
+    statement = select(ChiTietDoiBong).where(
+        ChiTietDoiBong.macauthu == macauthu,
+        ChiTietDoiBong.muagiai == muagiai
+    )
+    entry = session.exec(statement).first()
+    return entry.maclb if entry else None
+
+
+def create_match(*, session: Session, match_in: "LichThiDauCreate") -> "LichThiDau":
+    """
+    Create new match with validation
+    
+    Validates:
+    - Season exists
+    - Home != away clubs
+    - Both clubs exist in season
+    - Stadium exists in season (if provided)
+    - Match time within season dates
+    - Round number > 0
+    - Match ID does not already exist
+    """
+    from app.models import LichThiDau
+    
+    # Check if match already exists
+    existing_match = session.get(LichThiDau, match_in.matran)
+    if existing_match:
+        raise ValueError(f"Match with ID {match_in.matran} already exists")
+    
+    # Validate match creation
+    validate_match_creation(session=session, match_in=match_in)
+    
+    match = LichThiDau.model_validate(match_in)
+    session.add(match)
+    session.commit()
+    session.refresh(match)
+    return match
+
+
+def update_match(
+    *, session: Session, db_match: "LichThiDau", match_in: "LichThiDauUpdate"
+) -> "LichThiDau":
+    """Update existing match"""
+    update_data = match_in.model_dump(exclude_unset=True)
+    
+    # Prevent updating primary key
+    if 'matran' in update_data:
+        raise ValueError("Cannot update primary key field 'matran'")
+    
+    # Prevent updating season
+    if 'muagiai' in update_data:
+        raise ValueError("Cannot update season field 'muagiai'")
+    
+    # Prevent updating team assignments after creation
+    if 'maclbnha' in update_data or 'maclbkhach' in update_data:
+        raise ValueError("Cannot update team assignments after match creation")
+    
+    # If updating time or stadium, re-validate
+    if any(k in update_data for k in ['thoigianthidau', 'masanvandong']):
+        # Create temp object for validation
+        from app.models import LichThiDauCreate
+        temp_data = db_match.model_dump()
+        temp_data.update(update_data)
+        temp_match = LichThiDauCreate(**temp_data)
+        validate_match_creation(session=session, match_in=temp_match)
+    
+    db_match.sqlmodel_update(update_data)
+    session.add(db_match)
+    session.commit()
+    session.refresh(db_match)
+    return db_match
+
+
+def delete_match(*, session: Session, matran: str) -> bool:
+    """Delete match (cascades to events, lineup, referees)"""
+    from app.models import LichThiDau
+    match = session.get(LichThiDau, matran)
+    if match:
+        session.delete(match)
+        session.commit()
+        return True
+    return False
+
+
+def validate_match_creation(
+    *, session: Session, match_in: "LichThiDauCreate"
+) -> None:
+    """
+    Validate match creation
+    Raises ValueError with specific messages
+    """
+    # 1. Validate season exists
+    season = get_season_by_id(session=session, id=match_in.muagiai)
+    if not season:
+        raise ValueError(f"Season {match_in.muagiai} not found")
+    
+    # 2. Validate home != away
+    if match_in.maclbnha == match_in.maclbkhach:
+        raise ValueError("Home and away clubs cannot be the same")
+    
+    # 3. Validate home club exists in season
+    club_home = get_club_by_id(session=session, maclb=match_in.maclbnha, muagiai=match_in.muagiai)
+    if not club_home:
+        raise ValueError(f"Home club {match_in.maclbnha} not found for season {match_in.muagiai}")
+    
+    # 4. Validate away club exists in season
+    club_away = get_club_by_id(session=session, maclb=match_in.maclbkhach, muagiai=match_in.muagiai)
+    if not club_away:
+        raise ValueError(f"Away club {match_in.maclbkhach} not found for season {match_in.muagiai}")
+    
+    # 5. Validate stadium exists in season (if provided)
+    if match_in.masanvandong:
+        stadium = get_stadium_by_id(session=session, masanvandong=match_in.masanvandong, muagiai=match_in.muagiai)
+        if not stadium:
+            raise ValueError(f"Stadium {match_in.masanvandong} not found for season {match_in.muagiai}")
+    
+    # 6. Validate match time within season
+    # Convert datetime to date for comparison
+    match_date = match_in.thoigianthidau.date()
+    
+    if season.ngaybatdau and match_date < season.ngaybatdau:
+        raise ValueError(f"Match time before season start date ({season.ngaybatdau})")
+    
+    if season.ngayketthuc and match_date > season.ngayketthuc:
+        raise ValueError(f"Match time after season end date ({season.ngayketthuc})")
+    
+    # 7. Validate round number > 0
+    if match_in.vong <= 0:
+        raise ValueError("Round number must be greater than 0")
+
+
+# =============================================
+# MATCH EVENTS (SuKienTranDau) CRUD
+# =============================================
+
+def get_match_events(
+    *,
+    session: Session,
+    matran: str,
+    loaisukien: Optional[str] = None
+) -> list["SuKienTranDau"]:
+    """Get events for match, ordered by time"""
+    from app.models import SuKienTranDau
+    
+    statement = select(SuKienTranDau).where(SuKienTranDau.matran == matran)
+    
+    if loaisukien:
+        statement = statement.where(SuKienTranDau.loaisukien == loaisukien)
+    
+    statement = statement.order_by(SuKienTranDau.phutthidau, SuKienTranDau.bugio)
+    return list(session.exec(statement).all())
+
+
+def get_event_by_id(*, session: Session, masukien: str) -> Optional["SuKienTranDau"]:
+    """Get event by ID"""
+    from app.models import SuKienTranDau
+    return session.get(SuKienTranDau, masukien)
+
+
+def create_match_event(
+    *, session: Session, event_in: "SuKienTranDauCreate"
+) -> "SuKienTranDau":
+    """
+    Create match event with validation
+    
+    Validates:
+    - Match exists
+    - Player exists
+    - Player in roster for club in that season
+    - Club is one of the two teams playing
+    - Event time within limits
+    - Event type valid
+    """
+    from app.models import SuKienTranDau
+    
+    validate_match_event(session=session, event_in=event_in)
+    
+    event = SuKienTranDau.model_validate(event_in)
+    session.add(event)
+    session.commit()
+    session.refresh(event)
+    return event
+
+
+def update_match_event(
+    *, session: Session, db_event: "SuKienTranDau", event_in: "SuKienTranDauUpdate"
+) -> "SuKienTranDau":
+    """Update match event - only updates fields specified in request"""
+    update_data = event_in.model_dump(exclude_unset=True)
+    
+    # Empty body {} => return unchanged (idempotent)
+    if not update_data:
+        return db_event
+    
+    # Re-validate if critical fields changed
+    if any(k in update_data for k in ['phutthidau', 'loaisukien']):
+        from app.models import SuKienTranDauCreate
+        temp_data = db_event.model_dump()
+        temp_data.update(update_data)
+        temp_event = SuKienTranDauCreate(**temp_data)
+        validate_match_event(session=session, event_in=temp_event)
+    
+    db_event.sqlmodel_update(update_data)
+    session.add(db_event)
+    session.commit()
+    session.refresh(db_event)
+    return db_event
+
+
+def delete_match_event(*, session: Session, masukien: str) -> bool:
+    """Delete match event"""
+    from app.models import SuKienTranDau
+    event = session.get(SuKienTranDau, masukien)
+    if event:
+        session.delete(event)
+        session.commit()
+        return True
+    return False
+
+
+def validate_match_event(
+    *, session: Session, event_in: "SuKienTranDauCreate"
+) -> None:
+    """
+    Validate match event
+    Raises ValueError with specific messages
+    """
+    # 1. Match exists
+    match = get_match_by_id(session=session, matran=event_in.matran)
+    if not match:
+        raise ValueError(f"Match {event_in.matran} not found")
+    
+    # 2. Player exists
+    player = get_player_by_id(session=session, macauthu=event_in.macauthu)
+    if not player:
+        raise ValueError(f"Player {event_in.macauthu} not found")
+    
+    # 3. Validate club is one of the two teams
+    if event_in.maclb not in [match.maclbnha, match.maclbkhach]:
+        raise ValueError(f"Club {event_in.maclb} is not playing in match {event_in.matran}")
+    
+    # 4. Validate player in roster for club in that season
+    roster_entry = get_roster_player(
+        session=session,
+        macauthu=event_in.macauthu,
+        maclb=event_in.maclb,
+        muagiai=match.muagiai
+    )
+    if not roster_entry:
+        raise ValueError(
+            f"Player {event_in.macauthu} not in roster for {event_in.maclb} "
+            f"in season {match.muagiai}"
+        )
+    
+    # 5. Validate event time (1-130 minutes, allowing overtime)
+    if event_in.phutthidau < 1 or event_in.phutthidau > 130:
+        raise ValueError(f"Event time must be between 1 and 130 minutes, got {event_in.phutthidau}")
+    
+    # 6. Validate event type
+    valid_events = ["BanThang", "TheVang", "TheDo", "ThayNguoi"]
+    if event_in.loaisukien not in valid_events:
+        raise ValueError(f"Invalid event type '{event_in.loaisukien}'. Must be one of: {', '.join(valid_events)}")
+
+
+# =============================================
+# MATCH LINEUP (DoiHinhXuatPhat) CRUD
+# =============================================
+
+def get_match_lineup(
+    *, session: Session, matran: str, maclb: Optional[str] = None
+) -> list["DoiHinhXuatPhat"]:
+    """Get lineup for match, optionally filtered by team"""
+    from app.models import DoiHinhXuatPhat
+    
+    statement = select(DoiHinhXuatPhat).where(DoiHinhXuatPhat.matran == matran)
+    
+    # Filter by club if specified
+    if maclb:
+        # Get match to determine season
+        match = get_match_by_id(session=session, matran=matran)
+        if match:
+            # Get all players in this club's roster for this season
+            from app.models import ChiTietDoiBong
+            roster_statement = select(ChiTietDoiBong.macauthu).where(
+                ChiTietDoiBong.maclb == maclb,
+                ChiTietDoiBong.muagiai == match.muagiai
+            )
+            player_ids = [row for row in session.exec(roster_statement).all()]
+            statement = statement.where(DoiHinhXuatPhat.macauthu.in_(player_ids))
+    
+    return list(session.exec(statement).all())
+
+
+def get_match_lineup_detailed(
+    *, session: Session, matran: str, maclb: Optional[str] = None
+) -> "LineupResponse":
+    """
+    Get lineup with starting XI, substitutes, and captains detailed
+    """
+    from app.models import LineupResponse, LineupPlayerDetail, CauThu
+    
+    # Get match
+    match = get_match_by_id(session=session, matran=matran)
+    if not match:
+        return LineupResponse()
+    
+    # Get all lineup entries
+    lineup_entries = get_match_lineup(session=session, matran=matran)
+    
+    # Build detailed lineup with player info
+    starting_xi = []
+    substitutes = []
+    captain_home = None
+    captain_away = None
+    
+    for entry in lineup_entries:
+        # Get player details
+        player = session.get(CauThu, entry.macauthu)
+        if not player:
+            continue
+        
+        # Determine which club this player belongs to
+        player_club = get_player_club(session, entry.macauthu, match.muagiai)
+        
+        # Filter by maclb if specified
+        if maclb and player_club != maclb:
+            continue
+        
+        # Get shirt number from roster (ChiTietDoiBong)
+        shirt_no = None
+        if player_club:
+            roster = get_roster_player(
+                session=session,
+                macauthu=entry.macauthu,
+                maclb=player_club,
+                muagiai=match.muagiai,
+            )
+            shirt_no = roster.soaothidau if roster else None
+        
+        # Build detailed entry
+        detail = LineupPlayerDetail(
+            macauthu=entry.macauthu,
+            tencauthu=player.tencauthu,
+            vitri=entry.vitri,
+            vitrithidau=player.vitrithidau,
+            duocxuatphat=entry.duocxuatphat,
+            ladoitruong=entry.ladoitruong,
+            soaothidau=shirt_no,
+        )
+        
+        # Categorize
+        if entry.duocxuatphat:
+            starting_xi.append(detail)
+        else:
+            substitutes.append(detail)
+        
+        # Set captains
+        if entry.ladoitruong:
+            if player_club == match.maclbnha:
+                captain_home = detail
+            elif player_club == match.maclbkhach:
+                captain_away = detail
+    
+    return LineupResponse(
+        starting_xi=starting_xi,
+        substitutes=substitutes,
+        captain_home=captain_home,
+        captain_away=captain_away,
+    )
+
+
+def get_lineup_entry(
+    *, session: Session, matran: str, macauthu: str
+) -> Optional["DoiHinhXuatPhat"]:
+    """Get specific lineup entry"""
+    from app.models import DoiHinhXuatPhat
+    statement = select(DoiHinhXuatPhat).where(
+        DoiHinhXuatPhat.matran == matran,
+        DoiHinhXuatPhat.macauthu == macauthu
+    )
+    return session.exec(statement).first()
+
+
+def add_player_to_lineup(
+    *, session: Session, lineup_in: "DoiHinhXuatPhatCreate"
+) -> "DoiHinhXuatPhat":
+    """
+    Add player to match lineup
+    
+    Validates:
+    - Match exists
+    - Player in roster for one of the teams in that season
+    - Not already in lineup
+    - Max 11 starting players per team
+    - Max 1 captain per team
+    """
+    from app.models import DoiHinhXuatPhat
+    
+    validate_lineup_addition(session=session, lineup_in=lineup_in)
+    
+    lineup = DoiHinhXuatPhat.model_validate(lineup_in)
+    session.add(lineup)
+    session.commit()
+    session.refresh(lineup)
+    return lineup
+
+
+def update_lineup_player(
+    *, session: Session, db_lineup: "DoiHinhXuatPhat", lineup_in: "DoiHinhXuatPhatUpdate"
+) -> "DoiHinhXuatPhat":
+    """Update lineup entry"""
+    update_data = lineup_in.model_dump(exclude_unset=True)
+    
+    # If setting captain, validate only 1 captain per team
+    if update_data.get('ladoitruong') is True:
+        match = get_match_by_id(session=session, matran=db_lineup.matran)
+        if match:
+            # Get player's club from roster
+            roster_home = get_roster_player(session=session, macauthu=db_lineup.macauthu, 
+                                           maclb=match.maclbnha, muagiai=match.muagiai)
+            roster_away = get_roster_player(session=session, macauthu=db_lineup.macauthu,
+                                           maclb=match.maclbkhach, muagiai=match.muagiai)
+            
+            player_club = match.maclbnha if roster_home else match.maclbkhach
+            
+            # Check for existing captain in same team
+            from app.models import DoiHinhXuatPhat
+            existing_captains = session.exec(
+                select(DoiHinhXuatPhat).where(
+                    DoiHinhXuatPhat.matran == db_lineup.matran,
+                    DoiHinhXuatPhat.ladoitruong == True,
+                    DoiHinhXuatPhat.macauthu != db_lineup.macauthu
+                )
+            ).all()
+            
+            # Filter captains by club
+            for captain in existing_captains:
+                cap_roster_home = get_roster_player(session=session, macauthu=captain.macauthu,
+                                                   maclb=match.maclbnha, muagiai=match.muagiai)
+                cap_club = match.maclbnha if cap_roster_home else match.maclbkhach
+                
+                if cap_club == player_club:
+                    raise ValueError(f"Team {player_club} already has a captain: {captain.macauthu}")
+    
+    db_lineup.sqlmodel_update(update_data)
+    session.add(db_lineup)
+    session.commit()
+    session.refresh(db_lineup)
+    return db_lineup
+
+
+def remove_player_from_lineup(*, session: Session, matran: str, macauthu: str) -> bool:
+    """Remove player from lineup"""
+    lineup = get_lineup_entry(session=session, matran=matran, macauthu=macauthu)
+    if lineup:
+        session.delete(lineup)
+        session.commit()
+        return True
+    return False
+
+
+def validate_lineup_addition(
+    *, session: Session, lineup_in: "DoiHinhXuatPhatCreate"
+) -> None:
+    """Validate adding player to lineup"""
+    # 1. Match exists
+    match = get_match_by_id(session=session, matran=lineup_in.matran)
+    if not match:
+        raise ValueError(f"Match {lineup_in.matran} not found")
+    
+    # 2. Player exists
+    player = get_player_by_id(session=session, macauthu=lineup_in.macauthu)
+    if not player:
+        raise ValueError(f"Player {lineup_in.macauthu} not found")
+    
+    # 3. Player in roster for one of the teams
+    roster_home = get_roster_player(
+        session=session,
+        macauthu=lineup_in.macauthu,
+        maclb=match.maclbnha,
+        muagiai=match.muagiai
+    )
+    roster_away = get_roster_player(
+        session=session,
+        macauthu=lineup_in.macauthu,
+        maclb=match.maclbkhach,
+        muagiai=match.muagiai
+    )
+    
+    if not roster_home and not roster_away:
+        raise ValueError(
+            f"Player {lineup_in.macauthu} not in roster for either "
+            f"{match.maclbnha} or {match.maclbkhach} in season {match.muagiai}"
+        )
+    
+    # Determine which team this player belongs to
+    player_club = match.maclbnha if roster_home else match.maclbkhach
+    
+    # 4. Check not already in lineup
+    existing = get_lineup_entry(session=session, matran=lineup_in.matran, macauthu=lineup_in.macauthu)
+    if existing:
+        raise ValueError(f"Player {lineup_in.macauthu} already in lineup for match {lineup_in.matran}")
+    
+    # 5. If starting XI, check max 11 per team
+    if lineup_in.duocxuatphat:
+        from app.models import DoiHinhXuatPhat
+        current_starters = session.exec(
+            select(DoiHinhXuatPhat).where(
+                DoiHinhXuatPhat.matran == lineup_in.matran,
+                DoiHinhXuatPhat.duocxuatphat == True
+            )
+        ).all()
+        
+        # Count starters from same team
+        team_starters = 0
+        for starter in current_starters:
+            starter_roster_home = get_roster_player(session=session, macauthu=starter.macauthu,
+                                                   maclb=match.maclbnha, muagiai=match.muagiai)
+            starter_club = match.maclbnha if starter_roster_home else match.maclbkhach
+            if starter_club == player_club:
+                team_starters += 1
+        
+        if team_starters >= 11:
+            raise ValueError(f"Team {player_club} already has 11 starting players")
+    
+    # 6. If captain, check only 1 per team
+    if lineup_in.ladoitruong:
+        from app.models import DoiHinhXuatPhat
+        existing_captains = session.exec(
+            select(DoiHinhXuatPhat).where(
+                DoiHinhXuatPhat.matran == lineup_in.matran,
+                DoiHinhXuatPhat.ladoitruong == True
+            )
+        ).all()
+        
+        for captain in existing_captains:
+            cap_roster_home = get_roster_player(session=session, macauthu=captain.macauthu,
+                                               maclb=match.maclbnha, muagiai=match.muagiai)
+            cap_club = match.maclbnha if cap_roster_home else match.maclbkhach
+            
+            if cap_club == player_club:
+                raise ValueError(f"Team {player_club} already has a captain: {captain.macauthu}")
+
+
+# =============================================
+# MATCH REFEREES (ChiTietTrongTai) CRUD
+# =============================================
+
+def get_match_referees(*, session: Session, matran: str) -> list["ChiTietTrongTai"]:
+    """Get referees for match"""
+    from app.models import ChiTietTrongTai
+    statement = select(ChiTietTrongTai).where(ChiTietTrongTai.matran == matran)
+    return list(session.exec(statement).all())
+
+
+def get_referee_entry(
+    *, session: Session, matran: str, tentrongtai: str
+) -> Optional["ChiTietTrongTai"]:
+    """Get specific referee entry"""
+    from app.models import ChiTietTrongTai
+    statement = select(ChiTietTrongTai).where(
+        ChiTietTrongTai.matran == matran,
+        ChiTietTrongTai.tentrongtai == tentrongtai
+    )
+    return session.exec(statement).first()
+
+
+def assign_referee(
+    *, session: Session, referee_in: "ChiTietTrongTaiCreate"
+) -> "ChiTietTrongTai":
+    """
+    Assign referee to match
+    
+    Validates:
+    - Match exists
+    - Not duplicate (matran, tentrongtai)
+    - Valid position
+    """
+    from app.models import ChiTietTrongTai
+    
+    # 1. Match exists
+    match = get_match_by_id(session=session, matran=referee_in.matran)
+    if not match:
+        raise ValueError(f"Match {referee_in.matran} not found")
+    
+    # 2. Check duplicate
+    existing = get_referee_entry(session=session, matran=referee_in.matran, 
+                                tentrongtai=referee_in.tentrongtai)
+    if existing:
+        raise ValueError(f"Referee {referee_in.tentrongtai} already assigned to match {referee_in.matran}")
+    
+    # 3. Validate position (optional, but recommended)
+    valid_positions = ["MAIN", "ASSISTANT_1", "ASSISTANT_2", "FOURTH", "VAR", "AVAR",
+                      "Trong Tai Chinh", "Trong Tai Phu 1", "Trong Tai Phu 2", "Trong Tai Thu Tu"]
+    if referee_in.vitri and referee_in.vitri not in valid_positions:
+        # Just a warning, don't block
+        pass
+    
+    referee = ChiTietTrongTai.model_validate(referee_in)
+    session.add(referee)
+    session.commit()
+    session.refresh(referee)
+    return referee
+
+
+def remove_referee(*, session: Session, matran: str, tentrongtai: str) -> bool:
+    """Remove referee from match"""
+    referee = get_referee_entry(session=session, matran=matran, tentrongtai=tentrongtai)
+    if referee:
+        session.delete(referee)
+        session.commit()
+        return True
+    return False
+
+
+# =============================================
+# SCHEDULE GENERATION & VALIDATION
+# =============================================
+
+def generate_round_robin_schedule(
+    *, session: Session, request_in: "ScheduleGenerateRequest"
+) -> "ScheduleGenerationResult":
+    """
+    Generate round-robin schedule for season
+    
+    Algorithm:
+    - Get all clubs in season
+    - Generate n-1 rounds per leg (for n teams)
+    - First leg: home/away assigned
+    - Second leg: swap home/away
+    - Assign match times with interval
+    """
+    from app.models import ScheduleGenerationResult, LichThiDauCreate
+    from datetime import timedelta
+    
+    # Get all clubs in season
+    clubs = get_clubs(session=session, muagiai=request_in.muagiai)
+    n = len(clubs)
+    
+    if n < 2:
+        return ScheduleGenerationResult(
+            success=False,
+            matches_created=0,
+            rounds_generated=0,
+            errors=[f"Need at least 2 clubs in season {request_in.muagiai}, found {n}"]
+        )
+    
+    warnings = []
+    if n % 2 != 0:
+        warnings.append(f"Odd number of clubs ({n}). Adding bye for round-robin.")
+        clubs.append(None)  # Dummy club for bye
+        n += 1
+    
+    rounds_per_leg = n - 1
+    expected_total_rounds = rounds_per_leg * 2
+    matches_created = 0
+    errors = []
+    
+    # Circle method for round-robin
+    # First leg
+    for round_num in range(1, rounds_per_leg + 1):
+        round_date = request_in.ngaybatdau_lutdi + timedelta(days=(round_num - 1) * request_in.interval_days)
+        
+        # Generate pairings for this round using circle method
+        pairings = generate_round_pairings(clubs, round_num, is_return_leg=False)
+        
+        for home_club, away_club in pairings:
+            if home_club is None or away_club is None:
+                continue  # Skip bye
+            
+            try:
+                match_in = LichThiDauCreate(
+                    matran=f"M_{request_in.muagiai}_R{round_num}_{home_club.maclb}_{away_club.maclb}",
+                    muagiai=request_in.muagiai,
+                    vong=round_num,
+                    thoigianthidau=round_date,
+                    maclbnha=home_club.maclb,
+                    maclbkhach=away_club.maclb,
+                    masanvandong=home_club.masanvandong  # Use home stadium
+                )
+                create_match(session=session, match_in=match_in)
+                matches_created += 1
+            except Exception as e:
+                errors.append(f"Round {round_num}: {str(e)}")
+    
+    # Return leg (swap home/away)
+    for round_num in range(1, rounds_per_leg + 1):
+        return_round_num = round_num + rounds_per_leg
+        round_date = request_in.ngaybatdau_lutve + timedelta(days=(round_num - 1) * request_in.interval_days)
+        
+        pairings = generate_round_pairings(clubs, round_num, is_return_leg=True)
+        
+        for home_club, away_club in pairings:
+            if home_club is None or away_club is None:
+                continue
+            
+            try:
+                match_in = LichThiDauCreate(
+                    matran=f"M_{request_in.muagiai}_R{return_round_num}_{home_club.maclb}_{away_club.maclb}",
+                    muagiai=request_in.muagiai,
+                    vong=return_round_num,
+                    thoigianthidau=round_date,
+                    maclbnha=home_club.maclb,
+                    maclbkhach=away_club.maclb,
+                    masanvandong=home_club.masanvandong
+                )
+                create_match(session=session, match_in=match_in)
+                matches_created += 1
+            except Exception as e:
+                errors.append(f"Round {return_round_num}: {str(e)}")
+    
+    return ScheduleGenerationResult(
+        success=len(errors) == 0,
+        matches_created=matches_created,
+        rounds_generated=expected_total_rounds,
+        warnings=warnings,
+        errors=errors
+    )
+
+
+def generate_round_pairings(clubs: list, round_num: int, is_return_leg: bool) -> list[tuple]:
+    """
+    Generate pairings for one round using circle method
+    
+    For n teams (even), arrange in circle, rotate, generate pairings
+    """
+    n = len(clubs)
+    if n < 2:
+        return []
+    
+    # Circle method: fix first team, rotate others
+    fixed = clubs[0]
+    rotating = clubs[1:]
+    
+    # Rotate based on round number
+    rotation = (round_num - 1) % (n - 1)
+    rotated = rotating[rotation:] + rotating[:rotation]
+    
+    # Generate pairings
+    pairings = []
+    teams = [fixed] + rotated
+    
+    for i in range(n // 2):
+        home = teams[i]
+        away = teams[n - 1 - i]
+        
+        # Alternate home/away based on round parity
+        if round_num % 2 == 0:
+            home, away = away, home
+        
+        # Swap if return leg
+        if is_return_leg:
+            home, away = away, home
+        
+        pairings.append((home, away))
+    
+    return pairings
+
+
+def validate_schedule(
+    *, session: Session, request_in: "ScheduleValidateRequest"
+) -> "ScheduleValidationResult":
+    """
+    Validate schedule for season
+    
+    Checks:
+    - Each club plays (n-1) * 2 matches
+    - Each pair plays exactly 2 times (home & away)
+    - No duplicate rounds for same clubs
+    - All matches within season dates
+    """
+    from app.models import ScheduleValidationResult
+    
+    # Validate input
+    if not request_in.muagiai or not request_in.muagiai.strip():
+        raise ValueError("Season ID (muagiai) is required")
+    
+    season = get_season_by_id(session=session, id=request_in.muagiai)
+    if not season:
+        raise ValueError(f"Mùa giải {request_in.muagiai} không tồn tại")
+    
+    matches = get_matches(session=session, muagiai=request_in.muagiai, limit=1000)
+    clubs = get_clubs(session=session, muagiai=request_in.muagiai)
+    
+    errors = []
+    warnings = []
+    
+    n_clubs = len(clubs)
+    
+    if not matches:
+        errors.append(f"No matches found for season {request_in.muagiai}")
+        stats = {
+            "total_matches": 0,
+            "total_clubs": n_clubs,
+            "expected_total_matches": n_clubs * (n_clubs - 1) if n_clubs > 0 else 0,
+            "rounds_detected": 0
+        }
+        return ScheduleValidationResult(
+            is_valid=False,
+            errors=errors,
+            warnings=warnings,
+            stats=stats
+        )
+    
+    expected_matches_per_club = (n_clubs - 1) * 2  # Each club plays all others twice
+    
+    # Count matches per club
+    club_match_counts = {}
+    for club in clubs:
+        club_matches = [m for m in matches if m.maclbnha == club.maclb or m.maclbkhach == club.maclb]
+        club_match_counts[club.maclb] = len(club_matches)
+        
+        if len(club_matches) != expected_matches_per_club:
+            errors.append(
+                f"Club {club.maclb} has {len(club_matches)} matches, "
+                f"expected {expected_matches_per_club}"
+            )
+    
+    # Check each pair plays exactly twice (home & away)
+    for i, club1 in enumerate(clubs):
+        for club2 in clubs[i+1:]:
+            club1_vs_club2 = [
+                m for m in matches
+                if (m.maclbnha == club1.maclb and m.maclbkhach == club2.maclb) or
+                   (m.maclbnha == club2.maclb and m.maclbkhach == club1.maclb)
+            ]
+            
+            if len(club1_vs_club2) != 2:
+                errors.append(
+                    f"Clubs {club1.maclb} vs {club2.maclb} have {len(club1_vs_club2)} matches, expected 2"
+                )
+            
+            # Check one home, one away
+            if len(club1_vs_club2) == 2:
+                home_counts = sum(1 for m in club1_vs_club2 if m.maclbnha == club1.maclb)
+                if home_counts != 1:
+                    errors.append(
+                        f"Clubs {club1.maclb} vs {club2.maclb} don't have balanced home/away"
+                    )
+    
+    # Check all matches within season dates
+    if season.ngaybatdau or season.ngayketthuc:
+        for match in matches:
+            if not match.thoigianthidau:
+                errors.append(f"Match {match.matran} has no scheduled time")
+                continue
+            
+            # Convert datetime to date for comparison if needed
+            match_date = match.thoigianthidau.date() if hasattr(match.thoigianthidau, 'date') else match.thoigianthidau
+            
+            if season.ngaybatdau:
+                season_start = season.ngaybatdau.date() if hasattr(season.ngaybatdau, 'date') else season.ngaybatdau
+                if match_date < season_start:
+                    errors.append(f"Match {match.matran} before season start")
+            
+            if season.ngayketthuc:
+                season_end = season.ngayketthuc.date() if hasattr(season.ngayketthuc, 'date') else season.ngayketthuc
+                if match_date > season_end:
+                    errors.append(f"Match {match.matran} after season end")
+    
+    stats = {
+        "total_matches": len(matches),
+        "total_clubs": n_clubs,
+        "expected_total_matches": n_clubs * (n_clubs - 1),  # n * (n-1)
+        "rounds_detected": max([m.vong for m in matches]) if matches else 0
+    }
+    
+    return ScheduleValidationResult(
+        is_valid=len(errors) == 0,
+        errors=errors,
+        warnings=warnings,
+        stats=stats
+    )

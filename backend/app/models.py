@@ -2,7 +2,7 @@ import uuid
 from datetime import datetime
 from typing import Optional
 
-from pydantic import EmailStr
+from pydantic import EmailStr, ConfigDict
 from sqlmodel import Field, Relationship, SQLModel
 
 
@@ -446,3 +446,308 @@ class RosterValidationResult(SQLModel):
     violations: list[str] = Field(default_factory=list)
     warnings: list[str] = Field(default_factory=list)
     stats: dict[str, int | None] = Field(default_factory=dict)  # Values can be None (e.g., min_required from season)
+
+
+# =============================================
+# MATCHES (LichThiDau) - Database Table
+# =============================================
+
+class LichThiDau(SQLModel, table=True):
+    __tablename__ = "lichthidau"
+    
+    # Primary Key
+    matran: str = Field(primary_key=True, max_length=50)
+    
+    # Season & Round
+    muagiai: str = Field(foreign_key="muagiai.muagiai", max_length=50, index=True)
+    vong: int = Field(index=True)  # Round number
+    
+    # Match Info
+    thoigianthidau: datetime
+    
+    # Teams - Composite FK to CauLacBo(maclb, muagiai)
+    maclbnha: str = Field(max_length=50, index=True)  # Home club
+    maclbkhach: str = Field(max_length=50, index=True)  # Away club
+    
+    # Stadium - Composite FK to SanVanDong(masanvandong, muagiai)
+    masanvandong: Optional[str] = Field(default=None, max_length=50)
+    
+    # Match Stats
+    sokhangia: Optional[int] = None
+    nhietdo: Optional[float] = None  # Temperature (°C)
+    bugiohiep1: Optional[int] = None  # First half added time (minutes)
+    bugiohiep2: Optional[int] = None  # Second half added time (minutes)
+    tiso: Optional[str] = Field(default=None, max_length=20)  # Final score "2-1"
+
+
+# =============================================
+# LINEUP (DoiHinhXuatPhat) - Database Table
+# =============================================
+
+class DoiHinhXuatPhat(SQLModel, table=True):
+    __tablename__ = "doihinhxuatphat"
+    
+    # Composite Primary Key
+    matran: str = Field(primary_key=True, foreign_key="lichthidau.matran", max_length=50)
+    macauthu: str = Field(primary_key=True, foreign_key="cauthu.macauthu", max_length=50)
+    
+    # Lineup Info
+    vitri: Optional[str] = Field(default=None, max_length=50)  # Formation position (e.g., "ST", "CM")
+    duocxuatphat: bool = Field(default=True)  # True if starting XI, False if substitute
+    ladoitruong: bool = Field(default=False)  # Team captain
+
+
+# =============================================
+# MATCH EVENTS (SuKienTranDau) - Database Table
+# =============================================
+
+class SuKienTranDau(SQLModel, table=True):
+    __tablename__ = "sukientrandau"
+    
+    # Primary Key
+    masukien: str = Field(primary_key=True, max_length=50)
+    
+    # Event Type
+    loaisukien: str = Field(max_length=50)  # "Ban Thang", "The Vang", "The Do", "Thay Nguoi"
+    
+    # Timing
+    phutthidau: int  # Minute of event (1-90+)
+    bugio: Optional[int] = None  # Added time minute (if phutthidau > 45 or > 90)
+    
+    # Description
+    motasukien: Optional[str] = None  # TEXT
+    cauthulienquan: Optional[str] = Field(default=None, max_length=100)  # Secondary player (assist, substituted out)
+    
+    # Relations
+    matran: str = Field(foreign_key="lichthidau.matran", max_length=50, index=True)
+    maclb: str = Field(max_length=50)  # Which team
+    macauthu: str = Field(foreign_key="cauthu.macauthu", max_length=50, index=True)
+
+
+# =============================================
+# REFEREES (ChiTietTrongTai) - Database Table
+# =============================================
+
+class ChiTietTrongTai(SQLModel, table=True):
+    __tablename__ = "chitiettrongtai"
+    
+    # Composite Primary Key
+    matran: str = Field(primary_key=True, foreign_key="lichthidau.matran", max_length=50)
+    tentrongtai: str = Field(primary_key=True, max_length=100)
+    
+    # Referee Position
+    vitri: str = Field(max_length=50)  # "Trong Tai Chinh", "Trong Tai Phu", "Trong Tai Thu Tu"
+
+
+# =============================================
+# MATCHES SCHEMAS (API Request/Response)
+# =============================================
+
+class LichThiDauPublic(SQLModel):
+    """Public match data"""
+    matran: str
+    muagiai: str
+    vong: int
+    thoigianthidau: datetime
+    maclbnha: str
+    maclbkhach: str
+    masanvandong: Optional[str] = None
+    sokhangia: Optional[int] = None
+    nhietdo: Optional[float] = None
+    bugiohiep1: Optional[int] = None
+    bugiohiep2: Optional[int] = None
+    tiso: Optional[str] = None
+
+
+class LichThiDauCreate(SQLModel):
+    """Create match"""
+    matran: str
+    muagiai: str
+    vong: int
+    thoigianthidau: datetime
+    maclbnha: str
+    maclbkhach: str
+    masanvandong: Optional[str] = None
+    sokhangia: Optional[int] = None
+    nhietdo: Optional[float] = None
+    bugiohiep1: Optional[int] = None
+    bugiohiep2: Optional[int] = None
+    tiso: Optional[str] = None
+
+
+class LichThiDauUpdate(SQLModel):
+    """Update match (partial update)"""
+    matran: Optional[str] = None  # Not allowed to update, but included for validation
+    muagiai: Optional[str] = None  # Not allowed to update, but included for validation
+    vong: Optional[int] = None
+    thoigianthidau: Optional[datetime] = None
+    maclbnha: Optional[str] = None  # Not allowed to update, validated in CRUD
+    maclbkhach: Optional[str] = None  # Not allowed to update, validated in CRUD
+    masanvandong: Optional[str] = None
+    sokhangia: Optional[int] = None
+    nhietdo: Optional[float] = None
+    bugiohiep1: Optional[int] = None
+    bugiohiep2: Optional[int] = None
+    tiso: Optional[str] = None
+
+
+class LichThiDauDetail(SQLModel):
+    """Match with lineup, events, referees included"""
+    matran: str
+    muagiai: str
+    vong: int
+    thoigianthidau: datetime
+    maclbnha: str
+    maclbkhach: str
+    masanvandong: Optional[str] = None
+    sokhangia: Optional[int] = None
+    nhietdo: Optional[float] = None
+    bugiohiep1: Optional[int] = None
+    bugiohiep2: Optional[int] = None
+    tiso: Optional[str] = None
+    # Embedded details (populated by CRUD)
+    events: list["SuKienTranDauPublic"] = Field(default_factory=list)
+    lineup_home: list["DoiHinhXuatPhatPublic"] = Field(default_factory=list)
+    lineup_away: list["DoiHinhXuatPhatPublic"] = Field(default_factory=list)
+    referees: list["ChiTietTrongTaiPublic"] = Field(default_factory=list)
+
+
+# =============================================
+# LINEUP SCHEMAS
+# =============================================
+
+class DoiHinhXuatPhatPublic(SQLModel):
+    """Public lineup entry"""
+    matran: str
+    macauthu: str
+    vitri: Optional[str] = None
+    duocxuatphat: bool
+    ladoitruong: bool
+
+
+class DoiHinhXuatPhatCreate(SQLModel):
+    """Add player to lineup"""
+    matran: Optional[str] = None  # Will be set from path parameter
+    macauthu: str
+    vitri: Optional[str] = None
+    duocxuatphat: bool = True
+    ladoitruong: bool = False
+
+
+class DoiHinhXuatPhatUpdate(SQLModel):
+    """Update lineup position"""
+    vitri: Optional[str] = None
+    duocxuatphat: Optional[bool] = None
+    ladoitruong: Optional[bool] = None
+
+
+class LineupPlayerDetail(SQLModel):
+    """Lineup entry with player details"""
+    macauthu: str
+    tencauthu: str
+    vitri: Optional[str] = None
+    vitrithidau: Optional[str] = None  # Player's actual position
+    duocxuatphat: bool
+    ladoitruong: bool
+    soaothidau: Optional[int] = None
+
+
+class LineupResponse(SQLModel):
+    """Lineup response with starting XI and substitutes"""
+    starting_xi: list[LineupPlayerDetail] = Field(default_factory=list)
+    substitutes: list[LineupPlayerDetail] = Field(default_factory=list)
+    captain_home: Optional[LineupPlayerDetail] = None
+    captain_away: Optional[LineupPlayerDetail] = None
+
+
+# =============================================
+# MATCH EVENTS SCHEMAS
+# =============================================
+
+class SuKienTranDauPublic(SQLModel):
+    """Public match event data"""
+    masukien: str
+    loaisukien: str
+    phutthidau: int
+    bugio: Optional[int] = None
+    motasukien: Optional[str] = None
+    cauthulienquan: Optional[str] = None
+    matran: str
+    maclb: str
+    macauthu: str
+
+
+class SuKienTranDauCreate(SQLModel):
+    """Create match event"""
+    masukien: str
+    loaisukien: str
+    phutthidau: int
+    bugio: Optional[int] = None
+    motasukien: Optional[str] = None
+    cauthulienquan: Optional[str] = None
+    matran: Optional[str] = None  # Injected from path parameter, not required in body
+    maclb: str
+    macauthu: str
+
+
+class SuKienTranDauUpdate(SQLModel):
+    """Update match event - only allows updating specific fields"""
+    model_config = ConfigDict(extra="forbid")  # Reject extra fields with 422
+    
+    loaisukien: Optional[str] = None
+    phutthidau: Optional[int] = None
+    bugio: Optional[int] = None
+    motasukien: Optional[str] = None
+    cauthulienquan: Optional[str] = None
+
+
+# =============================================
+# REFEREES SCHEMAS
+# =============================================
+
+class ChiTietTrongTaiPublic(SQLModel):
+    """Public referee data"""
+    matran: str
+    tentrongtai: str
+    vitri: str
+
+
+class ChiTietTrongTaiCreate(SQLModel):
+    """Assign referee to match"""
+    matran: Optional[str] = None  # Will be set from path parameter
+    tentrongtai: str
+    vitri: str
+
+
+# =============================================
+# SCHEDULE GENERATION SCHEMAS
+# =============================================
+
+class ScheduleGenerateRequest(SQLModel):
+    """Request to generate schedule"""
+    muagiai: str
+    ngaybatdau_lutdi: datetime
+    ngaybatdau_lutve: datetime
+    interval_days: int = 7  # Weekly matches by default
+
+
+class ScheduleGenerationResult(SQLModel):
+    """Result of schedule generation"""
+    success: bool
+    matches_created: int
+    rounds_generated: int
+    warnings: list[str] = Field(default_factory=list)
+    errors: list[str] = Field(default_factory=list)
+
+
+class ScheduleValidateRequest(SQLModel):
+    """Request to validate schedule"""
+    muagiai: str
+
+
+class ScheduleValidationResult(SQLModel):
+    """Result of schedule validation"""
+    is_valid: bool
+    errors: list[str] = Field(default_factory=list)
+    warnings: list[str] = Field(default_factory=list)
+    stats: dict[str, int] = Field(default_factory=dict)

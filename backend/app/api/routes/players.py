@@ -96,7 +96,7 @@ def create_player(
         )
 
 
-@router.put("/{player_id}", response_model=CauThuPublic)
+@router.patch("/{player_id}", response_model=CauThuPublic)
 def update_player(
     session: SessionDep,
     player_id: str,
@@ -104,12 +104,21 @@ def update_player(
     current_user: Annotated[TaiKhoan, Depends(require_role("BTC"))]
 ) -> CauThuPublic:
     """
-    Update player information
+    Partially update player information (PATCH)
     
     **Requires BTC role** - Only Ban Tổ Chức can update players
     
-    Partial update - only provided fields will be updated
-    Cannot change player ID (macauthu)
+    **PATCH semantics:** Only fields provided in request body will be updated.
+    Omitted fields remain unchanged. Empty body ({}) returns 200 with no changes.
+    
+    **Restrictions:**
+    - Cannot change player ID (macauthu) - must delete and recreate
+    
+    **Example:**
+    ```json
+    {"quoctich": "BR", "chieucao": 180.0}
+    ```
+    Only nationality and height will be updated.
     """
     player = crud.get_player_by_id(session=session, macauthu=player_id)
     if not player:
