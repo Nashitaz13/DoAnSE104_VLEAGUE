@@ -12,6 +12,8 @@ from app.api.routes import (
     match_lineup,
     match_referees,
     schedule,
+    standings,
+    stats,
 )
 from app.core.config import settings
 
@@ -31,3 +33,7 @@ api_router.include_router(match_events.router, prefix="/matches", tags=["match-e
 api_router.include_router(match_lineup.router, prefix="/matches", tags=["match-lineup"])
 api_router.include_router(match_referees.router, prefix="/matches", tags=["match-referees"])
 api_router.include_router(schedule.router, prefix="/schedule", tags=["schedule"])
+
+# Standings & Statistics routes
+api_router.include_router(standings.router, prefix="/standings", tags=["standings"])
+api_router.include_router(stats.router, prefix="/stats", tags=["statistics"])

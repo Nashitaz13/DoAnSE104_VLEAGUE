@@ -25,7 +25,7 @@ def read_match_events(
     """
     Get events for match, ordered by time.
     
-    - **loaisukien**: Optional filter by event type (Ban Thang, The Vang, The Do, Thay Nguoi)
+    - **loaisukien**: Optional filter by event type (BanThang, TheVang, TheDo, ThayNguoi)
     """
     # Verify match exists
     match = crud.get_match_by_id(session=session, matran=matran)
@@ -60,7 +60,9 @@ def create_match_event(
     - Player in roster for club in that season
     - Club is one of the two teams playing
     - Event time 1-130 minutes
-    - Event type valid (Ban Thang, The Vang, The Do, Thay Nguoi)
+    - Event type valid (BanThang, TheVang, TheDo, ThayNguoi)
+    
+    **Note:** Event types are auto-normalized. Both "BanThang" and "Ban Thang" are accepted.
     """
     # Override matran from path (client doesn't send in body)
     event_in.matran = matran

@@ -507,8 +507,8 @@ class SuKienTranDau(SQLModel, table=True):
     # Primary Key
     masukien: str = Field(primary_key=True, max_length=50)
     
-    # Event Type
-    loaisukien: str = Field(max_length=50)  # "Ban Thang", "The Vang", "The Do", "Thay Nguoi"
+    # Event Type (canonical format: no spaces)
+    loaisukien: str = Field(max_length=50)  # "BanThang", "TheVang", "TheDo", "ThayNguoi"
     
     # Timing
     phutthidau: int  # Minute of event (1-90+)
@@ -751,3 +751,77 @@ class ScheduleValidationResult(SQLModel):
     errors: list[str] = Field(default_factory=list)
     warnings: list[str] = Field(default_factory=list)
     stats: dict[str, int] = Field(default_factory=dict)
+
+
+# =============================================
+# STANDINGS SCHEMAS (Computed - no table)
+# =============================================
+
+class StandingsRow(SQLModel):
+    """Team standings row (computed from matches)"""
+    position: int
+    maclb: str
+    tenclb: str
+    matches_played: int
+    won: int
+    drawn: int
+    lost: int
+    goals_for: int
+    goals_against: int
+    goal_difference: int
+    points: int
+    form: Optional[str] = None  # Last 5 matches: "WWDLW"
+
+
+class StandingsResponse(SQLModel):
+    """Standings table for a season"""
+    muagiai: str
+    last_updated: datetime
+    standings: list[StandingsRow]
+
+
+# =============================================
+# STATISTICS SCHEMAS (Computed from events)
+# =============================================
+
+class PlayerStatsRow(SQLModel):
+    """Player statistics for a season (computed from match events)"""
+    macauthu: str
+    tencauthu: str
+    maclb: Optional[str] = None
+    tenclb: Optional[str] = None
+    matches_played: int
+    goals: int
+    assists: int
+    yellow_cards: int
+    red_cards: int
+
+
+class PlayerStatsResponse(SQLModel):
+    """Player statistics response"""
+    muagiai: str
+    total_players: int
+    stats: list[PlayerStatsRow]
+
+
+class MatchStatsRow(SQLModel):
+    """Match statistics for one team"""
+    maclb: str
+    tenclb: str
+    possession: Optional[float] = None  # Percent
+    shots: int
+    shots_on_target: int
+    corners: int
+    fouls: int
+    yellow_cards: int
+    red_cards: int
+
+
+class MatchStatsResponse(SQLModel):
+    """Match statistics response"""
+    matran: str
+    muagiai: str
+    home_team: MatchStatsRow
+    away_team: MatchStatsRow
+    available: bool = True
+    message: Optional[str] = None

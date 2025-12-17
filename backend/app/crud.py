@@ -18,6 +18,9 @@ from app.models import (
     ChiTietTrongTai, ChiTietTrongTaiCreate,
     ScheduleGenerateRequest, ScheduleGenerationResult,
     ScheduleValidateRequest, ScheduleValidationResult,
+    StandingsRow, StandingsResponse,
+    PlayerStatsRow, PlayerStatsResponse,
+    MatchStatsResponse, MatchStatsRow,
 )
 
 
@@ -955,6 +958,14 @@ def update_match_event(
     if not update_data:
         return db_event
     
+    # Normalize event type if being updated
+    if 'loaisukien' in update_data:
+        from app.utils import normalize_event_type
+        try:
+            update_data['loaisukien'] = normalize_event_type(update_data['loaisukien'])
+        except ValueError as e:
+            raise ValueError(str(e))
+    
     # Re-validate if critical fields changed
     if any(k in update_data for k in ['phutthidau', 'loaisukien']):
         from app.models import SuKienTranDauCreate
@@ -1019,10 +1030,14 @@ def validate_match_event(
     if event_in.phutthidau < 1 or event_in.phutthidau > 130:
         raise ValueError(f"Event time must be between 1 and 130 minutes, got {event_in.phutthidau}")
     
-    # 6. Validate event type
-    valid_events = ["BanThang", "TheVang", "TheDo", "ThayNguoi"]
-    if event_in.loaisukien not in valid_events:
-        raise ValueError(f"Invalid event type '{event_in.loaisukien}'. Must be one of: {', '.join(valid_events)}")
+    # 6. Validate and normalize event type
+    from app.utils import normalize_event_type
+    try:
+        # Normalize to canonical format (handles backward compatibility)
+        event_in.loaisukien = normalize_event_type(event_in.loaisukien)
+    except ValueError as e:
+        # Re-raise with same message from normalize_event_type
+        raise ValueError(str(e))
 
 
 # =============================================
@@ -1633,4 +1648,406 @@ def validate_schedule(
         errors=errors,
         warnings=warnings,
         stats=stats
+    )
+
+
+# =============================================
+# STANDINGS & STATISTICS CRUD (Computed)
+# =============================================
+
+def compute_standings(
+    *,
+    session: Session,
+    muagiai: str
+) -> StandingsResponse:
+    """
+    Compute standings table from match results (lichthidau.tiso).
+    
+    Rules:
+    - Win = 3 points
+    - Draw = 1 point  
+    - Loss = 0 points
+    - Sort by: points DESC, goal_difference DESC, goals_for DESC
+    
+    Handles:
+    - Null/invalid tiso gracefully (skip match)
+    - Returns empty standings if season not found
+    """
+    from collections import defaultdict
+    
+    # Verify season exists
+    season = get_season_by_id(session=session, id=muagiai)
+    if not season:
+        return StandingsResponse(
+            muagiai=muagiai,
+            last_updated=datetime.utcnow(),
+            standings=[]
+        )
+    
+    # Get all matches with results
+    matches = session.exec(
+        select(LichThiDau).where(LichThiDau.muagiai == muagiai)
+    ).all()
+    
+    # Get all clubs in season
+    clubs_stmt = select(CauLacBo).where(CauLacBo.muagiai == muagiai)
+    clubs = {c.maclb: c.tenclb for c in session.exec(clubs_stmt).all()}
+    
+    if not clubs:
+        return StandingsResponse(
+            muagiai=muagiai,
+            last_updated=datetime.utcnow(),
+            standings=[]
+        )
+    
+    # Initialize stats for all clubs
+    stats = defaultdict(lambda: {
+        "matches_played": 0,
+        "won": 0,
+        "drawn": 0,
+        "lost": 0,
+        "goals_for": 0,
+        "goals_against": 0,
+        "points": 0,
+        "form": []  # Last 5 matches
+    })
+    
+    # Process each match
+    for match in matches:
+        if not match.tiso or not match.tiso.strip():
+            continue  # Skip matches without result
+        
+        # Parse score: "2-1", "0-0", etc.
+        try:
+            parts = match.tiso.split("-")
+            if len(parts) != 2:
+                continue  # Invalid format
+            
+            home_goals = int(parts[0].strip())
+            away_goals = int(parts[1].strip())
+        except (ValueError, AttributeError):
+            continue  # Invalid score format
+        
+        home_club = match.maclbnha
+        away_club = match.maclbkhach
+        
+        # Update matches played
+        stats[home_club]["matches_played"] += 1
+        stats[away_club]["matches_played"] += 1
+        
+        # Update goals
+        stats[home_club]["goals_for"] += home_goals
+        stats[home_club]["goals_against"] += away_goals
+        stats[away_club]["goals_for"] += away_goals
+        stats[away_club]["goals_against"] += home_goals
+        
+        # Determine result
+        if home_goals > away_goals:
+            # Home win
+            stats[home_club]["won"] += 1
+            stats[home_club]["points"] += 3
+            stats[home_club]["form"].append("W")
+            stats[away_club]["lost"] += 1
+            stats[away_club]["form"].append("L")
+        elif home_goals < away_goals:
+            # Away win
+            stats[away_club]["won"] += 1
+            stats[away_club]["points"] += 3
+            stats[away_club]["form"].append("W")
+            stats[home_club]["lost"] += 1
+            stats[home_club]["form"].append("L")
+        else:
+            # Draw
+            stats[home_club]["drawn"] += 1
+            stats[home_club]["points"] += 1
+            stats[home_club]["form"].append("D")
+            stats[away_club]["drawn"] += 1
+            stats[away_club]["points"] += 1
+            stats[away_club]["form"].append("D")
+    
+    # Build standings rows
+    standings_rows = []
+    for maclb in clubs.keys():
+        club_stats = stats[maclb]
+        
+        # Last 5 matches form (reverse chronological)
+        form_str = "".join(club_stats["form"][-5:]) if club_stats["form"] else None
+        
+        standings_rows.append(StandingsRow(
+            position=0,  # Will be set after sorting
+            maclb=maclb,
+            tenclb=clubs[maclb],
+            matches_played=club_stats["matches_played"],
+            won=club_stats["won"],
+            drawn=club_stats["drawn"],
+            lost=club_stats["lost"],
+            goals_for=club_stats["goals_for"],
+            goals_against=club_stats["goals_against"],
+            goal_difference=club_stats["goals_for"] - club_stats["goals_against"],
+            points=club_stats["points"],
+            form=form_str
+        ))
+    
+    # Sort by points DESC, goal_difference DESC, goals_for DESC
+    standings_rows.sort(
+        key=lambda x: (-x.points, -x.goal_difference, -x.goals_for, x.tenclb)
+    )
+    
+    # Assign positions
+    for idx, row in enumerate(standings_rows, start=1):
+        row.position = idx
+    
+    return StandingsResponse(
+        muagiai=muagiai,
+        last_updated=datetime.utcnow(),
+        standings=standings_rows
+    )
+
+
+def compute_player_stats(
+    *,
+    session: Session,
+    muagiai: str
+) -> PlayerStatsResponse:
+    """
+    Compute player statistics from match events (sukientrandau).
+    
+    Aggregates:
+    - Goals: loaisukien = "BanThang"
+    - Assists: Count as cauthulienquan in goal events (if applicable)
+    - Yellow cards: loaisukien = "TheVang"
+    - Red cards: loaisukien = "TheDo"
+    - Matches played: Distinct matran from doihinhxuatphat
+    
+    Returns empty list if season not found.
+    """
+    from collections import defaultdict
+    
+    # Verify season exists
+    season = get_season_by_id(session=session, id=muagiai)
+    if not season:
+        return PlayerStatsResponse(
+            muagiai=muagiai,
+            total_players=0,
+            stats=[]
+        )
+    
+    # Get all matches in season
+    matches_stmt = select(LichThiDau.matran).where(LichThiDau.muagiai == muagiai)
+    match_ids = [m for m in session.exec(matches_stmt).all()]
+    
+    if not match_ids:
+        return PlayerStatsResponse(
+            muagiai=muagiai,
+            total_players=0,
+            stats=[]
+        )
+    
+    # Initialize player stats
+    player_stats = defaultdict(lambda: {
+        "goals": 0,
+        "assists": 0,
+        "yellow_cards": 0,
+        "red_cards": 0,
+        "matches_played": 0,
+        "clubs": set()
+    })
+    
+    # Get all events in season
+    events_stmt = select(SuKienTranDau).where(SuKienTranDau.matran.in_(match_ids))
+    events = session.exec(events_stmt).all()
+    
+    # Process events
+    for event in events:
+        macauthu = event.macauthu
+        loaisukien = event.loaisukien
+        
+        if loaisukien == "BanThang":
+            player_stats[macauthu]["goals"] += 1
+            player_stats[macauthu]["clubs"].add(event.maclb)
+            
+            # Count assist if cauthulienquan exists
+            if event.cauthulienquan:
+                player_stats[event.cauthulienquan]["assists"] += 1
+                player_stats[event.cauthulienquan]["clubs"].add(event.maclb)
+        
+        elif loaisukien == "TheVang":
+            player_stats[macauthu]["yellow_cards"] += 1
+            player_stats[macauthu]["clubs"].add(event.maclb)
+        
+        elif loaisukien == "TheDo":
+            player_stats[macauthu]["red_cards"] += 1
+            player_stats[macauthu]["clubs"].add(event.maclb)
+    
+    # Count matches played from lineup
+    lineup_stmt = select(
+        DoiHinhXuatPhat.macauthu,
+        DoiHinhXuatPhat.matran
+    ).where(DoiHinhXuatPhat.matran.in_(match_ids))
+    
+    for macauthu, matran in session.exec(lineup_stmt).all():
+        player_stats[macauthu]["matches_played"] += 1
+    
+    # Get player info
+    player_ids = list(player_stats.keys())
+    players_stmt = select(CauThu).where(CauThu.macauthu.in_(player_ids))
+    players_map = {p.macauthu: p.tencauthu for p in session.exec(players_stmt).all()}
+    
+    # Get club names (use first club for each player)
+    club_map = {}
+    for macauthu in player_ids:
+        clubs = list(player_stats[macauthu]["clubs"])
+        if clubs:
+            club_stmt = select(CauLacBo).where(
+                CauLacBo.maclb == clubs[0],
+                CauLacBo.muagiai == muagiai
+            )
+            club = session.exec(club_stmt).first()
+            if club:
+                club_map[macauthu] = (clubs[0], club.tenclb)
+    
+    # Build response
+    stats_rows = []
+    for macauthu, stats in player_stats.items():
+        # Skip players with no activity
+        if stats["goals"] == 0 and stats["assists"] == 0 and stats["yellow_cards"] == 0 and stats["red_cards"] == 0:
+            continue
+        
+        club_info = club_map.get(macauthu, (None, None))
+        
+        stats_rows.append(PlayerStatsRow(
+            macauthu=macauthu,
+            tencauthu=players_map.get(macauthu, "Unknown"),
+            maclb=club_info[0],
+            tenclb=club_info[1],
+            matches_played=stats["matches_played"],
+            goals=stats["goals"],
+            assists=stats["assists"],
+            yellow_cards=stats["yellow_cards"],
+            red_cards=stats["red_cards"]
+        ))
+    
+    # Sort by goals DESC, assists DESC
+    stats_rows.sort(key=lambda x: (-x.goals, -x.assists, x.tencauthu))
+    
+    return PlayerStatsResponse(
+        muagiai=muagiai,
+        total_players=len(stats_rows),
+        stats=stats_rows
+    )
+
+
+def get_match_stats(
+    *,
+    session: Session,
+    matran: str
+) -> MatchStatsResponse:
+    """
+    Get match statistics. Since thong_ke_tran_dau table doesn't exist,
+    compute basic stats from match events.
+    
+    Returns:
+    - Shots, fouls, cards aggregated from sukientrandau
+    - available=False if no data
+    """
+    # Get match
+    match = session.get(LichThiDau, matran)
+    if not match:
+        raise ValueError(f"Match {matran} not found")
+    
+    # Get all events for this match
+    events_stmt = select(SuKienTranDau).where(SuKienTranDau.matran == matran)
+    events = session.exec(events_stmt).all()
+    
+    if not events:
+        # No statistics available
+        home_club_stmt = select(CauLacBo).where(
+            CauLacBo.maclb == match.maclbnha,
+            CauLacBo.muagiai == match.muagiai
+        )
+        away_club_stmt = select(CauLacBo).where(
+            CauLacBo.maclb == match.maclbkhach,
+            CauLacBo.muagiai == match.muagiai
+        )
+        
+        home_club = session.exec(home_club_stmt).first()
+        away_club = session.exec(away_club_stmt).first()
+        
+        return MatchStatsResponse(
+            matran=matran,
+            muagiai=match.muagiai,
+            home_team=MatchStatsRow(
+                maclb=match.maclbnha,
+                tenclb=home_club.tenclb if home_club else match.maclbnha,
+                shots=0,
+                shots_on_target=0,
+                corners=0,
+                fouls=0,
+                yellow_cards=0,
+                red_cards=0
+            ),
+            away_team=MatchStatsRow(
+                maclb=match.maclbkhach,
+                tenclb=away_club.tenclb if away_club else match.maclbkhach,
+                shots=0,
+                shots_on_target=0,
+                corners=0,
+                fouls=0,
+                yellow_cards=0,
+                red_cards=0
+            ),
+            available=False,
+            message="Match statistics not available - thong_ke_tran_dau table not implemented"
+        )
+    
+    # Aggregate stats from events
+    home_stats = {"yellow_cards": 0, "red_cards": 0}
+    away_stats = {"yellow_cards": 0, "red_cards": 0}
+    
+    for event in events:
+        target_stats = home_stats if event.maclb == match.maclbnha else away_stats
+        
+        if event.loaisukien == "TheVang":
+            target_stats["yellow_cards"] += 1
+        elif event.loaisukien == "TheDo":
+            target_stats["red_cards"] += 1
+    
+    # Get club names
+    home_club_stmt = select(CauLacBo).where(
+        CauLacBo.maclb == match.maclbnha,
+        CauLacBo.muagiai == match.muagiai
+    )
+    away_club_stmt = select(CauLacBo).where(
+        CauLacBo.maclb == match.maclbkhach,
+        CauLacBo.muagiai == match.muagiai
+    )
+    
+    home_club = session.exec(home_club_stmt).first()
+    away_club = session.exec(away_club_stmt).first()
+    
+    return MatchStatsResponse(
+        matran=matran,
+        muagiai=match.muagiai,
+        home_team=MatchStatsRow(
+            maclb=match.maclbnha,
+            tenclb=home_club.tenclb if home_club else match.maclbnha,
+            shots=0,  # Not tracked in events
+            shots_on_target=0,
+            corners=0,
+            fouls=0,
+            yellow_cards=home_stats["yellow_cards"],
+            red_cards=home_stats["red_cards"]
+        ),
+        away_team=MatchStatsRow(
+            maclb=match.maclbkhach,
+            tenclb=away_club.tenclb if away_club else match.maclbkhach,
+            shots=0,
+            shots_on_target=0,
+            corners=0,
+            fouls=0,
+            yellow_cards=away_stats["yellow_cards"],
+            red_cards=away_stats["red_cards"]
+        ),
+        available=True,
+        message="Limited statistics from match events only (cards)"
     )
