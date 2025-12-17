@@ -1,48 +1,117 @@
-language plpgsql;
+-- =================================================================
+-- SCRIPT TÍNH TOÁN VÀ CẬP NHẬT BẢNG XẾP HẠNG (BXH)
+-- Mùa giải: 2024-2025
+-- =================================================================
+CREATE OR REPLACE FUNCTION UpdateBXH_DoiBong()
+RETURNS void AS $$
+BEGIN
+    INSERT INTO BXH_DoiBong (MuaGiai, MaClb, SoTran, Thang, Hoa, Thua, BanThang, BanThua, Diem, ThuHang)
+    WITH TranDauDaDau AS (
+        SELECT 
+            MaTran,
+            MaClbNha,
+            MaClbKhach,
+            CAST(SPLIT_PART(TiSo, '-', 1) AS INT) AS BanThangNha,
+            CAST(SPLIT_PART(TiSo, '-', 2) AS INT) AS BanThangKhach
+        FROM LichThiDau
+        WHERE MuaGiai = '2024-2025' 
+          AND TiSo IS NOT NULL 
+          AND TiSo LIKE '%-%'
+    ),
+    KetQuaTungDoi AS (
+        SELECT 
+            MaClbNha AS MaClb,
+            1 AS SoTran,
+            CASE WHEN BanThangNha > BanThangKhach THEN 1 ELSE 0 END AS Thang,
+            CASE WHEN BanThangNha = BanThangKhach THEN 1 ELSE 0 END AS Hoa,
+            CASE WHEN BanThangNha < BanThangKhach THEN 1 ELSE 0 END AS Thua,
+            BanThangNha AS BanThang,
+            BanThangKhach AS BanThua,
+            CASE 
+                WHEN BanThangNha > BanThangKhach THEN 3 
+                WHEN BanThangNha = BanThangKhach THEN 1 
+                ELSE 0 
+            END AS Diem
+        FROM TranDauDaDau
+        
+        UNION ALL
+        
+        SELECT 
+            MaClbKhach AS MaClb,
+            1 AS SoTran,
+            CASE WHEN BanThangKhach > BanThangNha THEN 1 ELSE 0 END AS Thang,
+            CASE WHEN BanThangKhach = BanThangNha THEN 1 ELSE 0 END AS Hoa,
+            CASE WHEN BanThangKhach < BanThangNha THEN 1 ELSE 0 END AS Thua,
+            BanThangKhach AS BanThang,
+            BanThangNha AS BanThua,
+            CASE 
+                WHEN BanThangKhach > BanThangNha THEN 3 
+                WHEN BanThangKhach = BanThangNha THEN 1 
+                ELSE 0 
+            END AS Diem
+        FROM TranDauDaDau
+    ),
+    TongHopBXH AS (
+        SELECT 
+            MaClb,
+            SUM(SoTran) AS TongSoTran,
+            SUM(Thang) AS TongThang,
+            SUM(Hoa) AS TongHoa,
+            SUM(Thua) AS TongThua,
+            SUM(BanThang) AS TongBanThang,
+            SUM(BanThua) AS TongBanThua,
+            SUM(Diem) AS TongDiem
+        FROM KetQuaTungDoi
+        GROUP BY MaClb
+    ),
+    XepHangCuoiCung AS (
+        SELECT 
+            '2024-2025' AS MuaGiai,
+            MaClb,
+            TongSoTran,
+            TongThang,
+            TongHoa,
+            TongThua,
+            TongBanThang,
+            TongBanThua,
+            TongDiem,
+            RANK() OVER (
+                ORDER BY 
+                    TongDiem DESC,
+                    (TongBanThang - TongBanThua) DESC,
+                    TongBanThang DESC
+            ) AS ThuHang
+        FROM TongHopBXH
+    )
+    SELECT * FROM XepHangCuoiCung
+    ON CONFLICT (MuaGiai, MaClb) 
+    DO UPDATE SET
+        SoTran = EXCLUDED.SoTran,
+        Thang = EXCLUDED.Thang,
+        Hoa = EXCLUDED.Hoa,
+        Thua = EXCLUDED.Thua,
+        BanThang = EXCLUDED.BanThang,
+        BanThua = EXCLUDED.BanThua,
+        Diem = EXCLUDED.Diem,
+        ThuHang = EXCLUDED.ThuHang;
+END;
+$$ LANGUAGE plpgsql;
 
--- 15. BẢNG XẾP HẠNG (STANDINGS) 
-CREATE TABLE bang_xep_hang (
-    mua_giai CHAR(9) NOT NULL,
-    ma_clb INT NOT NULL,
-    so_vong INT NOT NULL, -- Xếp hạng sau vòng nào
-    vi_tri INT NOT NULL CHECK (vi_tri > 0),
-    so_tran_da_choi INT DEFAULT 0,
-    thang INT DEFAULT 0,
-    hoa INT DEFAULT 0,
-    thua INT DEFAULT 0,
-    so_ban_thang INT DEFAULT 0,
-    so_ban_thua INT DEFAULT 0,
-    hieu_so INT DEFAULT 0,
-    points INT DEFAULT 0,
-    phong_do_5_tran_gan_nhat VARCHAR(5), -- VD: 'WWDLW'
-    tong_so_the_vang INT DEFAULT 0,
-    tong_so_the_do INT DEFAULT 0,
-    ghi_chu TEXT,
-    FOREIGN KEY (mua_giai) REFERENCES mua_giai(mua_giai),
-    FOREIGN KEY (ma_clb) REFERENCES cau_lac_bo(ma_clb),
-    UNIQUE(mua_giai, ma_clb, so_vong)
-);
+SELECT UpdateBXH_DoiBong();
 
-CREATE TABLE thong_ke_cau_thu (
-    ma_cau_thu INT NOT NULL,
-    ma_clb INT NOT NULL,
-    mua_giai CHAR(9) NOT NULL,
-    so INT DEFAULT 0,
-    so_tran_da_choi INT DEFAULT 0,
-    so_phut_da_choi INT DEFAULT 0,
-    ban_thang INT DEFAULT 0,
-    kien_tao INT DEFAULT 0,
-    the_vang INT DEFAULT 0, --Lưu ý: Cứ mỗi 3 thẻ vàng sẽ bị treo giò 1 trận - quy định của V-League
-    the_vang_thu_2 INT DEFAULT 0,
-    the_do INT DEFAULT 0,
-    cau_thu_xuat_sac_nhat_tran_dau INT DEFAULT 0,
-    diem_trung_binh DECIMAL(3,1),
-    giu_sach_luoi INT DEFAULT 0, -- Chỉ áp dụng cho thủ môn
-    thung_luoi INT DEFAULT 0, -- Chỉ áp dụng cho thủ môn
-    FOREIGN KEY (ma_cau_thu) REFERENCES cau_thu(ma_cau_thu),
-    FOREIGN KEY (ma_clb) REFERENCES cau_lac_bo(ma_clb),
-    FOREIGN KEY (mua_giai) REFERENCES mua_giai(mua_giai),
-    UNIQUE(ma_cau_thu, mua_giai)
-);
-
-
+-- =================================================================
+SELECT 
+    b.ThuHang,
+    c.TenClb, 
+    b.SoTran, 
+    b.Thang, 
+    b.Hoa, 
+    b.Thua, 
+    b.BanThang, 
+    b.BanThua, 
+    (b.BanThang - b.BanThua) as HieuSo,
+    b.Diem
+FROM BXH_DoiBong b
+JOIN CauLacBo c ON b.MaClb = c.MaClb AND b.MuaGiai = c.MuaGiai
+WHERE b.MuaGiai = '2024-2025'
+ORDER BY b.ThuHang ASC;
