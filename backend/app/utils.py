@@ -62,6 +62,169 @@ def normalize_event_type(event_type: str) -> str:
     return canonical
 
 
+# =============================================
+# NATIONALITY NORMALIZATION & VALIDATION
+# =============================================
+
+def normalize_nationality(nationality: str | None) -> str | None:
+    """
+    Normalize nationality to canonical English format.
+    
+    Converts various Vietnamese nationality variants to standard "Vietnam":
+    - "VN", "VNM" -> "Vietnam"
+    - "Việt Nam", "Viet Nam", "việt nam", "viet nam" -> "Vietnam"
+    - "Vietnam ", " Vietnam" -> "Vietnam" (trim spaces)
+    
+    For other nationalities, returns title-cased version with trimmed spaces:
+    - "brazil" -> "Brazil"
+    - "CAMEROON" -> "Cameroon"
+    
+    Args:
+        nationality: Raw nationality string (may be None, empty, with spaces, various cases)
+    
+    Returns:
+        Normalized nationality string, or None if input is None/empty
+    
+    Examples:
+        >>> normalize_nationality("VN")
+        'Vietnam'
+        >>> normalize_nationality("Việt Nam")
+        'Vietnam'
+        >>> normalize_nationality("brazil")
+        'Brazil'
+        >>> normalize_nationality(None)
+        None
+        >>> normalize_nationality("  ")
+        None
+    """
+    if not nationality or not nationality.strip():
+        return None
+
+    # Normalize input for matching:
+    # - trim spaces
+    # - lowercase to match
+    # - replace '.' and '-' with spaces (e.g. "u.s.a" -> "u s a", "viet-nam" -> "viet nam")
+    # - collapse repeated whitespace
+    raw = nationality.strip()
+    normalized = raw.lower().replace(".", " ").replace("-", " ")
+    normalized = " ".join(normalized.split())
+
+    # Map Vietnamese variants to canonical "Vietnam" (keep existing behavior)
+    vietnam_variants = {
+        "vn",
+        "vnm",
+        "vietnam",
+        "viet nam",
+        "việt nam",
+        "viêtnam",
+        "việtnam",
+    }
+    if normalized in vietnam_variants or normalized.replace(" ", "") in {"vietnam", "việtnam", "viêtnam"}:
+        return "Vietnam"
+
+    # Special-case common abbreviations/aliases to avoid .title() breaking acronyms.
+    # Keep outputs consistent.
+    special_map = {
+        # USA
+        "usa": "USA",
+        "us": "USA",
+        "u s a": "USA",
+        # UK
+        "uk": "UK",
+        "u k": "UK",
+        # UAE
+        "uae": "UAE",
+        # Korea (canonical chosen: "Korea")
+        "korea": "Korea",
+        "south korea": "Korea",
+        "korea republic": "Korea",
+        "republic of korea": "Korea",
+        # DR Congo
+        "dr congo": "DR Congo",
+        "drc": "DR Congo",
+        "democratic republic of the congo": "DR Congo",
+    }
+    mapped = special_map.get(normalized)
+    if mapped:
+        return mapped
+
+    # Fallback: title-case, but keep known acronyms in all-caps.
+    titled = normalized.title()
+    tokens = []
+    for t in titled.split(" "):
+        if t == "Usa":
+            tokens.append("USA")
+        elif t == "Uk":
+            tokens.append("UK")
+        elif t == "Uae":
+            tokens.append("UAE")
+        else:
+            tokens.append(t)
+    return " ".join(tokens)
+
+
+def is_domestic(nationality: str | None) -> bool:
+    """
+    Check if player is domestic (Vietnamese).
+    
+    Args:
+        nationality: Player's nationality (can be None, various formats)
+    
+    Returns:
+        True if player is Vietnamese, False otherwise
+    
+    Examples:
+        >>> is_domestic("Vietnam")
+        True
+        >>> is_domestic("VN")
+        True
+        >>> is_domestic("Việt Nam")
+        True
+        >>> is_domestic("Brazil")
+        False
+        >>> is_domestic(None)
+        False
+        >>> is_domestic("")
+        False
+    """
+    normalized = normalize_nationality(nationality)
+    return normalized == "Vietnam"
+
+
+def is_foreign(nationality: str | None) -> bool:
+    """
+    Check if player is foreign (non-Vietnamese).
+    
+    Args:
+        nationality: Player's nationality (can be None, various formats)
+    
+    Returns:
+        True if player is foreign (not Vietnamese), False if Vietnamese or None/empty
+    
+    Examples:
+        >>> is_foreign("Brazil")
+        True
+        >>> is_foreign("Cameroon")
+        True
+        >>> is_foreign("Vietnam")
+        False
+        >>> is_foreign("VN")
+        False
+        >>> is_foreign(None)
+        False
+        >>> is_foreign("")
+        False
+    
+    Note:
+        Returns False for None/empty to avoid counting invalid data as foreign players
+    """
+    if not nationality or not nationality.strip():
+        return False
+    
+    normalized = normalize_nationality(nationality)
+    return normalized is not None and normalized != "Vietnam"
+
+
 @dataclass
 class EmailData:
     html_content: str

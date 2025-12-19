@@ -1,6 +1,7 @@
 from sqlmodel import Session, select
 from typing import Optional
 from datetime import datetime
+from sqlalchemy import or_
 
 from app.core.security import get_password_hash, verify_password
 from app.models import (
@@ -21,6 +22,8 @@ from app.models import (
     StandingsRow, StandingsResponse,
     PlayerStatsRow, PlayerStatsResponse,
     MatchStatsResponse, MatchStatsRow,
+    AwardLeaderRow, AwardsResponse,
+    DisciplineRow, DisciplineResponse,
 )
 
 
@@ -310,6 +313,8 @@ def get_player_by_id(*, session: Session, macauthu: str) -> Optional[CauThu]:
 
 def create_player(*, session: Session, player_in: CauThuCreate) -> CauThu:
     """Create new player"""
+    from app.utils import normalize_nationality
+    
     # Validate position if provided
     if player_in.vitrithidau and player_in.vitrithidau not in ViTriThiDau.all_positions():
         raise ValueError(
@@ -318,6 +323,12 @@ def create_player(*, session: Session, player_in: CauThuCreate) -> CauThu:
         )
     
     player = CauThu.model_validate(player_in)
+    
+    # Normalize nationality before saving to ensure consistent format
+    # Converts "VN", "Việt Nam", "Viet Nam" -> "Vietnam"
+    # Converts "brazil" -> "Brazil", etc.
+    player.quoctich = normalize_nationality(player.quoctich)
+    
     session.add(player)
     session.commit()
     session.refresh(player)
@@ -328,6 +339,8 @@ def update_player(
     *, session: Session, db_player: CauThu, player_in: CauThuUpdate
 ) -> CauThu:
     """Update existing player"""
+    from app.utils import normalize_nationality
+    
     update_data = player_in.model_dump(exclude_unset=True)
     
     # Validate position if being updated
@@ -337,6 +350,10 @@ def update_player(
                 f"Invalid position '{update_data['vitrithidau']}'. "
                 f"Must be one of: {', '.join(ViTriThiDau.all_positions())}"
             )
+    
+    # Normalize nationality if being updated
+    if 'quoctich' in update_data:
+        update_data['quoctich'] = normalize_nationality(update_data['quoctich'])
     
     db_player.sqlmodel_update(update_data)
     session.add(db_player)
@@ -577,27 +594,48 @@ def validate_foreign_player_quota(
     """
     Validate foreign player quota not exceeded
     
-    Assumes foreign players have quoctich != "Việt Nam"
-    Gets quota from LoaiCauThu where tenloaicauthu contains "ngoại binh" or similar
+    Uses is_foreign() helper to identify foreign players (any nationality except "Vietnam").
+    Gets quota from LoaiCauThu where tenloaicauthu contains "ngoại", "ngoai", "foreign", etc.
+    
+    Args:
+        session: Database session
+        maclb: Club ID
+        muagiai: Season ID
+        new_player_nationality: Nationality of player being added (raw format, will be normalized)
+    
+    Raises:
+        ValueError: If adding this player would exceed the foreign player quota
     """
-    # Only check if player is foreign
-    if not new_player_nationality or new_player_nationality == "Việt Nam":
+    from app.utils import is_foreign
+    
+    # Only check if player is foreign (not Vietnamese)
+    if not is_foreign(new_player_nationality):
         return
     
-    # Get current foreign players in roster
-    current_roster = get_roster(session=session, maclb=maclb, muagiai=muagiai)
-    foreign_count = 0
-    
-    for entry in current_roster:
-        player = get_player_by_id(session=session, macauthu=entry.macauthu)
-        if player and player.quoctich and player.quoctich != "Việt Nam":
-            foreign_count += 1
+    # Get current foreign players in roster (single query, avoid N+1)
+    # ChiTietDoiBong JOIN CauThu to fetch all nationalities at once
+    roster_nationalities_stmt = (
+        select(CauThu.quoctich)
+        .join(ChiTietDoiBong, ChiTietDoiBong.macauthu == CauThu.macauthu)
+        .where(
+            ChiTietDoiBong.maclb == maclb,
+            ChiTietDoiBong.muagiai == muagiai,
+        )
+    )
+    roster_nationalities = session.exec(roster_nationalities_stmt).all()
+    foreign_count = sum(1 for nat in roster_nationalities if is_foreign(nat))
     
     # Get foreign player quota from LoaiCauThu
-    # Look for player type with "nước ngoài" or "ngoại" in name for this season
+    # Look for player type with "ngoại", "ngoai", "foreign", "nước ngoài", "nuoc ngoai" in name
     statement = select(LoaiCauThu).where(
         LoaiCauThu.muagiai == muagiai,
-        LoaiCauThu.tenloaicauthu.ilike("%ngo%")
+        or_(
+            LoaiCauThu.tenloaicauthu.ilike("%ngoại%"),
+            LoaiCauThu.tenloaicauthu.ilike("%ngoai%"),
+            LoaiCauThu.tenloaicauthu.ilike("%foreign%"),
+            LoaiCauThu.tenloaicauthu.ilike("%nước ngoài%"),
+            LoaiCauThu.tenloaicauthu.ilike("%nuoc ngoai%")
+        )
     )
     foreign_type = session.exec(statement).first()
     
@@ -660,13 +698,17 @@ def validate_goalkeeper_count(
     
     Returns dict with validation result
     """
-    current_roster = get_roster(session=session, maclb=maclb, muagiai=muagiai)
-    goalkeeper_count = 0
-    
-    for entry in current_roster:
-        player = get_player_by_id(session=session, macauthu=entry.macauthu)
-        if player and player.vitrithidau == ViTriThiDau.THU_MON:
-            goalkeeper_count += 1
+    # Avoid N+1: count goalkeepers with a single JOIN query
+    goalkeepers_stmt = (
+        select(CauThu.macauthu)
+        .join(ChiTietDoiBong, ChiTietDoiBong.macauthu == CauThu.macauthu)
+        .where(
+            ChiTietDoiBong.maclb == maclb,
+            ChiTietDoiBong.muagiai == muagiai,
+            CauThu.vitrithidau == ViTriThiDau.THU_MON,
+        )
+    )
+    goalkeeper_count = len(session.exec(goalkeepers_stmt).all())
     
     violations = []
     
@@ -967,7 +1009,17 @@ def update_match_event(
             raise ValueError(str(e))
     
     # Re-validate if critical fields changed
-    if any(k in update_data for k in ['phutthidau', 'loaisukien']):
+    # IMPORTANT: bugio must be re-validated even when updating bugio only.
+    # Also re-validate when changing any field that affects event integrity.
+    critical_fields = {
+        "phutthidau",
+        "bugio",
+        "loaisukien",
+        "maclb",
+        "macauthu",
+        "cauthulienquan",
+    }
+    if any(k in update_data for k in critical_fields):
         from app.models import SuKienTranDauCreate
         temp_data = db_event.model_dump()
         temp_data.update(update_data)
@@ -1029,6 +1081,34 @@ def validate_match_event(
     # 5. Validate event time (1-130 minutes, allowing overtime)
     if event_in.phutthidau < 1 or event_in.phutthidau > 130:
         raise ValueError(f"Event time must be between 1 and 130 minutes, got {event_in.phutthidau}")
+    
+    # 5b. Validate bugio (added time) with strict rules
+    if event_in.bugio is not None:
+        # bugio must be non-negative integer (and must NOT be bool)
+        # NOTE: isinstance(True, int) is True in Python, so use type(...) is int.
+        if type(event_in.bugio) is not int or event_in.bugio < 0:
+            raise ValueError(f"Added time (bugio) must be a non-negative integer, got {event_in.bugio}")
+        
+        # bugio maximum limit: 15 minutes (reasonable upper bound for added time)
+        # Rationale: Most added time in real matches is 1-10 minutes, 15 is generous safety margin
+        if event_in.bugio > 15:
+            raise ValueError(f"Added time (bugio) cannot exceed 15 minutes, got {event_in.bugio}")
+        
+        # bugio only allowed at end of half-time periods
+        # Standard: 45 (end of 1st half), 90 (end of 2nd half)
+        # Extra time: 105 (end of 1st extra), 120 (end of 2nd extra)
+        ALLOWED_BUGIO_MINUTES = {45, 90, 105, 120}
+        
+        if event_in.phutthidau not in ALLOWED_BUGIO_MINUTES:
+            raise ValueError(
+                f"Added time (bugio) can only be specified at minutes 45, 90, 105, or 120. "
+                f"Got phutthidau={event_in.phutthidau} with bugio={event_in.bugio}. "
+                f"For events during normal play (e.g., minute 67), set bugio=None and use phutthidau only."
+            )
+    else:
+        # bugio is None - this is valid for any phutthidau
+        # No additional validation needed
+        pass
     
     # 6. Validate and normalize event type
     from app.utils import normalize_event_type
@@ -1849,7 +1929,7 @@ def compute_player_stats(
         "assists": 0,
         "yellow_cards": 0,
         "red_cards": 0,
-        "matches_played": 0,
+        "matches_played": set(),  # Use set for DISTINCT match count
         "clubs": set()
     })
     
@@ -1857,10 +1937,18 @@ def compute_player_stats(
     events_stmt = select(SuKienTranDau).where(SuKienTranDau.matran.in_(match_ids))
     events = session.exec(events_stmt).all()
     
+    # Import normalize function
+    from app.utils import normalize_event_type
+    
     # Process events
     for event in events:
         macauthu = event.macauthu
-        loaisukien = event.loaisukien
+        # Normalize event type to handle old data with spaces
+        try:
+            loaisukien = normalize_event_type(event.loaisukien)
+        except ValueError:
+            # Skip invalid event types
+            continue
         
         if loaisukien == "BanThang":
             player_stats[macauthu]["goals"] += 1
@@ -1879,32 +1967,63 @@ def compute_player_stats(
             player_stats[macauthu]["red_cards"] += 1
             player_stats[macauthu]["clubs"].add(event.maclb)
     
-    # Count matches played from lineup
+    # Count matches played from lineup (DISTINCT matches)
     lineup_stmt = select(
         DoiHinhXuatPhat.macauthu,
         DoiHinhXuatPhat.matran
     ).where(DoiHinhXuatPhat.matran.in_(match_ids))
     
     for macauthu, matran in session.exec(lineup_stmt).all():
-        player_stats[macauthu]["matches_played"] += 1
+        player_stats[macauthu]["matches_played"].add(matran)  # Add to set for DISTINCT
     
-    # Get player info
+    # Get player info (single query)
     player_ids = list(player_stats.keys())
-    players_stmt = select(CauThu).where(CauThu.macauthu.in_(player_ids))
-    players_map = {p.macauthu: p.tencauthu for p in session.exec(players_stmt).all()}
+    players_stmt = select(CauThu.macauthu, CauThu.tencauthu).where(CauThu.macauthu.in_(player_ids))
+    players_map = {macauthu: tencauthu for macauthu, tencauthu in session.exec(players_stmt).all()}
     
-    # Get club names (use first club for each player)
-    club_map = {}
+    # Get club from roster + club name in ONE query (JOIN ChiTietDoiBong -> CauLacBo)
+    # This is more reliable than event.maclb for mapping player -> club.
+    club_map: dict[str, tuple[Optional[str], Optional[str]]] = {}
+    roster_club_stmt = (
+        select(
+            ChiTietDoiBong.macauthu,
+            ChiTietDoiBong.maclb,
+            CauLacBo.tenclb,
+        )
+        .join(
+            CauLacBo,
+            (CauLacBo.maclb == ChiTietDoiBong.maclb) & (CauLacBo.muagiai == ChiTietDoiBong.muagiai),
+        )
+        .where(
+            ChiTietDoiBong.muagiai == muagiai,
+            ChiTietDoiBong.macauthu.in_(player_ids),
+        )
+    )
+    for macauthu, maclb, tenclb in session.exec(roster_club_stmt).all():
+        club_map[macauthu] = (maclb, tenclb)
+    
+    # Fallback: for players without roster entry, use club from events
+    # Avoid per-player club queries by fetching all needed club names in one query.
+    fallback_club_by_player: dict[str, str] = {}
+    fallback_club_ids: set[str] = set()
     for macauthu in player_ids:
+        if macauthu in club_map:
+            continue
         clubs = list(player_stats[macauthu]["clubs"])
         if clubs:
-            club_stmt = select(CauLacBo).where(
-                CauLacBo.maclb == clubs[0],
-                CauLacBo.muagiai == muagiai
-            )
-            club = session.exec(club_stmt).first()
-            if club:
-                club_map[macauthu] = (clubs[0], club.tenclb)
+            fallback_club_by_player[macauthu] = clubs[0]
+            fallback_club_ids.add(clubs[0])
+    
+    if fallback_club_ids:
+        fallback_clubs_stmt = select(CauLacBo.maclb, CauLacBo.tenclb).where(
+            CauLacBo.muagiai == muagiai,
+            CauLacBo.maclb.in_(list(fallback_club_ids)),
+        )
+        fallback_club_names = {maclb: tenclb for maclb, tenclb in session.exec(fallback_clubs_stmt).all()}
+        for macauthu, maclb in fallback_club_by_player.items():
+            tenclb = fallback_club_names.get(maclb)
+            if tenclb:
+                club_map[macauthu] = (maclb, tenclb)
     
     # Build response
     stats_rows = []
@@ -1920,7 +2039,7 @@ def compute_player_stats(
             tencauthu=players_map.get(macauthu, "Unknown"),
             maclb=club_info[0],
             tenclb=club_info[1],
-            matches_played=stats["matches_played"],
+            matches_played=len(stats["matches_played"]),  # Convert set to count
             goals=stats["goals"],
             assists=stats["assists"],
             yellow_cards=stats["yellow_cards"],
@@ -2004,12 +2123,24 @@ def get_match_stats(
     home_stats = {"yellow_cards": 0, "red_cards": 0}
     away_stats = {"yellow_cards": 0, "red_cards": 0}
     
+    from app.utils import normalize_event_type
+    
     for event in events:
+        # Validate event belongs to one of the match teams
+        if event.maclb not in [match.maclbnha, match.maclbkhach]:
+            continue  # Skip invalid events
+        
         target_stats = home_stats if event.maclb == match.maclbnha else away_stats
         
-        if event.loaisukien == "TheVang":
+        # Normalize event type to handle old data
+        try:
+            loaisukien = normalize_event_type(event.loaisukien)
+        except ValueError:
+            continue
+        
+        if loaisukien == "TheVang":
             target_stats["yellow_cards"] += 1
-        elif event.loaisukien == "TheDo":
+        elif loaisukien == "TheDo":
             target_stats["red_cards"] += 1
     
     # Get club names
@@ -2051,3 +2182,412 @@ def get_match_stats(
         available=True,
         message="Limited statistics from match events only (cards)"
     )
+
+
+# =============================================
+# AWARDS COMPUTATION (Top Scorers & Assisters)
+# =============================================
+
+def compute_awards(
+    *,
+    session: Session,
+    muagiai: str,
+    limit: int = 10
+) -> AwardsResponse:
+    """
+    Compute awards for top scorers and top assist providers.
+    
+    Algorithm:
+    - Top scorers: Count loaisukien = "BanThang" per player
+    - Top assists: Count cauthulienquan in goal events per player
+    - Returns top N with ties (if position N has ties, include all tied players)
+    - Sorted by value DESC, tencauthu ASC
+    
+    Args:
+        limit: Maximum number of players to return (default 10).
+               If position N has ties, all tied players are included (may exceed limit).
+    
+    Returns empty lists if season not found.
+    """
+    from collections import defaultdict
+    from app.utils import normalize_event_type
+    
+    # Verify season exists
+    season = get_season_by_id(session=session, id=muagiai)
+    if not season:
+        return AwardsResponse(
+            muagiai=muagiai,
+            top_scorers=[],
+            top_assists=[],
+            generated_at=datetime.utcnow()
+        )
+    
+    # Get all matches in season
+    matches_stmt = select(LichThiDau.matran).where(LichThiDau.muagiai == muagiai)
+    match_ids = [m for m in session.exec(matches_stmt).all()]
+    
+    if not match_ids:
+        return AwardsResponse(
+            muagiai=muagiai,
+            top_scorers=[],
+            top_assists=[],
+            generated_at=datetime.utcnow()
+        )
+    
+    # Initialize stats
+    goals_count = defaultdict(int)
+    assists_count = defaultdict(int)
+    player_clubs = {}  # macauthu -> (maclb, tenclb)
+    
+    # Get all events in season
+    events_stmt = select(SuKienTranDau).where(SuKienTranDau.matran.in_(match_ids))
+    events = session.exec(events_stmt).all()
+    
+    # Process events
+    for event in events:
+        # Normalize event type to handle old data with spaces
+        try:
+            loaisukien = normalize_event_type(event.loaisukien)
+        except ValueError:
+            continue
+        
+        # Only process goal events
+        if loaisukien == "BanThang":
+            # Count goal
+            goals_count[event.macauthu] += 1
+            
+            # Track player club
+            if event.macauthu not in player_clubs:
+                player_clubs[event.macauthu] = event.maclb
+            
+            # Count assist
+            if event.cauthulienquan:
+                assists_count[event.cauthulienquan] += 1
+                if event.cauthulienquan not in player_clubs:
+                    player_clubs[event.cauthulienquan] = event.maclb
+    
+    # Get player names
+    all_player_ids = set(goals_count.keys()) | set(assists_count.keys())
+    if not all_player_ids:
+        return AwardsResponse(
+            muagiai=muagiai,
+            top_scorers=[],
+            top_assists=[],
+            generated_at=datetime.utcnow()
+        )
+    
+    players_stmt = select(CauThu).where(CauThu.macauthu.in_(all_player_ids))
+    players_map = {p.macauthu: p.tencauthu for p in session.exec(players_stmt).all()}
+    
+    # Get club names (single query, avoid N+1)
+    club_ids = set(player_clubs.values())
+    if club_ids:
+        clubs_stmt = select(CauLacBo.maclb, CauLacBo.tenclb).where(
+            CauLacBo.muagiai == muagiai,
+            CauLacBo.maclb.in_(list(club_ids)),
+        )
+        club_names = {maclb: tenclb for maclb, tenclb in session.exec(clubs_stmt).all()}
+    else:
+        club_names = {}
+    
+    # Build top scorers list
+    scorer_rows = []
+    for macauthu, goals in goals_count.items():
+        if goals > 0:  # Only include players with goals
+            maclb = player_clubs.get(macauthu)
+            scorer_rows.append({
+                "macauthu": macauthu,
+                "tencauthu": players_map.get(macauthu, "Unknown"),
+                "maclb": maclb,
+                "tenclb": club_names.get(maclb) if maclb else None,
+                "value": goals
+            })
+    
+    # Sort: value DESC, name ASC
+    scorer_rows.sort(key=lambda x: (-x["value"], x["tencauthu"]))
+    
+    # Assign ranks and apply limit with tie handling
+    top_scorers = []
+    if scorer_rows:
+        current_rank = 1
+        prev_value = None
+        cutoff_value = None
+        
+        # First pass: determine cutoff value at position limit
+        if len(scorer_rows) > limit:
+            cutoff_value = scorer_rows[limit - 1]["value"]
+        
+        for idx, row in enumerate(scorer_rows):
+            # Update rank when value decreases
+            if prev_value is not None and row["value"] < prev_value:
+                current_rank = idx + 1
+            
+            # Include if within limit OR tied with position at limit
+            if idx < limit or (cutoff_value is not None and row["value"] >= cutoff_value):
+                top_scorers.append(AwardLeaderRow(
+                    macauthu=row["macauthu"],
+                    tencauthu=row["tencauthu"],
+                    maclb=row["maclb"],
+                    tenclb=row["tenclb"],
+                    value=row["value"],
+                    rank=current_rank
+                ))
+            else:
+                # Stop when beyond limit and no longer tied
+                break
+            
+            prev_value = row["value"]
+    
+    # Build top assists list
+    assister_rows = []
+    for macauthu, assists in assists_count.items():
+        if assists > 0:
+            maclb = player_clubs.get(macauthu)
+            assister_rows.append({
+                "macauthu": macauthu,
+                "tencauthu": players_map.get(macauthu, "Unknown"),
+                "maclb": maclb,
+                "tenclb": club_names.get(maclb) if maclb else None,
+                "value": assists
+            })
+    
+    # Sort: value DESC, name ASC
+    assister_rows.sort(key=lambda x: (-x["value"], x["tencauthu"]))
+    
+    # Assign ranks and apply limit with tie handling
+    top_assists = []
+    if assister_rows:
+        current_rank = 1
+        prev_value = None
+        cutoff_value = None
+        
+        # First pass: determine cutoff value at position limit
+        if len(assister_rows) > limit:
+            cutoff_value = assister_rows[limit - 1]["value"]
+        
+        for idx, row in enumerate(assister_rows):
+            # Update rank when value decreases
+            if prev_value is not None and row["value"] < prev_value:
+                current_rank = idx + 1
+            
+            # Include if within limit OR tied with position at limit
+            if idx < limit or (cutoff_value is not None and row["value"] >= cutoff_value):
+                top_assists.append(AwardLeaderRow(
+                    macauthu=row["macauthu"],
+                    tencauthu=row["tencauthu"],
+                    maclb=row["maclb"],
+                    tenclb=row["tenclb"],
+                    value=row["value"],
+                    rank=current_rank
+                ))
+            else:
+                # Stop when beyond limit and no longer tied
+                break
+            
+            prev_value = row["value"]
+    
+    return AwardsResponse(
+        muagiai=muagiai,
+        top_scorers=top_scorers,
+        top_assists=top_assists,
+        generated_at=datetime.utcnow()
+    )
+
+
+# =============================================
+# DISCIPLINE COMPUTATION (Cards Statistics)
+# =============================================
+
+def compute_discipline(
+    *,
+    session: Session,
+    muagiai: str,
+    limit: int = 50
+) -> DisciplineResponse:
+    """
+    Compute discipline statistics (yellow/red cards).
+    
+    Algorithm:
+    - Yellow cards: Count loaisukien = "TheVang"
+    - Red cards: Count loaisukien = "TheDo"
+    - Second yellows: If player gets 2+ yellow cards in SAME match, count extras as second_yellow
+    - Discipline points: yellow=1, second_yellow=2, red=3
+    - Sort by: discipline_points DESC, red_cards DESC, yellow_cards DESC, name ASC
+    - Returns top N with ties (if position N has ties, include all tied players)
+    
+    Args:
+        limit: Maximum number of players to return (default 50).
+               If position N has ties, all tied players are included (may exceed limit).
+    
+    Returns empty list if season not found.
+    """
+    from collections import defaultdict
+    from app.utils import normalize_event_type
+    
+    # Verify season exists
+    season = get_season_by_id(session=session, id=muagiai)
+    if not season:
+        return DisciplineResponse(
+            muagiai=muagiai,
+            leaderboard=[],
+            generated_at=datetime.utcnow()
+        )
+    
+    # Get all matches in season
+    matches_stmt = select(LichThiDau.matran).where(LichThiDau.muagiai == muagiai)
+    match_ids = [m for m in session.exec(matches_stmt).all()]
+    
+    if not match_ids:
+        return DisciplineResponse(
+            muagiai=muagiai,
+            leaderboard=[],
+            generated_at=datetime.utcnow()
+        )
+    
+    # Initialize stats
+    total_yellows = defaultdict(int)
+    total_reds = defaultdict(int)
+    second_yellows_count = defaultdict(int)
+    match_yellows = defaultdict(lambda: defaultdict(int))  # (matran, macauthu) -> count
+    player_clubs = {}  # macauthu -> maclb
+    
+    # Get all card events in season
+    events_stmt = select(SuKienTranDau).where(SuKienTranDau.matran.in_(match_ids))
+    events = session.exec(events_stmt).all()
+    
+    # Process events
+    for event in events:
+        macauthu = event.macauthu
+        
+        # Track player club
+        if macauthu not in player_clubs:
+            player_clubs[macauthu] = event.maclb
+        
+        # Normalize event type to handle old data with spaces
+        try:
+            loaisukien = normalize_event_type(event.loaisukien)
+        except ValueError:
+            continue
+        
+        if loaisukien == "TheVang":
+            total_yellows[macauthu] += 1
+            match_yellows[event.matran][macauthu] += 1
+        
+        elif loaisukien == "TheDo":
+            total_reds[macauthu] += 1
+    
+    # Calculate second yellows (2+ yellows in same match)
+    for matran, players in match_yellows.items():
+        for macauthu, yellow_count in players.items():
+            if yellow_count >= 2:
+                # Each extra yellow beyond first counts as second yellow
+                second_yellows_count[macauthu] += (yellow_count - 1)
+    
+    # Get all players with cards
+    all_player_ids = set(total_yellows.keys()) | set(total_reds.keys())
+    if not all_player_ids:
+        return DisciplineResponse(
+            muagiai=muagiai,
+            leaderboard=[],
+            generated_at=datetime.utcnow()
+        )
+    
+    # Get player names
+    players_stmt = select(CauThu).where(CauThu.macauthu.in_(all_player_ids))
+    players_map = {p.macauthu: p.tencauthu for p in session.exec(players_stmt).all()}
+    
+    # Get club names (single query, avoid N+1)
+    club_names: dict[str, str] = {}
+    club_ids = {maclb for maclb in player_clubs.values() if maclb}
+    if club_ids:
+        clubs_stmt = select(CauLacBo.maclb, CauLacBo.tenclb).where(
+            CauLacBo.muagiai == muagiai,
+            CauLacBo.maclb.in_(list(club_ids)),
+        )
+        club_names = {maclb: tenclb for maclb, tenclb in session.exec(clubs_stmt).all()}
+    
+    # Get matches played from lineup
+    matches_played = defaultdict(set)
+    lineup_stmt = select(
+        DoiHinhXuatPhat.macauthu,
+        DoiHinhXuatPhat.matran
+    ).where(DoiHinhXuatPhat.matran.in_(match_ids))
+    
+    for macauthu, matran in session.exec(lineup_stmt).all():
+        if macauthu in all_player_ids:
+            matches_played[macauthu].add(matran)
+    
+    # Build discipline rows
+    discipline_rows = []
+    for macauthu in all_player_ids:
+        yellows = total_yellows[macauthu]
+        second_yellows = second_yellows_count[macauthu]
+        reds = total_reds[macauthu]
+        
+        # FIXED: Correct discipline points formula
+        # Rule: regular yellow=1pt, second yellow (2nd in same match)=2pt, red=3pt
+        # total_yellows = all yellows, second_yellows = extras beyond first per match
+        # Formula: (yellows - second_yellows)*1 + second_yellows*2 + reds*3
+        #        = yellows + second_yellows + 3*reds
+        discipline_points = yellows + second_yellows + (reds * 3)
+        
+        maclb = player_clubs.get(macauthu)
+        
+        discipline_rows.append({
+            "macauthu": macauthu,
+            "tencauthu": players_map.get(macauthu, "Unknown"),
+            "maclb": maclb,
+            "tenclb": club_names.get(maclb) if maclb else None,
+            "matches_played": len(matches_played[macauthu]),
+            "yellow_cards": yellows,
+            "second_yellows": second_yellows,
+            "red_cards": reds,
+            "discipline_points": discipline_points
+        })
+    
+    # Sort: discipline_points DESC, reds DESC, yellows DESC, name ASC
+    discipline_rows.sort(
+        key=lambda x: (-x["discipline_points"], -x["red_cards"], -x["yellow_cards"], x["tencauthu"])
+    )
+    
+    # Assign ranks and apply limit with tie handling
+    leaderboard = []
+    current_rank = 1
+    prev_points = None
+    cutoff_points = None
+    
+    # First pass: determine cutoff discipline_points at position limit
+    if len(discipline_rows) > limit:
+        cutoff_points = discipline_rows[limit - 1]["discipline_points"]
+    
+    for idx, row in enumerate(discipline_rows):
+        # Update rank when discipline_points decrease
+        if prev_points is not None and row["discipline_points"] < prev_points:
+            current_rank = idx + 1
+        
+        # Include if within limit OR tied with position at limit
+        if idx < limit or (cutoff_points is not None and row["discipline_points"] >= cutoff_points):
+            leaderboard.append(DisciplineRow(
+                macauthu=row["macauthu"],
+                tencauthu=row["tencauthu"],
+                maclb=row["maclb"],
+                tenclb=row["tenclb"],
+                matches_played=row["matches_played"],
+                yellow_cards=row["yellow_cards"],
+                second_yellows=row["second_yellows"],
+                red_cards=row["red_cards"],
+                discipline_points=row["discipline_points"],
+                rank=current_rank
+            ))
+        else:
+            # Stop when beyond limit and no longer tied
+            break
+        
+        prev_points = row["discipline_points"]
+    
+    return DisciplineResponse(
+        muagiai=muagiai,
+        leaderboard=leaderboard,
+        generated_at=datetime.utcnow()
+    )
+
