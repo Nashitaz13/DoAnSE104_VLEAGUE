@@ -4,7 +4,7 @@ from fastapi import APIRouter, HTTPException, Query
 
 from app.api.deps import CurrentUserVLeague, SessionDep
 from app import crud
-from app.models import PlayerStatsResponse, MatchStatsResponse
+from app.models import PlayerStatsResponse, MatchStatsResponse, AwardsResponse, DisciplineResponse
 
 router = APIRouter()
 
@@ -101,3 +101,113 @@ def get_match_stats(
         )
     
     return stats
+
+
+@router.get("/awards", response_model=AwardsResponse)
+def get_awards(
+    *,
+    session: SessionDep,
+    current_user: CurrentUserVLeague,
+    muagiai: str = Query(..., description="Season ID (e.g., '2024-2025')"),
+    limit: int = Query(10, ge=1, le=200, description="Max number to return (ties may exceed limit)")
+) -> Any:
+    """
+    Get awards for top scorers and top assist providers.
+    
+    **Authentication required** - Any authenticated user can view awards.
+    
+    **Algorithm:**
+    - Top scorers: Count `loaisukien = "BanThang"` per player
+    - Top assists: Count `cauthulienquan` in goal events
+    - Returns top N with ties handled (if position N has ties, all tied players included)
+    - Sorted by value DESC, player name ASC
+    
+    **Event types:**
+    - Uses canonical event type "BanThang" (no space)
+    - Auto-normalizes old data: "Ban Thang" → "BanThang"
+    - Handles backward compatibility with spaced formats
+    
+    **Query Parameters:**
+    - `muagiai`: Season ID (required)
+    - `limit`: Maximum number to return (default 10, range 1-200)
+               If position N has ties, all tied players are included (may exceed limit)
+    
+    **Response:**
+    - `muagiai`: Season ID
+    - `top_scorers`: Top N goal scorers (with ties)
+    - `top_assists`: Top N assist providers (with ties)
+    - `generated_at`: Timestamp
+    
+    **Example:**
+    ```
+    GET /api/stats/awards?muagiai=2024-2025&limit=10
+    ```
+    """
+    try:
+        awards = crud.compute_awards(session=session, muagiai=muagiai, limit=limit)
+    except Exception as e:
+        raise HTTPException(
+            status_code=500,
+            detail=f"Failed to compute awards: {str(e)}"
+        )
+    
+    return awards
+
+
+@router.get("/discipline", response_model=DisciplineResponse)
+def get_discipline(
+    *,
+    session: SessionDep,
+    current_user: CurrentUserVLeague,
+    muagiai: str = Query(..., description="Season ID (e.g., '2024-2025')"),
+    limit: int = Query(50, ge=1, le=200, description="Max number to return (ties may exceed limit)")
+) -> Any:
+    """
+    Get discipline statistics (yellow/red cards).
+    
+    **Authentication required** - Any authenticated user can view discipline stats.
+    
+    **Algorithm:**
+    - Yellow cards: Count `loaisukien = "TheVang"`
+    - Red cards: Count `loaisukien = "TheDo"`
+    - Second yellows: If player gets 2+ yellow cards in SAME match, extras count as second yellow
+    - Discipline points: yellow=1, second_yellow=2, red=3
+    - Sorted by: discipline_points DESC, red_cards DESC, yellow_cards DESC, name ASC
+    - Returns top N with ties (if position N has ties, all tied players included)
+    
+    **Event types:**
+    - Uses canonical event types "TheVang", "TheDo" (no space)
+    - Auto-normalizes old data: "The Vang" → "TheVang", "The Do" → "TheDo"
+    - Handles backward compatibility with spaced formats
+    
+    **Discipline points calculation:**
+    - Each yellow card = 1 point
+    - Each second yellow (2+ in same match) = 2 points
+    - Each red card = 3 points
+    
+    **Query Parameters:**
+    - `muagiai`: Season ID (required)
+    - `limit`: Maximum number to return (default 50, range 1-200)
+               If position N has ties, all tied players are included (may exceed limit)
+    
+    **Response:**
+    - `muagiai`: Season ID
+    - `leaderboard`: Top N players with discipline statistics (with ties)
+    - `generated_at`: Timestamp
+    - `rules`: Description of discipline points calculation
+    
+    **Example:**
+    ```
+    GET /api/stats/discipline?muagiai=2024-2025&limit=50
+    ```
+    """
+    try:
+        discipline = crud.compute_discipline(session=session, muagiai=muagiai, limit=limit)
+    except Exception as e:
+        raise HTTPException(
+            status_code=500,
+            detail=f"Failed to compute discipline statistics: {str(e)}"
+        )
+    
+    return discipline
+

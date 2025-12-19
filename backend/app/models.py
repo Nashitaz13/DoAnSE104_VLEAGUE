@@ -343,7 +343,7 @@ class CauThu(SQLModel, table=True):
     tencauthu: str = Field(max_length=100)
     ngaysinh: Optional[datetime] = None
     noisinh: Optional[str] = Field(default=None, max_length=100)
-    quoctich: Optional[str] = Field(default=None, max_length=50)  # "VN" for Vietnamese
+    quoctich: Optional[str] = Field(default=None, max_length=50)  # "Vietnam" for Vietnamese, "Brazil", etc.
     quoctichkhac: Optional[str] = Field(default=None, max_length=50)
     vitrithidau: Optional[str] = Field(default=None, max_length=50)  # GK, DF, MF, FW
     chieucao: Optional[float] = None  # in cm
@@ -391,7 +391,7 @@ class CauThuCreate(SQLModel):
     tencauthu: str
     ngaysinh: Optional[datetime] = None
     noisinh: Optional[str] = None
-    quoctich: Optional[str] = "VN"  # Default Vietnamese
+    quoctich: Optional[str] = "Vietnam"  # Default Vietnamese (normalized)
     quoctichkhac: Optional[str] = None
     vitrithidau: Optional[str] = None
     chieucao: Optional[float] = None
@@ -804,6 +804,46 @@ class PlayerStatsResponse(SQLModel):
     stats: list[PlayerStatsRow]
 
 
+class AwardLeaderRow(SQLModel):
+    """Award leader row (top scorer / top assist provider)"""
+    macauthu: str
+    tencauthu: str
+    maclb: Optional[str] = None
+    tenclb: Optional[str] = None
+    value: int  # goals or assists count
+    rank: int
+
+
+class AwardsResponse(SQLModel):
+    """Awards response for top scorers and assisters"""
+    muagiai: str
+    top_scorers: list[AwardLeaderRow] = Field(default_factory=list)
+    top_assists: list[AwardLeaderRow] = Field(default_factory=list)
+    generated_at: datetime
+
+
+class DisciplineRow(SQLModel):
+    """Discipline statistics row (cards)"""
+    macauthu: str
+    tencauthu: str
+    maclb: Optional[str] = None
+    tenclb: Optional[str] = None
+    matches_played: Optional[int] = None
+    yellow_cards: int
+    second_yellows: int  # 2 yellows in same match
+    red_cards: int
+    discipline_points: int  # yellow=1, second_yellow=2, red=3
+    rank: int
+
+
+class DisciplineResponse(SQLModel):
+    """Discipline statistics response"""
+    muagiai: str
+    leaderboard: list[DisciplineRow] = Field(default_factory=list)
+    generated_at: datetime
+    rules: str = "Discipline points: Yellow card = 1, Second yellow (2 yellows in same match) = 2, Red card = 3"
+
+
 class MatchStatsRow(SQLModel):
     """Match statistics for one team"""
     maclb: str
@@ -825,3 +865,43 @@ class MatchStatsResponse(SQLModel):
     away_team: MatchStatsRow
     available: bool = True
     message: Optional[str] = None
+
+
+# Export all models for easy import
+__all__ = [
+    # Auth
+    "NhomNguoiDung", "TaiKhoan", "TaiKhoanPublic",
+    "LoginResponse", "Message", "Token", "TokenPayload",
+    # Seasons
+    "MuaGiai", "MuaGiaiPublic", "MuaGiaiCreate", "MuaGiaiUpdate",
+    # Player types
+    "LoaiCauThu", "LoaiCauThuPublic", "LoaiCauThuCreate", "LoaiCauThuUpdate",
+    # Stadiums
+    "SanVanDong", "SanVanDongPublic", "SanVanDongCreate", "SanVanDongUpdate",
+    # Clubs
+    "CauLacBo", "CauLacBoPublic", "CauLacBoCreate", "CauLacBoUpdate",
+    # Players
+    "CauThu", "CauThuPublic", "CauThuCreate", "CauThuUpdate", "ViTriThiDau",
+    # Rosters
+    "ChiTietDoiBong", "ChiTietDoiBongPublic", "ChiTietDoiBongCreate",
+    "RosterPlayerDetail", "RosterValidationResult",
+    # Matches
+    "LichThiDau", "LichThiDauPublic", "LichThiDauCreate", "LichThiDauUpdate", "LichThiDauDetail",
+    # Lineup
+    "DoiHinhXuatPhat", "DoiHinhXuatPhatPublic", "DoiHinhXuatPhatCreate", "DoiHinhXuatPhatUpdate",
+    "LineupPlayerDetail", "LineupResponse",
+    # Events
+    "SuKienTranDau", "SuKienTranDauPublic", "SuKienTranDauCreate", "SuKienTranDauUpdate",
+    # Referees
+    "ChiTietTrongTai", "ChiTietTrongTaiPublic", "ChiTietTrongTaiCreate",
+    # Schedule
+    "ScheduleGenerateRequest", "ScheduleGenerationResult",
+    "ScheduleValidateRequest", "ScheduleValidationResult",
+    # Standings & Stats
+    "StandingsRow", "StandingsResponse",
+    "PlayerStatsRow", "PlayerStatsResponse",
+    "MatchStatsRow", "MatchStatsResponse",
+    # Awards & Discipline
+    "AwardLeaderRow", "AwardsResponse",
+    "DisciplineRow", "DisciplineResponse",
+]
