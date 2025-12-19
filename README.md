@@ -10,16 +10,32 @@
 
 ## Tính năng chính
 
+### API Endpoints
+
+#### Players Management
+- `GET /api/players` - Lấy danh sách cầu thủ (hỗ trợ filter: keyword, quoctich, vitrithidau)
+- `GET /api/players/{id}` - Lấy thông tin chi tiết cầu thủ
+- `POST /api/players` - Tạo cầu thủ mới (BTC only)
+- `PUT /api/players/{id}` - Cập nhật thông tin cầu thủ (BTC only)
+- `DELETE /api/players/{id}` - Xóa cầu thủ (BTC only)
+
+#### Rosters Management
+- `GET /api/rosters` - Lấy danh sách đội hình (filter: maclb, muagiai)
+- `POST /api/rosters` - Đăng ký cầu thủ vào đội (BTC only)
+- `DELETE /api/rosters/{id}` - Xóa cầu thủ khỏi đội (BTC only)
+- `GET /api/rosters/validate` - Kiểm tra tính hợp lệ đội hình (BTC only)
+
 
 
 ---
 
 ## 🏗️ Công nghệ sử dụng: 
 
-- **Backend:** Express + Javascript
+- **Backend:** FastAPI + Python 3.12
+- **ORM:** SQLModel
 - **Auth:** JWT
-- **Database:** Postgresql
-- **Email:** Mailgun
+- **Database:** PostgreSQL 17
+- **Migration:** Alembic
 
 ---
 

@@ -16,6 +16,52 @@ logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
 
+# =============================================
+# EVENT TYPE NORMALIZATION
+# =============================================
+
+def normalize_event_type(event_type: str) -> str:
+    """
+    Normalize event type to canonical format (no spaces).
+    
+    Handles backward compatibility with old space-separated format:
+    - "Ban Thang" -> "BanThang"
+    - "The Vang" -> "TheVang"
+    - "The Do" -> "TheDo"
+    - "Thay Nguoi" -> "ThayNguoi"
+    
+    Also accepts already-normalized input (case-insensitive):
+    - "banthang" -> "BanThang"
+    - "BANTHANG" -> "BanThang"
+    
+    Raises:
+        ValueError: If event type doesn't match any valid pattern
+    """
+    if not event_type:
+        raise ValueError("Event type cannot be empty")
+    
+    # Strip and remove all whitespace, convert to lowercase for matching
+    normalized = event_type.strip().replace(" ", "").lower()
+    
+    # Map to canonical forms
+    event_map = {
+        "banthang": "BanThang",
+        "thevang": "TheVang",
+        "thedo": "TheDo",
+        "thaynguoi": "ThayNguoi",
+    }
+    
+    canonical = event_map.get(normalized)
+    if not canonical:
+        valid_types = ", ".join(event_map.values())
+        raise ValueError(
+            f"Invalid event type '{event_type}'. "
+            f"Must be one of: {valid_types}"
+        )
+    
+    return canonical
+
+
 @dataclass
 class EmailData:
     html_content: str
