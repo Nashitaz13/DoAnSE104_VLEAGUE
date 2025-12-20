@@ -8,6 +8,7 @@ from app import crud
 from app.api.deps import SessionDep, get_current_user_vleague
 from app.core import security
 from app.core.config import settings
+from app.core.security import get_password_hash
 from app.models import LoginResponse, Message, TaiKhoanPublic, TaiKhoan
 
 router = APIRouter(tags=["auth"])
@@ -19,6 +20,12 @@ class LoginRequest(BaseModel):
     username: str
     password: str
 
+class SignUpRequest(BaseModel):
+    """Sign up request"""
+    username: str
+    password: str
+    hoten: str | None = None
+    email: str | None = None
 
 @router.post("/login", response_model=LoginResponse)
 def login(session: SessionDep, credentials: LoginRequest) -> LoginResponse:
@@ -58,7 +65,7 @@ def login(session: SessionDep, credentials: LoginRequest) -> LoginResponse:
         subject=str(user.mataikhoan),
         expires_delta=access_token_expires
     )
-    
+
     return LoginResponse(
         token=access_token,
         token_type="bearer",
@@ -66,6 +73,35 @@ def login(session: SessionDep, credentials: LoginRequest) -> LoginResponse:
         expiresIn=settings.ACCESS_TOKEN_EXPIRE_MINUTES * 60  # Convert to seconds
     )
 
+@router.post("/signup", response_model=TaiKhoanPublic)
+def signup(session: SessionDep, body: SignUpRequest) -> TaiKhoanPublic:
+    """
+    Create a new V-League account
+    """
+    existing = crud.get_user_by_username(session=session, username=body.username)
+    if existing:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Username already exists",
+        )
+    user = TaiKhoan(
+        tendangnhap=body.username,
+        matkhau=get_password_hash(body.password),
+        hoten=body.hoten,
+        email=body.email,
+        isactive=True,
+    )
+    session.add(user)
+    session.commit()
+    session.refresh(user)
+    return TaiKhoanPublic(
+        mataikhoan=user.mataikhoan,
+        tendangnhap=user.tendangnhap,
+        hoten=user.hoten,
+        email=user.email,
+        manhom=user.manhom,
+        isactive=user.isactive,
+    )
 
 @router.post("/logout", response_model=Message)
 def logout() -> Message:

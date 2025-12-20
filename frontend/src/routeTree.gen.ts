@@ -15,8 +15,14 @@ import { Route as RecoverPasswordRouteImport } from './routes/recover-password'
 import { Route as LoginRouteImport } from './routes/login'
 import { Route as LayoutRouteImport } from './routes/_layout'
 import { Route as LayoutIndexRouteImport } from './routes/_layout/index'
+import { Route as LayoutTeamsRouteImport } from './routes/_layout/teams'
+import { Route as LayoutTeamManagerRouteImport } from './routes/_layout/team-manager'
+import { Route as LayoutStatsRouteImport } from './routes/_layout/stats'
 import { Route as LayoutSettingsRouteImport } from './routes/_layout/settings'
+import { Route as LayoutLeagueTableRouteImport } from './routes/_layout/league-table'
 import { Route as LayoutItemsRouteImport } from './routes/_layout/items'
+import { Route as LayoutFixturesRouteImport } from './routes/_layout/fixtures'
+import { Route as LayoutAdminDashboardRouteImport } from './routes/_layout/admin-dashboard'
 import { Route as LayoutAdminRouteImport } from './routes/_layout/admin'
 
 const SignupRoute = SignupRouteImport.update({
@@ -48,14 +54,44 @@ const LayoutIndexRoute = LayoutIndexRouteImport.update({
   path: '/',
   getParentRoute: () => LayoutRoute,
 } as any)
+const LayoutTeamsRoute = LayoutTeamsRouteImport.update({
+  id: '/teams',
+  path: '/teams',
+  getParentRoute: () => LayoutRoute,
+} as any)
+const LayoutTeamManagerRoute = LayoutTeamManagerRouteImport.update({
+  id: '/team-manager',
+  path: '/team-manager',
+  getParentRoute: () => LayoutRoute,
+} as any)
+const LayoutStatsRoute = LayoutStatsRouteImport.update({
+  id: '/stats',
+  path: '/stats',
+  getParentRoute: () => LayoutRoute,
+} as any)
 const LayoutSettingsRoute = LayoutSettingsRouteImport.update({
   id: '/settings',
   path: '/settings',
   getParentRoute: () => LayoutRoute,
 } as any)
+const LayoutLeagueTableRoute = LayoutLeagueTableRouteImport.update({
+  id: '/league-table',
+  path: '/league-table',
+  getParentRoute: () => LayoutRoute,
+} as any)
 const LayoutItemsRoute = LayoutItemsRouteImport.update({
   id: '/items',
   path: '/items',
+  getParentRoute: () => LayoutRoute,
+} as any)
+const LayoutFixturesRoute = LayoutFixturesRouteImport.update({
+  id: '/fixtures',
+  path: '/fixtures',
+  getParentRoute: () => LayoutRoute,
+} as any)
+const LayoutAdminDashboardRoute = LayoutAdminDashboardRouteImport.update({
+  id: '/admin-dashboard',
+  path: '/admin-dashboard',
   getParentRoute: () => LayoutRoute,
 } as any)
 const LayoutAdminRoute = LayoutAdminRouteImport.update({
@@ -70,8 +106,14 @@ export interface FileRoutesByFullPath {
   '/reset-password': typeof ResetPasswordRoute
   '/signup': typeof SignupRoute
   '/admin': typeof LayoutAdminRoute
+  '/admin-dashboard': typeof LayoutAdminDashboardRoute
+  '/fixtures': typeof LayoutFixturesRoute
   '/items': typeof LayoutItemsRoute
+  '/league-table': typeof LayoutLeagueTableRoute
   '/settings': typeof LayoutSettingsRoute
+  '/stats': typeof LayoutStatsRoute
+  '/team-manager': typeof LayoutTeamManagerRoute
+  '/teams': typeof LayoutTeamsRoute
   '/': typeof LayoutIndexRoute
 }
 export interface FileRoutesByTo {
@@ -80,8 +122,14 @@ export interface FileRoutesByTo {
   '/reset-password': typeof ResetPasswordRoute
   '/signup': typeof SignupRoute
   '/admin': typeof LayoutAdminRoute
+  '/admin-dashboard': typeof LayoutAdminDashboardRoute
+  '/fixtures': typeof LayoutFixturesRoute
   '/items': typeof LayoutItemsRoute
+  '/league-table': typeof LayoutLeagueTableRoute
   '/settings': typeof LayoutSettingsRoute
+  '/stats': typeof LayoutStatsRoute
+  '/team-manager': typeof LayoutTeamManagerRoute
+  '/teams': typeof LayoutTeamsRoute
   '/': typeof LayoutIndexRoute
 }
 export interface FileRoutesById {
@@ -92,8 +140,14 @@ export interface FileRoutesById {
   '/reset-password': typeof ResetPasswordRoute
   '/signup': typeof SignupRoute
   '/_layout/admin': typeof LayoutAdminRoute
+  '/_layout/admin-dashboard': typeof LayoutAdminDashboardRoute
+  '/_layout/fixtures': typeof LayoutFixturesRoute
   '/_layout/items': typeof LayoutItemsRoute
+  '/_layout/league-table': typeof LayoutLeagueTableRoute
   '/_layout/settings': typeof LayoutSettingsRoute
+  '/_layout/stats': typeof LayoutStatsRoute
+  '/_layout/team-manager': typeof LayoutTeamManagerRoute
+  '/_layout/teams': typeof LayoutTeamsRoute
   '/_layout/': typeof LayoutIndexRoute
 }
 export interface FileRouteTypes {
@@ -104,8 +158,14 @@ export interface FileRouteTypes {
     | '/reset-password'
     | '/signup'
     | '/admin'
+    | '/admin-dashboard'
+    | '/fixtures'
     | '/items'
+    | '/league-table'
     | '/settings'
+    | '/stats'
+    | '/team-manager'
+    | '/teams'
     | '/'
   fileRoutesByTo: FileRoutesByTo
   to:
@@ -114,8 +174,14 @@ export interface FileRouteTypes {
     | '/reset-password'
     | '/signup'
     | '/admin'
+    | '/admin-dashboard'
+    | '/fixtures'
     | '/items'
+    | '/league-table'
     | '/settings'
+    | '/stats'
+    | '/team-manager'
+    | '/teams'
     | '/'
   id:
     | '__root__'
@@ -125,8 +191,14 @@ export interface FileRouteTypes {
     | '/reset-password'
     | '/signup'
     | '/_layout/admin'
+    | '/_layout/admin-dashboard'
+    | '/_layout/fixtures'
     | '/_layout/items'
+    | '/_layout/league-table'
     | '/_layout/settings'
+    | '/_layout/stats'
+    | '/_layout/team-manager'
+    | '/_layout/teams'
     | '/_layout/'
   fileRoutesById: FileRoutesById
 }
@@ -182,6 +254,27 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof LayoutIndexRouteImport
       parentRoute: typeof LayoutRoute
     }
+    '/_layout/teams': {
+      id: '/_layout/teams'
+      path: '/teams'
+      fullPath: '/teams'
+      preLoaderRoute: typeof LayoutTeamsRouteImport
+      parentRoute: typeof LayoutRoute
+    }
+    '/_layout/team-manager': {
+      id: '/_layout/team-manager'
+      path: '/team-manager'
+      fullPath: '/team-manager'
+      preLoaderRoute: typeof LayoutTeamManagerRouteImport
+      parentRoute: typeof LayoutRoute
+    }
+    '/_layout/stats': {
+      id: '/_layout/stats'
+      path: '/stats'
+      fullPath: '/stats'
+      preLoaderRoute: typeof LayoutStatsRouteImport
+      parentRoute: typeof LayoutRoute
+    }
     '/_layout/settings': {
       id: '/_layout/settings'
       path: '/settings'
@@ -189,11 +282,32 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof LayoutSettingsRouteImport
       parentRoute: typeof LayoutRoute
     }
+    '/_layout/league-table': {
+      id: '/_layout/league-table'
+      path: '/league-table'
+      fullPath: '/league-table'
+      preLoaderRoute: typeof LayoutLeagueTableRouteImport
+      parentRoute: typeof LayoutRoute
+    }
     '/_layout/items': {
       id: '/_layout/items'
       path: '/items'
       fullPath: '/items'
       preLoaderRoute: typeof LayoutItemsRouteImport
+      parentRoute: typeof LayoutRoute
+    }
+    '/_layout/fixtures': {
+      id: '/_layout/fixtures'
+      path: '/fixtures'
+      fullPath: '/fixtures'
+      preLoaderRoute: typeof LayoutFixturesRouteImport
+      parentRoute: typeof LayoutRoute
+    }
+    '/_layout/admin-dashboard': {
+      id: '/_layout/admin-dashboard'
+      path: '/admin-dashboard'
+      fullPath: '/admin-dashboard'
+      preLoaderRoute: typeof LayoutAdminDashboardRouteImport
       parentRoute: typeof LayoutRoute
     }
     '/_layout/admin': {
@@ -208,15 +322,27 @@ declare module '@tanstack/react-router' {
 
 interface LayoutRouteChildren {
   LayoutAdminRoute: typeof LayoutAdminRoute
+  LayoutAdminDashboardRoute: typeof LayoutAdminDashboardRoute
+  LayoutFixturesRoute: typeof LayoutFixturesRoute
   LayoutItemsRoute: typeof LayoutItemsRoute
+  LayoutLeagueTableRoute: typeof LayoutLeagueTableRoute
   LayoutSettingsRoute: typeof LayoutSettingsRoute
+  LayoutStatsRoute: typeof LayoutStatsRoute
+  LayoutTeamManagerRoute: typeof LayoutTeamManagerRoute
+  LayoutTeamsRoute: typeof LayoutTeamsRoute
   LayoutIndexRoute: typeof LayoutIndexRoute
 }
 
 const LayoutRouteChildren: LayoutRouteChildren = {
   LayoutAdminRoute: LayoutAdminRoute,
+  LayoutAdminDashboardRoute: LayoutAdminDashboardRoute,
+  LayoutFixturesRoute: LayoutFixturesRoute,
   LayoutItemsRoute: LayoutItemsRoute,
+  LayoutLeagueTableRoute: LayoutLeagueTableRoute,
   LayoutSettingsRoute: LayoutSettingsRoute,
+  LayoutStatsRoute: LayoutStatsRoute,
+  LayoutTeamManagerRoute: LayoutTeamManagerRoute,
+  LayoutTeamsRoute: LayoutTeamsRoute,
   LayoutIndexRoute: LayoutIndexRoute,
 }
 

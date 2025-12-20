@@ -1,3 +1,5 @@
+
+
 -- Nhóm người dùng / Vai trò
 CREATE TABLE NhomNguoiDung (
     MaNhom SERIAL PRIMARY KEY,

@@ -5,15 +5,16 @@
 -- ============================================================
 
 -- 1. DỮ LIỆU NHÓM NGƯỜI DÙNG & TÀI KHOẢN
-INSERT INTO NhomNguoiDung (TenNhom, MoTa) VALUES 
-('Admin', 'Quản trị viên hệ thống'),
-('BTC', 'Ban tổ chức giải đấu'),
-('TrongTai', 'Tổ trọng tài'),
-('CLB', 'Đại diện câu lạc bộ');
+-- (Commented out to avoid conflict with auth_setup.sql)
+-- INSERT INTO NhomNguoiDung (TenNhom, MoTa) VALUES 
+-- ('Admin', 'Quản trị viên hệ thống'),
+-- ('BTC', 'Ban tổ chức giải đấu'),
+-- ('TrongTai', 'Tổ trọng tài'),
+-- ('CLB', 'Đại diện câu lạc bộ');
 
-INSERT INTO TaiKhoan (TenDangNhap, MatKhau, HoTen, Email, MaNhom, IsActive) VALUES
-('admin', 'admin123', 'Nguyen Van Admin', 'admin@vleague.vn', 1, TRUE),
-('btc_user', 'btc123', 'Tran Van BTC', 'btc@vleague.vn', 2, TRUE);
+-- INSERT INTO TaiKhoan (TenDangNhap, MatKhau, HoTen, Email, MaNhom, IsActive) VALUES
+-- ('admin', 'admin123', 'Nguyen Van Admin', 'admin@vleague.vn', 1, TRUE),
+-- ('btc_user', 'btc123', 'Tran Van BTC', 'btc@vleague.vn', 2, TRUE);
 
 
 -- 2. DỮ LIỆU MÙA GIẢI
@@ -426,211 +427,211 @@ INSERT INTO CauThu (MaCauThu, TenCauThu, NgaySinh, NoiSinh, QuocTich, ViTriThiDa
 -- Prereq: CauLacBo entries already exist for MuaGiai = '2025-2026'.
 
 INSERT INTO ChiTietDoiBong (MaCauThu, MaClb, MuaGiai, SoAoThiDau) VALUES
-('49', 'CLB_HANOI', '2025-2026', 10),  -- Nguyễn Văn Quyết
-('50', 'CLB_HANOI', '2025-2026', 8),   -- Đỗ Hùng Dũng
-('51', 'CLB_HANOI', '2025-2026', 3),   -- Đỗ Duy Mạnh
-('52', 'CLB_HANOI', '2025-2026', 9),   -- Phạm Tuấn Hải
-('53', 'CLB_HANOI', '2025-2026', 4),   -- Nguyễn Thành Chung
-('54', 'CLB_HANOI', '2025-2026', 1),   -- Quan Văn Chuẩn
-('55', 'CLB_HANOI', '2025-2026', 5),   -- Phạm Xuân Mạnh
-('56', 'CLB_HANOI', '2025-2026', 18),  -- Nguyễn Hai Long
-('57', 'CLB_HANOI', '2025-2026', 99),  -- Tagueu Joel (Ngoại binh)
-('58', 'CLB_HANOI', '2025-2026', 77),  -- Brandon Wilson (Ngoại binh)
-('59', 'CLB_HANOI', '2025-2026', 11),  -- Nguyễn Văn Trường
-('60', 'CLB_HANOI', '2025-2026', 7),   -- Vũ Minh Tuấn
-('61', 'CLB_HANOI', '2025-2026', 19),  -- Đậu Văn Toàn
-('62', 'CLB_HANOI', '2025-2026', 15),  -- Lê Văn Xuân
-('63', 'CLB_HANOI', '2025-2026', 21),  -- Nguyễn Văn Hoàng
-('64', 'CLB_HANOI', '2025-2026', 6);   -- Trương Văn Thái Quý
+('49', 'CLB_HANOI', '2024-2025', 10),  -- Nguyễn Văn Quyết
+('50', 'CLB_HANOI', '2024-2025', 8),   -- Đỗ Hùng Dũng
+('51', 'CLB_HANOI', '2024-2025', 3),   -- Đỗ Duy Mạnh
+('52', 'CLB_HANOI', '2024-2025', 9),   -- Phạm Tuấn Hải
+('53', 'CLB_HANOI', '2024-2025', 4),   -- Nguyễn Thành Chung
+('54', 'CLB_HANOI', '2024-2025', 1),   -- Quan Văn Chuẩn
+('55', 'CLB_HANOI', '2024-2025', 5),   -- Phạm Xuân Mạnh
+('56', 'CLB_HANOI', '2024-2025', 18),  -- Nguyễn Hai Long
+('57', 'CLB_HANOI', '2024-2025', 99),  -- Tagueu Joel (Ngoại binh)
+('58', 'CLB_HANOI', '2024-2025', 77),  -- Brandon Wilson (Ngoại binh)
+('59', 'CLB_HANOI', '2024-2025', 11),  -- Nguyễn Văn Trường
+('60', 'CLB_HANOI', '2024-2025', 7),   -- Vũ Minh Tuấn
+('61', 'CLB_HANOI', '2024-2025', 19),  -- Đậu Văn Toàn
+('62', 'CLB_HANOI', '2024-2025', 15),  -- Lê Văn Xuân
+('63', 'CLB_HANOI', '2024-2025', 21),  -- Nguyễn Văn Hoàng
+('64', 'CLB_HANOI', '2024-2025', 6);   -- Trương Văn Thái Quý
 
 -- ==========================================================
 -- 2. CLB HẢI PHÒNG (CLB_HAIPHONG) - Cầu thủ 1-16
 -- ==========================================================
 INSERT INTO ChiTietDoiBong (MaCauThu, MaClb, MuaGiai, SoAoThiDau) VALUES
-('1', 'CLB_HAIPHONG', '2025-2026', 1),   -- Nguyễn Đình Triệu
-('2', 'CLB_HAIPHONG', '2025-2026', 8),   -- Joseph Mpande (Ngoại binh)
-('3', 'CLB_HAIPHONG', '2025-2026', 10),  -- Triệu Việt Hưng
-('4', 'CLB_HAIPHONG', '2025-2026', 4),   -- Đặng Văn Tới
-('5', 'CLB_HAIPHONG', '2025-2026', 5),   -- Bicou Bissainthe (Ngoại binh)
-('6', 'CLB_HAIPHONG', '2025-2026', 9),   -- Lucao do Break (Ngoại binh)
-('7', 'CLB_HAIPHONG', '2025-2026', 2),   -- Lê Mạnh Dũng
-('8', 'CLB_HAIPHONG', '2025-2026', 3),   -- Phạm Trung Hiếu
-('9', 'CLB_HAIPHONG', '2025-2026', 7),   -- Hồ Minh Dĩ
-('10', 'CLB_HAIPHONG', '2025-2026', 11), -- Martin Lo
-('11', 'CLB_HAIPHONG', '2025-2026', 15), -- Nguyễn Văn Minh
-('12', 'CLB_HAIPHONG', '2025-2026', 13), -- Đàm Tiến Dũng
-('13', 'CLB_HAIPHONG', '2025-2026', 18), -- Nguyễn Hữu Sơn
-('14', 'CLB_HAIPHONG', '2025-2026', 6),  -- Phạm Hoài Dương
-('15', 'CLB_HAIPHONG', '2025-2026', 22), -- Nguyễn Văn Toản
-('16', 'CLB_HAIPHONG', '2025-2026', 14); -- Lương Hoàng Nam
+('1', 'CLB_HAIPHONG', '2024-2025', 1),   -- Nguyễn Đình Triệu
+('2', 'CLB_HAIPHONG', '2024-2025', 8),   -- Joseph Mpande (Ngoại binh)
+('3', 'CLB_HAIPHONG', '2024-2025', 10),  -- Triệu Việt Hưng
+('4', 'CLB_HAIPHONG', '2024-2025', 4),   -- Đặng Văn Tới
+('5', 'CLB_HAIPHONG', '2024-2025', 5),   -- Bicou Bissainthe (Ngoại binh)
+('6', 'CLB_HAIPHONG', '2024-2025', 9),   -- Lucao do Break (Ngoại binh)
+('7', 'CLB_HAIPHONG', '2024-2025', 2),   -- Lê Mạnh Dũng
+('8', 'CLB_HAIPHONG', '2024-2025', 3),   -- Phạm Trung Hiếu
+('9', 'CLB_HAIPHONG', '2024-2025', 7),   -- Hồ Minh Dĩ
+('10', 'CLB_HAIPHONG', '2024-2025', 11), -- Martin Lo
+('11', 'CLB_HAIPHONG', '2024-2025', 15), -- Nguyễn Văn Minh
+('12', 'CLB_HAIPHONG', '2024-2025', 13), -- Đàm Tiến Dũng
+('13', 'CLB_HAIPHONG', '2024-2025', 18), -- Nguyễn Hữu Sơn
+('14', 'CLB_HAIPHONG', '2024-2025', 6),  -- Phạm Hoài Dương
+('15', 'CLB_HAIPHONG', '2024-2025', 22), -- Nguyễn Văn Toản
+('16', 'CLB_HAIPHONG', '2024-2025', 14); -- Lương Hoàng Nam
 
 -- ==========================================================
 -- 3. THÉP XANH NAM ĐỊNH (CLB_NAMDINH) - Cầu thủ 17-32
 -- ==========================================================
 INSERT INTO ChiTietDoiBong (MaCauThu, MaClb, MuaGiai, SoAoThiDau) VALUES
-('17', 'CLB_NAMDINH', '2025-2026', 1),   -- Trần Nguyên Mạnh
-('18', 'CLB_NAMDINH', '2025-2026', 12),  -- Nguyễn Phong Hồng Duy
-('19', 'CLB_NAMDINH', '2025-2026', 5),   -- Dương Thanh Hào
-('20', 'CLB_NAMDINH', '2025-2026', 6),   -- Hồ Khắc Ngọc
-('21', 'CLB_NAMDINH', '2025-2026', 8),   -- Nguyễn Tuấn Anh
-('22', 'CLB_NAMDINH', '2025-2026', 77),  -- Hendrio Araujo (Ngoại binh)
-('23', 'CLB_NAMDINH', '2025-2026', 9),   -- Rafaelson Bezerra (Ngoại binh)
-('24', 'CLB_NAMDINH', '2025-2026', 10),  -- Nguyễn Văn Toàn
-('25', 'CLB_NAMDINH', '2025-2026', 15),  -- Tô Văn Vũ
-('26', 'CLB_NAMDINH', '2025-2026', 3),   -- Trần Văn Kiên
-('27', 'CLB_NAMDINH', '2025-2026', 18),  -- Lý Công Hoàng Anh
-('28', 'CLB_NAMDINH', '2025-2026', 4),   -- Lucas Alves (Ngoại binh)
-('29', 'CLB_NAMDINH', '2025-2026', 2),   -- Nguyễn Văn Vĩ
-('30', 'CLB_NAMDINH', '2025-2026', 11),  -- Hoàng Minh Tuấn
-('31', 'CLB_NAMDINH', '2025-2026', 7),   -- Trần Văn Công
-('32', 'CLB_NAMDINH', '2025-2026', 21);  -- Trần Liêm Điều
+('17', 'CLB_NAMDINH', '2024-2025', 1),   -- Trần Nguyên Mạnh
+('18', 'CLB_NAMDINH', '2024-2025', 12),  -- Nguyễn Phong Hồng Duy
+('19', 'CLB_NAMDINH', '2024-2025', 5),   -- Dương Thanh Hào
+('20', 'CLB_NAMDINH', '2024-2025', 6),   -- Hồ Khắc Ngọc
+('21', 'CLB_NAMDINH', '2024-2025', 8),   -- Nguyễn Tuấn Anh
+('22', 'CLB_NAMDINH', '2024-2025', 77),  -- Hendrio Araujo (Ngoại binh)
+('23', 'CLB_NAMDINH', '2024-2025', 9),   -- Rafaelson Bezerra (Ngoại binh)
+('24', 'CLB_NAMDINH', '2024-2025', 10),  -- Nguyễn Văn Toàn
+('25', 'CLB_NAMDINH', '2024-2025', 15),  -- Tô Văn Vũ
+('26', 'CLB_NAMDINH', '2024-2025', 3),   -- Trần Văn Kiên
+('27', 'CLB_NAMDINH', '2024-2025', 18),  -- Lý Công Hoàng Anh
+('28', 'CLB_NAMDINH', '2024-2025', 4),   -- Lucas Alves (Ngoại binh)
+('29', 'CLB_NAMDINH', '2024-2025', 2),   -- Nguyễn Văn Vĩ
+('30', 'CLB_NAMDINH', '2024-2025', 11),  -- Hoàng Minh Tuấn
+('31', 'CLB_NAMDINH', '2024-2025', 7),   -- Trần Văn Công
+('32', 'CLB_NAMDINH', '2024-2025', 21);  -- Trần Liêm Điều
 
 -- ==========================================================
 -- 4. BECAMEX BÌNH DƯƠNG (CLB_BINHDUONG) - Cầu thủ 33-48
 -- ==========================================================
 INSERT INTO ChiTietDoiBong (MaCauThu, MaClb, MuaGiai, SoAoThiDau) VALUES
-('33', 'CLB_BINHDUONG', '2025-2026', 1),   -- Trần Minh Toàn
-('34', 'CLB_BINHDUONG', '2025-2026', 4),   -- Quế Ngọc Hải
-('35', 'CLB_BINHDUONG', '2025-2026', 9),   -- Nguyễn Tiến Linh
-('36', 'CLB_BINHDUONG', '2025-2026', 3),   -- Hồ Tấn Tài
-('37', 'CLB_BINHDUONG', '2025-2026', 8),   -- Nguyễn Hải Huy
-('38', 'CLB_BINHDUONG', '2025-2026', 11),  -- Bùi Vĩ Hão
-('39', 'CLB_BINHDUONG', '2025-2026', 2),   -- Võ Minh Trọng
-('40', 'CLB_BINHDUONG', '2025-2026', 5),   -- Janclesio Almeida (Ngoại binh)
-('41', 'CLB_BINHDUONG', '2025-2026', 99),  -- Prince Ibara (Ngoại binh)
-('42', 'CLB_BINHDUONG', '2025-2026', 15),  -- Trương Dũ Đạt
-('43', 'CLB_BINHDUONG', '2025-2026', 7),   -- Đoàn Hải Quân
-('44', 'CLB_BINHDUONG', '2025-2026', 10),  -- Tống Anh Tỷ
-('45', 'CLB_BINHDUONG', '2025-2026', 12),  -- Nguyễn Thành Nhân
-('46', 'CLB_BINHDUONG', '2025-2026', 6),   -- Lê Quang Hùng
-('47', 'CLB_BINHDUONG', '2025-2026', 13),  -- Trần Đình Khương
-('48', 'CLB_BINHDUONG', '2025-2026', 22);  -- Lại Tuấn Vũ
+('33', 'CLB_BINHDUONG', '2024-2025', 1),   -- Trần Minh Toàn
+('34', 'CLB_BINHDUONG', '2024-2025', 4),   -- Quế Ngọc Hải
+('35', 'CLB_BINHDUONG', '2024-2025', 9),   -- Nguyễn Tiến Linh
+('36', 'CLB_BINHDUONG', '2024-2025', 3),   -- Hồ Tấn Tài
+('37', 'CLB_BINHDUONG', '2024-2025', 8),   -- Nguyễn Hải Huy
+('38', 'CLB_BINHDUONG', '2024-2025', 11),  -- Bùi Vĩ Hão
+('39', 'CLB_BINHDUONG', '2024-2025', 2),   -- Võ Minh Trọng
+('40', 'CLB_BINHDUONG', '2024-2025', 5),   -- Janclesio Almeida (Ngoại binh)
+('41', 'CLB_BINHDUONG', '2024-2025', 99),  -- Prince Ibara (Ngoại binh)
+('42', 'CLB_BINHDUONG', '2024-2025', 15),  -- Trương Dũ Đạt
+('43', 'CLB_BINHDUONG', '2024-2025', 7),   -- Đoàn Hải Quân
+('44', 'CLB_BINHDUONG', '2024-2025', 10),  -- Tống Anh Tỷ
+('45', 'CLB_BINHDUONG', '2024-2025', 12),  -- Nguyễn Thành Nhân
+('46', 'CLB_BINHDUONG', '2024-2025', 6),   -- Lê Quang Hùng
+('47', 'CLB_BINHDUONG', '2024-2025', 13),  -- Trần Đình Khương
+('48', 'CLB_BINHDUONG', '2024-2025', 22);  -- Lại Tuấn Vũ
 
 -- ==========================================================
 -- 5. LPBANK HAGL (CLB_HAGL) - Cầu thủ 65-80
 -- ==========================================================
 INSERT INTO ChiTietDoiBong (MaCauThu, MaClb, MuaGiai, SoAoThiDau) VALUES
-('65', 'CLB_HAGL', '2025-2026', 1),   -- Trần Trung Kiên
-('66', 'CLB_HAGL', '2025-2026', 3),   -- Jairo Filho (Ngoại binh)
-('67', 'CLB_HAGL', '2025-2026', 10),  -- Châu Ngọc Quang
-('68', 'CLB_HAGL', '2025-2026', 8),   -- Trần Minh Vương
-('69', 'CLB_HAGL', '2025-2026', 6),   -- Dụng Quang Nho
-('70', 'CLB_HAGL', '2025-2026', 9),   -- Nguyễn Quốc Việt
-('71', 'CLB_HAGL', '2025-2026', 5),   -- Lê Văn Sơn
-('72', 'CLB_HAGL', '2025-2026', 7),   -- Trần Bảo Toàn
-('73', 'CLB_HAGL', '2025-2026', 4),   -- Gabriel Ferreira (Ngoại binh)
-('74', 'CLB_HAGL', '2025-2026', 11),  -- Joao Veras (Ngoại binh)
-('75', 'CLB_HAGL', '2025-2026', 2),   -- Phan Du Học
-('76', 'CLB_HAGL', '2025-2026', 13),  -- Nguyễn Thanh Nhân
-('77', 'CLB_HAGL', '2025-2026', 15),  -- Võ Đình Lâm
-('78', 'CLB_HAGL', '2025-2026', 18),  -- Nguyễn Đức Việt
-('79', 'CLB_HAGL', '2025-2026', 14),  -- Trần Thanh Sơn
-('80', 'CLB_HAGL', '2025-2026', 21);  -- Dương Văn Lợi
+('65', 'CLB_HAGL', '2024-2025', 1),   -- Trần Trung Kiên
+('66', 'CLB_HAGL', '2024-2025', 3),   -- Jairo Filho (Ngoại binh)
+('67', 'CLB_HAGL', '2024-2025', 10),  -- Châu Ngọc Quang
+('68', 'CLB_HAGL', '2024-2025', 8),   -- Trần Minh Vương
+('69', 'CLB_HAGL', '2024-2025', 6),   -- Dụng Quang Nho
+('70', 'CLB_HAGL', '2024-2025', 9),   -- Nguyễn Quốc Việt
+('71', 'CLB_HAGL', '2024-2025', 5),   -- Lê Văn Sơn
+('72', 'CLB_HAGL', '2024-2025', 7),   -- Trần Bảo Toàn
+('73', 'CLB_HAGL', '2024-2025', 4),   -- Gabriel Ferreira (Ngoại binh)
+('74', 'CLB_HAGL', '2024-2025', 11),  -- Joao Veras (Ngoại binh)
+('75', 'CLB_HAGL', '2024-2025', 2),   -- Phan Du Học
+('76', 'CLB_HAGL', '2024-2025', 13),  -- Nguyễn Thanh Nhân
+('77', 'CLB_HAGL', '2024-2025', 15),  -- Võ Đình Lâm
+('78', 'CLB_HAGL', '2024-2025', 18),  -- Nguyễn Đức Việt
+('79', 'CLB_HAGL', '2024-2025', 14),  -- Trần Thanh Sơn
+('80', 'CLB_HAGL', '2024-2025', 21);  -- Dương Văn Lợi
 
 -- ==========================================================
 -- 6. SLNA (CLB_SLNA) - Cầu thủ 81-96
 -- ==========================================================
 INSERT INTO ChiTietDoiBong (MaCauThu, MaClb, MuaGiai, SoAoThiDau) VALUES
-('81', 'CLB_SLNA', '2025-2026', 1),   -- Nguyễn Văn Việt
-('82', 'CLB_SLNA', '2025-2026', 5),   -- Trần Đình Hoàng
-('83', 'CLB_SLNA', '2025-2026', 9),   -- Michael Olaha (Ngoại binh)
-('84', 'CLB_SLNA', '2025-2026', 3),   -- Mario Zebic (Ngoại binh)
-('85', 'CLB_SLNA', '2025-2026', 8),   -- Phan Bá Quyền
-('86', 'CLB_SLNA', '2025-2026', 7),   -- Đinh Xuân Tiến
-('87', 'CLB_SLNA', '2025-2026', 10),  -- Trần Mạnh Quỳnh
-('88', 'CLB_SLNA', '2025-2026', 2),   -- Lê Văn Thành
-('89', 'CLB_SLNA', '2025-2026', 4),   -- Vương Văn Huy
-('90', 'CLB_SLNA', '2025-2026', 6),   -- Trần Nam Hải
-('91', 'CLB_SLNA', '2025-2026', 11),  -- Ngô Văn Lương
-('92', 'CLB_SLNA', '2025-2026', 15),  -- Nguyễn Quang Vinh
-('93', 'CLB_SLNA', '2025-2026', 99),  -- Benjamin Kuku (Ngoại binh)
-('94', 'CLB_SLNA', '2025-2026', 13),  -- Hồ Văn Cường
-('95', 'CLB_SLNA', '2025-2026', 14),  -- Lê Nguyên Hoàng
-('96', 'CLB_SLNA', '2025-2026', 22);  -- Cao Văn Bình
+('81', 'CLB_SLNA', '2024-2025', 1),   -- Nguyễn Văn Việt
+('82', 'CLB_SLNA', '2024-2025', 5),   -- Trần Đình Hoàng
+('83', 'CLB_SLNA', '2024-2025', 9),   -- Michael Olaha (Ngoại binh)
+('84', 'CLB_SLNA', '2024-2025', 3),   -- Mario Zebic (Ngoại binh)
+('85', 'CLB_SLNA', '2024-2025', 8),   -- Phan Bá Quyền
+('86', 'CLB_SLNA', '2024-2025', 7),   -- Đinh Xuân Tiến
+('87', 'CLB_SLNA', '2024-2025', 10),  -- Trần Mạnh Quỳnh
+('88', 'CLB_SLNA', '2024-2025', 2),   -- Lê Văn Thành
+('89', 'CLB_SLNA', '2024-2025', 4),   -- Vương Văn Huy
+('90', 'CLB_SLNA', '2024-2025', 6),   -- Trần Nam Hải
+('91', 'CLB_SLNA', '2024-2025', 11),  -- Ngô Văn Lương
+('92', 'CLB_SLNA', '2024-2025', 15),  -- Nguyễn Quang Vinh
+('93', 'CLB_SLNA', '2024-2025', 99),  -- Benjamin Kuku (Ngoại binh)
+('94', 'CLB_SLNA', '2024-2025', 13),  -- Hồ Văn Cường
+('95', 'CLB_SLNA', '2024-2025', 14),  -- Lê Nguyên Hoàng
+('96', 'CLB_SLNA', '2024-2025', 22);  -- Cao Văn Bình
 
 -- ==========================================================
 -- 7. ĐÔNG Á THANH HÓA (CLB_THANHHOA) - Cầu thủ 97-112
 -- ==========================================================
 INSERT INTO ChiTietDoiBong (MaCauThu, MaClb, MuaGiai, SoAoThiDau) VALUES
-('97', 'CLB_THANHHOA', '2025-2026', 1),   -- Nguyễn Thanh Diệp
-('98', 'CLB_THANHHOA', '2025-2026', 5),   -- Gustavo Santos (Ngoại binh)
-('99', 'CLB_THANHHOA', '2025-2026', 3),   -- Trịnh Văn Lợi
-('100', 'CLB_THANHHOA', '2025-2026', 8),  -- Nguyễn Thái Sơn
-('101', 'CLB_THANHHOA', '2025-2026', 6),  -- Lâm Ti Phông
-('102', 'CLB_THANHHOA', '2025-2026', 2),  -- Hoàng Thái Bình
-('103', 'CLB_THANHHOA', '2025-2026', 9),  -- Rimario Gordon (Ngoại binh)
-('104', 'CLB_THANHHOA', '2025-2026', 7),  -- A Mít
-('105', 'CLB_THANHHOA', '2025-2026', 4),  -- Đinh Viết Tú
-('106', 'CLB_THANHHOA', '2025-2026', 10), -- Lê Quốc Phương
-('107', 'CLB_THANHHOA', '2025-2026', 15), -- Luiz Antonio (Ngoại binh)
-('108', 'CLB_THANHHOA', '2025-2026', 11), -- Võ Nguyên Hoàng
-('109', 'CLB_THANHHOA', '2025-2026', 21), -- Trịnh Xuân Hoàng
-('110', 'CLB_THANHHOA', '2025-2026', 18), -- Doãn Ngọc Tân
-('111', 'CLB_THANHHOA', '2025-2026', 12), -- Đoàn Ngọc Hà
-('112', 'CLB_THANHHOA', '2025-2026', 13); -- Lê Thanh Bình
+('97', 'CLB_THANHHOA', '2024-2025', 1),   -- Nguyễn Thanh Diệp
+('98', 'CLB_THANHHOA', '2024-2025', 5),   -- Gustavo Santos (Ngoại binh)
+('99', 'CLB_THANHHOA', '2024-2025', 3),   -- Trịnh Văn Lợi
+('100', 'CLB_THANHHOA', '2024-2025', 8),  -- Nguyễn Thái Sơn
+('101', 'CLB_THANHHOA', '2024-2025', 6),  -- Lâm Ti Phông
+('102', 'CLB_THANHHOA', '2024-2025', 2),  -- Hoàng Thái Bình
+('103', 'CLB_THANHHOA', '2024-2025', 9),  -- Rimario Gordon (Ngoại binh)
+('104', 'CLB_THANHHOA', '2024-2025', 7),  -- A Mít
+('105', 'CLB_THANHHOA', '2024-2025', 4),  -- Đinh Viết Tú
+('106', 'CLB_THANHHOA', '2024-2025', 10), -- Lê Quốc Phương
+('107', 'CLB_THANHHOA', '2024-2025', 15), -- Luiz Antonio (Ngoại binh)
+('108', 'CLB_THANHHOA', '2024-2025', 11), -- Võ Nguyên Hoàng
+('109', 'CLB_THANHHOA', '2024-2025', 21), -- Trịnh Xuân Hoàng
+('110', 'CLB_THANHHOA', '2024-2025', 18), -- Doãn Ngọc Tân
+('111', 'CLB_THANHHOA', '2024-2025', 12), -- Đoàn Ngọc Hà
+('112', 'CLB_THANHHOA', '2024-2025', 13); -- Lê Thanh Bình
 
 -- ==========================================================
 -- 8. TP.HCM FC (CLB_TPHCM) - Cầu thủ 113-128
 -- ==========================================================
 INSERT INTO ChiTietDoiBong (MaCauThu, MaClb, MuaGiai, SoAoThiDau) VALUES
-('113', 'CLB_TPHCM', '2025-2026', 1),   -- Patrik Lê Giang
-('114', 'CLB_TPHCM', '2025-2026', 2),   -- Ngô Tùng Quốc
-('115', 'CLB_TPHCM', '2025-2026', 5),   -- Brendon Lucas (Ngoại binh)
-('116', 'CLB_TPHCM', '2025-2026', 4),   -- Sầm Ngọc Đức
-('117', 'CLB_TPHCM', '2025-2026', 8),   -- Võ Huy Toàn
-('118', 'CLB_TPHCM', '2025-2026', 6),   -- Nguyễn Hạ Long
-('119', 'CLB_TPHCM', '2025-2026', 9),   -- Cheick Timité (Ngoại binh)
-('120', 'CLB_TPHCM', '2025-2026', 10),  -- Hồ Tuấn Tài
-('121', 'CLB_TPHCM', '2025-2026', 3),   -- Nguyễn Minh Tùng
-('122', 'CLB_TPHCM', '2025-2026', 7),   -- Chu Văn Kiên
-('123', 'CLB_TPHCM', '2025-2026', 22),  -- Phạm Hữu Nghĩa
-('124', 'CLB_TPHCM', '2025-2026', 21),  -- Đặng Ngọc Tuấn
-('125', 'CLB_TPHCM', '2025-2026', 15),  -- Lê Cao Hoài An
-('126', 'CLB_TPHCM', '2025-2026', 13),  -- Nguyễn Thanh Thảo
-('127', 'CLB_TPHCM', '2025-2026', 11),  -- Hoàng Vũ Samson (Ngoại binh)
-('128', 'CLB_TPHCM', '2025-2026', 18);  -- Uông Ngọc Tiến
+('113', 'CLB_TPHCM', '2024-2025', 1),   -- Patrik Lê Giang
+('114', 'CLB_TPHCM', '2024-2025', 2),   -- Ngô Tùng Quốc
+('115', 'CLB_TPHCM', '2024-2025', 5),   -- Brendon Lucas (Ngoại binh)
+('116', 'CLB_TPHCM', '2024-2025', 4),   -- Sầm Ngọc Đức
+('117', 'CLB_TPHCM', '2024-2025', 8),   -- Võ Huy Toàn
+('118', 'CLB_TPHCM', '2024-2025', 6),   -- Nguyễn Hạ Long
+('119', 'CLB_TPHCM', '2024-2025', 9),   -- Cheick Timité (Ngoại binh)
+('120', 'CLB_TPHCM', '2024-2025', 10),  -- Hồ Tuấn Tài
+('121', 'CLB_TPHCM', '2024-2025', 3),   -- Nguyễn Minh Tùng
+('122', 'CLB_TPHCM', '2024-2025', 7),   -- Chu Văn Kiên
+('123', 'CLB_TPHCM', '2024-2025', 22),  -- Phạm Hữu Nghĩa
+('124', 'CLB_TPHCM', '2024-2025', 21),  -- Đặng Ngọc Tuấn
+('125', 'CLB_TPHCM', '2024-2025', 15),  -- Lê Cao Hoài An
+('126', 'CLB_TPHCM', '2024-2025', 13),  -- Nguyễn Thanh Thảo
+('127', 'CLB_TPHCM', '2024-2025', 11),  -- Hoàng Vũ Samson (Ngoại binh)
+('128', 'CLB_TPHCM', '2024-2025', 18);  -- Uông Ngọc Tiến
 
 -- ==========================================================
 -- 9. QUẢNG NINH FC (CLB_QUANGNINH) - Cầu thủ 165-180
 -- ==========================================================
 INSERT INTO ChiTietDoiBong (MaCauThu, MaClb, MuaGiai, SoAoThiDau) VALUES
-('165', 'CLB_QUANGNINH', '2025-2026', 1),   -- Huỳnh Tuấn Linh
-('166', 'CLB_QUANGNINH', '2025-2026', 9),   -- Mạc Hồng Quân
-('167', 'CLB_QUANGNINH', '2025-2026', 10),  -- Nghiêm Xuân Tú
-('168', 'CLB_QUANGNINH', '2025-2026', 4),   -- Dương Văn Khoa
-('169', 'CLB_QUANGNINH', '2025-2026', 3),   -- Đào Duy Khánh
-('170', 'CLB_QUANGNINH', '2025-2026', 5),   -- Nguyễn Xuân Hùng
-('171', 'CLB_QUANGNINH', '2025-2026', 8),   -- Phạm Nguyên Sa
-('172', 'CLB_QUANGNINH', '2025-2026', 7),   -- Kizito Trung Hiếu (Ngoại binh)
-('173', 'CLB_QUANGNINH', '2025-2026', 11),  -- Eydison Teofilo (Ngoại binh)
-('174', 'CLB_QUANGNINH', '2025-2026', 15),  -- Nguyễn Văn Khoa
-('175', 'CLB_QUANGNINH', '2025-2026', 2),   -- Trịnh Hoa Hùng
-('176', 'CLB_QUANGNINH', '2025-2026', 6),   -- Nguyễn Tiến Duy
-('177', 'CLB_QUANGNINH', '2025-2026', 13),  -- Vũ Hồng Quân
-('178', 'CLB_QUANGNINH', '2025-2026', 14),  -- Bùi Văn Hiếu
-('179', 'CLB_QUANGNINH', '2025-2026', 18),  -- Giang Trần Quách Tân
-('180', 'CLB_QUANGNINH', '2025-2026', 21);  -- Phan Minh Thành
+('165', 'CLB_QUANGNINH', '2024-2025', 1),   -- Huỳnh Tuấn Linh
+('166', 'CLB_QUANGNINH', '2024-2025', 9),   -- Mạc Hồng Quân
+('167', 'CLB_QUANGNINH', '2024-2025', 10),  -- Nghiêm Xuân Tú
+('168', 'CLB_QUANGNINH', '2024-2025', 4),   -- Dương Văn Khoa
+('169', 'CLB_QUANGNINH', '2024-2025', 3),   -- Đào Duy Khánh
+('170', 'CLB_QUANGNINH', '2024-2025', 5),   -- Nguyễn Xuân Hùng
+('171', 'CLB_QUANGNINH', '2024-2025', 8),   -- Phạm Nguyên Sa
+('172', 'CLB_QUANGNINH', '2024-2025', 7),   -- Kizito Trung Hiếu (Ngoại binh)
+('173', 'CLB_QUANGNINH', '2024-2025', 11),  -- Eydison Teofilo (Ngoại binh)
+('174', 'CLB_QUANGNINH', '2024-2025', 15),  -- Nguyễn Văn Khoa
+('175', 'CLB_QUANGNINH', '2024-2025', 2),   -- Trịnh Hoa Hùng
+('176', 'CLB_QUANGNINH', '2024-2025', 6),   -- Nguyễn Tiến Duy
+('177', 'CLB_QUANGNINH', '2024-2025', 13),  -- Vũ Hồng Quân
+('178', 'CLB_QUANGNINH', '2024-2025', 14),  -- Bùi Văn Hiếu
+('179', 'CLB_QUANGNINH', '2024-2025', 18),  -- Giang Trần Quách Tân
+('180', 'CLB_QUANGNINH', '2024-2025', 21);  -- Phan Minh Thành
 
 -- ==========================================================
 -- 10. BÌNH ĐỊNH FC (CLB_BINHDINH) - Cầu thủ 181-196
 -- ==========================================================
 INSERT INTO ChiTietDoiBong (MaCauThu, MaClb, MuaGiai, SoAoThiDau) VALUES
-('181', 'CLB_BINHDINH', '2025-2026', 1),   -- Đặng Văn Lâm
-('182', 'CLB_BINHDINH', '2025-2026', 8),   -- Đỗ Văn Thuận
-('183', 'CLB_BINHDINH', '2025-2026', 6),   -- Cao Văn Triền
-('184', 'CLB_BINHDINH', '2025-2026', 3),   -- Lê Ngọc Bảo
-('185', 'CLB_BINHDINH', '2025-2026', 4),   -- Marlon Rangel (Ngoại binh)
-('186', 'CLB_BINHDINH', '2025-2026', 10),  -- Leonardo Artur (Ngoại binh)
-('187', 'CLB_BINHDINH', '2025-2026', 9),   -- Alan Grafite (Ngoại binh)
-('188', 'CLB_BINHDINH', '2025-2026', 7),   -- Nghiêm Thành Chí
-('189', 'CLB_BINHDINH', '2025-2026', 2),   -- Phạm Văn Thành
-('190', 'CLB_BINHDINH', '2025-2026', 22),  -- Vũ Tuyên Quang
-('191', 'CLB_BINHDINH', '2025-2026', 5),   -- Trần Đình Trọng
-('192', 'CLB_BINHDINH', '2025-2026', 13),  -- Mạc Đức Việt Anh
-('193', 'CLB_BINHDINH', '2025-2026', 11),  -- Huỳnh Tiến Đạt
-('194', 'CLB_BINHDINH', '2025-2026', 15),  -- Ngô Hồng Phước
-('195', 'CLB_BINHDINH', '2025-2026', 18),  -- Nguyễn Văn Đức
-('196', 'CLB_BINHDINH', '2025-2026', 14);  -- Adriano Schmidt (Ngoại binh)
+('181', 'CLB_BINHDINH', '2024-2025', 1),   -- Đặng Văn Lâm
+('182', 'CLB_BINHDINH', '2024-2025', 8),   -- Đỗ Văn Thuận
+('183', 'CLB_BINHDINH', '2024-2025', 6),   -- Cao Văn Triền
+('184', 'CLB_BINHDINH', '2024-2025', 3),   -- Lê Ngọc Bảo
+('185', 'CLB_BINHDINH', '2024-2025', 4),   -- Marlon Rangel (Ngoại binh)
+('186', 'CLB_BINHDINH', '2024-2025', 10),  -- Leonardo Artur (Ngoại binh)
+('187', 'CLB_BINHDINH', '2024-2025', 9),   -- Alan Grafite (Ngoại binh)
+('188', 'CLB_BINHDINH', '2024-2025', 7),   -- Nghiêm Thành Chí
+('189', 'CLB_BINHDINH', '2024-2025', 2),   -- Phạm Văn Thành
+('190', 'CLB_BINHDINH', '2024-2025', 22),  -- Vũ Tuyên Quang
+('191', 'CLB_BINHDINH', '2024-2025', 5),   -- Trần Đình Trọng
+('192', 'CLB_BINHDINH', '2024-2025', 13),  -- Mạc Đức Việt Anh
+('193', 'CLB_BINHDINH', '2024-2025', 11),  -- Huỳnh Tiến Đạt
+('194', 'CLB_BINHDINH', '2024-2025', 15),  -- Ngô Hồng Phước
+('195', 'CLB_BINHDINH', '2024-2025', 18),  -- Nguyễn Văn Đức
+('196', 'CLB_BINHDINH', '2024-2025', 14);  -- Adriano Schmidt (Ngoại binh)
 
 -- ==========================================================
 -- VÒNG 1 (Ngày 14/09/2024 & 15/09/2024)
