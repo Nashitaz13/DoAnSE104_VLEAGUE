@@ -95,3 +95,8 @@ Frontend sẽ không hoạt động nếu không có Backend chạy và Database
 
 *   **Lỗi "Internal Server Error" khi đăng nhập**:
     *   Do lỗi thư viện `bcrypt` và `passlib`. Đảm bảo file `backend/app/core/security.py` đã được patch (code mới nhất đã xử lý việc này).
+
+*   **Lỗi "resolution too deep" khi chạy pip install**:
+    *   Do xung đột phiên bản các thư viện. File `backend/requirements.txt` đã được cập nhật để fix lỗi này.
+    *   Hãy thử chạy `pip install -r requirements.txt` lại.
+    *   Nếu vẫn lỗi, hãy chạy `python -m pip install --upgrade pip` trước.

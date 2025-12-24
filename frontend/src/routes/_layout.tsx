@@ -52,18 +52,18 @@ function Layout() {
   return (
     <>
       <header className="sticky top-0 z-10 shrink-0 border-b">
-        <div className="bg-gradient-to-r from-red-800 to-red-900">
+        <div className="bg-gradient-to-r from-red-800 to-red-900 dark:from-neutral-900 dark:to-neutral-800">
           <div className="px-4 md:px-6">
             <div className="flex h-16 items-center justify-between">
               <RouterLink to="/" className="flex items-center gap-3">
-                <div className="bg-white p-2 rounded-lg">
-                  <Trophy className="h-6 w-6 text-red-600" />
+                <div className="bg-white dark:bg-neutral-800 p-2 rounded-lg">
+                  <Trophy className="h-6 w-6 text-red-600 dark:text-red-400" />
                 </div>
-                <div className="text-white">
+                <div className="text-white dark:text-white">
                   <div className="text-lg font-bold leading-none">
                     V-League 1
                   </div>
-                  <div className="text-xs text-red-100">
+                  <div className="text-xs text-red-100 dark:text-red-200">
                     Giải Vô Địch Bóng Đá Quốc Gia
                   </div>
                 </div>
@@ -76,7 +76,7 @@ function Layout() {
                     asChild
                     variant="ghost"
                     size="sm"
-                    className="text-white hover:bg-red-500 [&.active]:bg-white [&.active]:text-red-600 [&.active]:hover:bg-gray-100"
+                    className="text-white hover:bg-red-500 dark:hover:bg-red-600 [&.active]:bg-white [&.active]:text-red-600 [&.active]:hover:bg-gray-100 dark:[&.active]:bg-neutral-800 dark:[&.active]:text-white dark:[&.active]:hover:bg-neutral-700"
                   >
                     <RouterLink to={to} className="flex items-center">
                       <Icon className="h-4 w-4 mr-2" />
@@ -89,7 +89,7 @@ function Layout() {
                     asChild
                     variant="ghost"
                     size="sm"
-                    className="text-white hover:bg-red-500 [&.active]:bg-white [&.active]:text-red-600 [&.active]:hover:bg-gray-100"
+                    className="text-white hover:bg-red-500 dark:hover:bg-red-600 [&.active]:bg-white [&.active]:text-red-600 [&.active]:hover:bg-gray-100 dark:[&.active]:bg-neutral-800 dark:[&.active]:text-white dark:[&.active]:hover:bg-neutral-700"
                   >
                     <RouterLink
                       to="/admin-dashboard"
@@ -105,7 +105,7 @@ function Layout() {
                     asChild
                     variant="ghost"
                     size="sm"
-                    className="text-white hover:bg-red-500 [&.active]:bg-white [&.active]:text-red-600 [&.active]:hover:bg-gray-100"
+                    className="text-white hover:bg-red-500 dark:hover:bg-red-600 [&.active]:bg-white [&.active]:text-red-600 [&.active]:hover:bg-gray-100 dark:[&.active]:bg-neutral-800 dark:[&.active]:text-white dark:[&.active]:hover:bg-neutral-700"
                   >
                     <RouterLink
                       to="/team-manager"
@@ -124,7 +124,7 @@ function Layout() {
                     <Button
                       variant="ghost"
                       size="sm"
-                      className="text-white hover:bg-red-500"
+                      className="text-white hover:bg-red-500 dark:hover:bg-red-600"
                       aria-label="Chế độ giao diện"
                     >
                       {resolvedTheme === "dark" ? (
@@ -157,7 +157,7 @@ function Layout() {
                 </DropdownMenu>
                 {currentUser ? (
                   <>
-                    <div className="text-white text-sm">
+                    <div className="text-white dark:text-white text-sm">
                       <span className="hidden sm:inline">Xin chào, </span>
                       <span className="font-medium">
                         {currentUser.full_name ||
@@ -169,7 +169,7 @@ function Layout() {
                       variant="ghost"
                       size="sm"
                       onClick={logout}
-                      className="text-white hover:bg-red-500"
+                      className="text-white hover:bg-red-500 dark:hover:bg-red-600"
                     >
                       <LogOut className="h-4 w-4" />
                     </Button>
@@ -179,7 +179,7 @@ function Layout() {
                     asChild
                     variant="ghost"
                     size="sm"
-                    className="text-white hover:bg-red-500 [&.active]:bg-white [&.active]:text-red-600 [&.active]:hover:bg-gray-100"
+                    className="text-white hover:bg-red-500 dark:hover:bg-red-600 [&.active]:bg-white [&.active]:text-red-600 [&.active]:hover:bg-gray-100 dark:[&.active]:bg-neutral-800 dark:[&.active]:text-white dark:[&.active]:hover:bg-neutral-700"
                   >
                     <RouterLink to="/login" className="flex items-center">
                       <User className="h-4 w-4 mr-2" />
@@ -188,24 +188,24 @@ function Layout() {
                   </Button>
                 )}
               </div>
-            </div>
 
-            <div className="md:hidden pb-3">
-              <div className="flex flex-wrap gap-2">
-                {navItems.map(({ to, label, Icon }) => (
-                  <Button
-                    key={to}
-                    asChild
-                    variant="ghost"
-                    size="sm"
-                    className="text-white hover:bg-red-500 [&.active]:bg-white [&.active]:text-red-600 [&.active]:hover:bg-gray-100"
-                  >
-                    <RouterLink to={to} className="flex items-center">
-                      <Icon className="h-4 w-4 mr-1" />
-                      {label}
-                    </RouterLink>
-                  </Button>
-                ))}
+              <div className="md:hidden pb-3">
+                <div className="flex flex-wrap gap-2">
+                  {navItems.map(({ to, label, Icon }) => (
+                    <Button
+                      key={to}
+                      asChild
+                      variant="ghost"
+                      size="sm"
+                      className="text-white hover:bg-red-500 dark:hover:bg-red-600 [&.active]:bg-white [&.active]:text-red-600 [&.active]:hover:bg-gray-100 dark:[&.active]:bg-neutral-800 dark:[&.active]:text-white dark:[&.active]:hover:bg-neutral-700"
+                    >
+                      <RouterLink to={to} className="flex items-center">
+                        <Icon className="h-4 w-4 mr-1" />
+                        {label}
+                      </RouterLink>
+                    </Button>
+                  ))}
+                </div>
               </div>
             </div>
           </div>

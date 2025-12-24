@@ -1,9 +1,5 @@
 import { zodResolver } from "@hookform/resolvers/zod"
-import {
-  createFileRoute,
-  Link as RouterLink,
-  redirect,
-} from "@tanstack/react-router"
+import { createFileRoute, Link as RouterLink } from "@tanstack/react-router"
 import { useForm } from "react-hook-form"
 import { z } from "zod"
 
@@ -21,7 +17,7 @@ import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { LoadingButton } from "@/components/ui/loading-button"
 import { PasswordInput } from "@/components/ui/password-input"
-import useAuth, { isLoggedIn } from "@/hooks/useAuth"
+import useAuth from "@/hooks/useAuth"
 
 const formSchema = z.object({
   username: z.string().min(1, { message: "Vui lòng nhập tên đăng nhập" }),
@@ -35,13 +31,6 @@ type FormData = z.infer<typeof formSchema>
 
 export const Route = createFileRoute("/login")({
   component: Login,
-  beforeLoad: async () => {
-    if (isLoggedIn()) {
-      throw redirect({
-        to: "/",
-      })
-    }
-  },
   head: () => ({
     meta: [
       {

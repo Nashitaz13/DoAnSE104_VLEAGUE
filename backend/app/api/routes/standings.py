@@ -2,7 +2,7 @@ from typing import Any
 
 from fastapi import APIRouter, HTTPException, Query
 
-from app.api.deps import CurrentUserVLeague, SessionDep
+from app.api.deps import SessionDep
 from app import crud
 from app.models import StandingsResponse
 
@@ -13,13 +13,12 @@ router = APIRouter()
 def get_standings(
     *,
     session: SessionDep,
-    current_user: CurrentUserVLeague,
     muagiai: str = Query(..., description="Season ID (e.g., '2024-2025')")
 ) -> Any:
     """
     Get standings table for a season.
     
-    **Authentication required** - Any authenticated user can view standings.
+    Public endpoint - no authentication required.
     
     **Algorithm:**
     - Computes from match results (`lichthidau.tiso`)

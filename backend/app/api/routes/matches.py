@@ -21,7 +21,6 @@ router = APIRouter()
 @router.get("/", response_model=list[LichThiDauPublic])
 def read_matches(
     session: SessionDep,
-    current_user: CurrentUserVLeague,
     skip: int = 0,
     limit: int = Query(default=100, le=100),
     muagiai: str | None = None,
@@ -56,7 +55,6 @@ def read_matches(
 @router.get("/{matran}", response_model=LichThiDauDetail)
 def read_match(
     session: SessionDep,
-    current_user: CurrentUserVLeague,
     matran: str,
 ) -> Any:
     """

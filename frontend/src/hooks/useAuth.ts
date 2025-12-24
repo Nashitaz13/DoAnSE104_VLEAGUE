@@ -2,14 +2,14 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query"
 import { useNavigate } from "@tanstack/react-router"
 import axios from "axios"
 
-import {
-  type Body_login_login_access_token as AccessToken,
-  OpenAPI,
-  type UserPublic,
-  type UserRegister,
-} from "@/client"
+import { OpenAPI, type UserPublic, type UserRegister } from "@/client"
 import { handleError } from "@/utils"
 import useCustomToast from "./useCustomToast"
+
+type LoginPayload = {
+  username: string
+  password: string
+}
 
 const isLoggedIn = () => {
   return localStorage.getItem("access_token") !== null
@@ -49,7 +49,7 @@ const useAuth = () => {
     },
   })
 
-  const login = async (data: AccessToken) => {
+  const login = async (data: LoginPayload) => {
     const res = await axios.post(`${OpenAPI.BASE}/api/v1/auth/login`, data, {
       headers: { "Content-Type": "application/json" },
     })
@@ -57,18 +57,28 @@ const useAuth = () => {
     if (res.data.role) {
       localStorage.setItem("role", res.data.role)
     }
+    return (res.data.role as string | null) || null
   }
 
   const loginMutation = useMutation({
     mutationFn: login,
-    onSuccess: () => {
-      navigate({ to: "/" })
+    onSuccess: (role: string | null) => {
+      if (role === "BTC") {
+        navigate({ to: "/admin-dashboard" })
+        return
+      }
+      if (["QuanLyDoi", "CLB"].includes(role || "")) {
+        navigate({ to: "/team-manager" })
+        return
+      }
+      navigate({ to: "/league-table" })
     },
     onError: handleError.bind(showErrorToast),
   })
 
   const logout = () => {
     localStorage.removeItem("access_token")
+    localStorage.removeItem("role")
     navigate({ to: "/login" })
   }
 
