@@ -16,6 +16,24 @@ jobs:
     steps:
       - name: Checkout
         uses: actions/checkout@v6
+      - name: Create .env for docker-compose
+        run: |
+          cat > .env <<'EOF'
+          POSTGRES_USER=test
+          POSTGRES_PASSWORD=testpassword
+          POSTGRES_DB=testdb
+          POSTGRES_PORT=5432
+          DOCKER_IMAGE_BACKEND=vleague-backend
+          DOCKER_IMAGE_FRONTEND=vleague-frontend
+          STACK_NAME=vleague
+          DOMAIN=localhost
+          FRONTEND_HOST=localhost
+          SECRET_KEY=changeme_ci_secret_key
+          FIRST_SUPERUSER=admin@example.com
+          FIRST_SUPERUSER_PASSWORD=changeme_ci_superuser
+          BACKEND_CORS_ORIGINS=http://localhost:5173
+          ENVIRONMENT=development
+          EOF
       - run: docker compose build
       - run: docker compose down -v --remove-orphans
       - run: docker compose up -d --wait backend frontend adminer

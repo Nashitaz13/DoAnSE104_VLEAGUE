@@ -10,7 +10,6 @@ import {
   Clock,
   Filter,
   MapPin,
-  Plus,
 } from "lucide-react"
 import { useMemo, useState } from "react"
 
@@ -65,6 +64,7 @@ function FixturesPage() {
   const [selectedDate, setSelectedDate] = useState<string>("all")
   const [selectedTeam, setSelectedTeam] = useState<string>("all")
   const [selectedStatus, setSelectedStatus] = useState<string>("all")
+  const [showFilters, setShowFilters] = useState<boolean>(false)
 
   // Fetch matches
   const {
@@ -265,13 +265,10 @@ function FixturesPage() {
                 <Bell className="w-4 h-4 mr-2" />
                 Thông báo
               </Button>
-              <Button className="bg-orange-500 hover:bg-orange-600 text-white border-none">
-                <Plus className="w-4 h-4 mr-2" />
-                Thêm vào lịch
-              </Button>
               <Button
                 variant="outline"
                 className="border-white text-white hover:bg-white hover:text-red-900 bg-transparent"
+                onClick={() => setShowFilters((v) => !v)}
               >
                 <Filter className="w-4 h-4 mr-2" />
                 Bộ lọc
@@ -345,31 +342,33 @@ function FixturesPage() {
           </div>
 
           {/* Secondary Filters */}
-          <div className="flex gap-4 items-center flex-wrap">
-            <Select value={selectedTeam} onValueChange={setSelectedTeam}>
-              <SelectTrigger className="w-48">
-                <SelectValue placeholder="Chọn đội bóng" />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="all">Tất cả đội</SelectItem>
-                {teamsData?.map((team) => (
-                  <SelectItem key={team.maclb} value={team.maclb}>
-                    {team.tenclb}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-            <Select value={selectedStatus} onValueChange={setSelectedStatus}>
-              <SelectTrigger className="w-40">
-                <SelectValue placeholder="Trạng thái" />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="all">Tất cả</SelectItem>
-                <SelectItem value="Sắp diễn ra">Sắp diễn ra</SelectItem>
-                <SelectItem value="Kết thúc">Kết thúc</SelectItem>
-              </SelectContent>
-            </Select>
-          </div>
+          {showFilters && (
+            <div className="flex gap-4 items-center flex-wrap">
+              <Select value={selectedTeam} onValueChange={setSelectedTeam}>
+                <SelectTrigger className="w-48">
+                  <SelectValue placeholder="Chọn đội bóng" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="all">Tất cả đội</SelectItem>
+                  {teamsData?.map((team) => (
+                    <SelectItem key={team.maclb} value={team.maclb}>
+                      {team.tenclb}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+              <Select value={selectedStatus} onValueChange={setSelectedStatus}>
+                <SelectTrigger className="w-40">
+                  <SelectValue placeholder="Trạng thái" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="all">Tất cả</SelectItem>
+                  <SelectItem value="Sắp diễn ra">Sắp diễn ra</SelectItem>
+                  <SelectItem value="Kết thúc">Kết thúc</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+          )}
         </section>
 
         {/* Matches List */}
