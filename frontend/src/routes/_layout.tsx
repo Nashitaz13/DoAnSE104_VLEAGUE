@@ -51,34 +51,37 @@ function Layout() {
 
   return (
     <>
-      <header className="sticky top-0 z-10 shrink-0 border-b">
+      {/* SỬA: Tăng z-index lên 50 để luôn nằm trên các nội dung khác */}
+      <header className="sticky top-0 z-50 shrink-0 border-b shadow-md">
         <div className="bg-gradient-to-r from-red-800 to-red-900 dark:from-neutral-900 dark:to-neutral-800">
           <div className="px-4 md:px-6">
+            {/* Dòng 1: Logo, Menu Desktop, User Actions */}
             <div className="flex h-16 items-center justify-between">
               <RouterLink to="/" className="flex items-center gap-3">
-                <div className="bg-white dark:bg-neutral-800 p-2 rounded-lg">
+                <div className="bg-white dark:bg-neutral-800 p-2 rounded-lg shadow-sm">
                   <Trophy className="h-6 w-6 text-red-600 dark:text-red-400" />
                 </div>
                 <div className="text-white dark:text-white">
                   <div className="text-lg font-bold leading-none">
                     V-League 1
                   </div>
-                  <div className="text-xs text-red-100 dark:text-red-200">
+                  <div className="text-xs text-red-100 dark:text-red-200 opacity-90">
                     Giải Vô Địch Bóng Đá Quốc Gia
                   </div>
                 </div>
               </RouterLink>
 
-              <nav className="hidden md:flex items-center gap-2">
+              {/* Desktop Nav */}
+              <nav className="hidden md:flex items-center gap-1">
                 {navItems.map(({ to, label, Icon }) => (
                   <Button
                     key={to}
                     asChild
                     variant="ghost"
                     size="sm"
-                    className="text-white hover:bg-red-500 dark:hover:bg-red-600 [&.active]:bg-white [&.active]:text-red-600 [&.active]:hover:bg-gray-100 dark:[&.active]:bg-neutral-800 dark:[&.active]:text-white dark:[&.active]:hover:bg-neutral-700"
+                    className="text-white hover:bg-white/10 dark:hover:bg-white/10 [&.active]:bg-white [&.active]:text-red-700 [&.active]:shadow-sm"
                   >
-                    <RouterLink to={to} className="flex items-center">
+                    <RouterLink to={to} className="flex items-center font-medium">
                       <Icon className="h-4 w-4 mr-2" />
                       {label}
                     </RouterLink>
@@ -89,11 +92,11 @@ function Layout() {
                     asChild
                     variant="ghost"
                     size="sm"
-                    className="text-white hover:bg-red-500 dark:hover:bg-red-600 [&.active]:bg-white [&.active]:text-red-600 [&.active]:hover:bg-gray-100 dark:[&.active]:bg-neutral-800 dark:[&.active]:text-white dark:[&.active]:hover:bg-neutral-700"
+                    className="text-white hover:bg-white/10 dark:hover:bg-white/10 [&.active]:bg-white [&.active]:text-red-700"
                   >
                     <RouterLink
                       to="/admin-dashboard"
-                      className="flex items-center"
+                      className="flex items-center font-medium"
                     >
                       <User className="h-4 w-4 mr-2" />
                       Quản trị
@@ -105,11 +108,11 @@ function Layout() {
                     asChild
                     variant="ghost"
                     size="sm"
-                    className="text-white hover:bg-red-500 dark:hover:bg-red-600 [&.active]:bg-white [&.active]:text-red-600 [&.active]:hover:bg-gray-100 dark:[&.active]:bg-neutral-800 dark:[&.active]:text-white dark:[&.active]:hover:bg-neutral-700"
+                    className="text-white hover:bg-white/10 dark:hover:bg-white/10 [&.active]:bg-white [&.active]:text-red-700"
                   >
                     <RouterLink
                       to="/team-manager"
-                      className="flex items-center"
+                      className="flex items-center font-medium"
                     >
                       <User className="h-4 w-4 mr-2" />
                       Quản lý đội
@@ -118,13 +121,14 @@ function Layout() {
                 )}
               </nav>
 
+              {/* User & Theme Actions */}
               <div className="flex items-center gap-2">
                 <DropdownMenu>
                   <DropdownMenuTrigger asChild>
                     <Button
                       variant="ghost"
                       size="sm"
-                      className="text-white hover:bg-red-500 dark:hover:bg-red-600"
+                      className="text-white hover:bg-white/10"
                       aria-label="Chế độ giao diện"
                     >
                       {resolvedTheme === "dark" ? (
@@ -155,10 +159,11 @@ function Layout() {
                     </DropdownMenuRadioGroup>
                   </DropdownMenuContent>
                 </DropdownMenu>
+
                 {currentUser ? (
                   <>
                     <div className="text-white dark:text-white text-sm">
-                      <span className="hidden sm:inline">Xin chào, </span>
+                      <span className="hidden lg:inline opacity-90">Xin chào, </span>
                       <span className="font-medium">
                         {currentUser.full_name ||
                           (currentUser as any).tendangnhap ||
@@ -169,7 +174,8 @@ function Layout() {
                       variant="ghost"
                       size="sm"
                       onClick={logout}
-                      className="text-white hover:bg-red-500 dark:hover:bg-red-600"
+                      className="text-white hover:bg-white/10"
+                      title="Đăng xuất"
                     >
                       <LogOut className="h-4 w-4" />
                     </Button>
@@ -179,40 +185,40 @@ function Layout() {
                     asChild
                     variant="ghost"
                     size="sm"
-                    className="text-white hover:bg-red-500 dark:hover:bg-red-600 [&.active]:bg-white [&.active]:text-red-600 [&.active]:hover:bg-gray-100 dark:[&.active]:bg-neutral-800 dark:[&.active]:text-white dark:[&.active]:hover:bg-neutral-700"
+                    className="text-white hover:bg-white/10"
                   >
-                    <RouterLink to="/login" className="flex items-center">
+                    <RouterLink to="/login" className="flex items-center font-medium">
                       <User className="h-4 w-4 mr-2" />
                       Đăng nhập
                     </RouterLink>
                   </Button>
                 )}
               </div>
+            </div>
 
-              <div className="md:hidden pb-3">
-                <div className="flex flex-wrap gap-2">
-                  {navItems.map(({ to, label, Icon }) => (
-                    <Button
-                      key={to}
-                      asChild
-                      variant="ghost"
-                      size="sm"
-                      className="text-white hover:bg-red-500 dark:hover:bg-red-600 [&.active]:bg-white [&.active]:text-red-600 [&.active]:hover:bg-gray-100 dark:[&.active]:bg-neutral-800 dark:[&.active]:text-white dark:[&.active]:hover:bg-neutral-700"
-                    >
-                      <RouterLink to={to} className="flex items-center">
-                        <Icon className="h-4 w-4 mr-1" />
-                        {label}
-                      </RouterLink>
-                    </Button>
-                  ))}
-                </div>
+            <div className="md:hidden pb-4 pt-1 border-t border-white/10">
+              <div className="flex flex-wrap gap-2 justify-center">
+                {navItems.map(({ to, label, Icon }) => (
+                  <Button
+                    key={to}
+                    asChild
+                    variant="ghost"
+                    size="sm"
+                    className="text-white hover:bg-white/10 [&.active]:bg-white [&.active]:text-red-700 h-8 px-3 text-xs"
+                  >
+                    <RouterLink to={to} className="flex items-center">
+                      <Icon className="h-3 w-3 mr-1.5" />
+                      {label}
+                    </RouterLink>
+                  </Button>
+                ))}
               </div>
             </div>
           </div>
         </div>
       </header>
-      <main className="flex-1 p-6 md:p-8">
-        <div className="mx-auto max-w-7xl">
+      <main className="flex-1 p-0">
+        <div className="min-h-screen">
           <Outlet />
         </div>
       </main>
