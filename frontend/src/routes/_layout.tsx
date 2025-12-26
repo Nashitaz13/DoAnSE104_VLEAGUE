@@ -25,7 +25,8 @@ import {
   DropdownMenuRadioItem,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu"
-import useAuth, { isBTC, isLoggedIn, isQuanLyDoi } from "@/hooks/useAuth"
+
+import { getCurrentUser, logoutUser, isBTC, isQuanLyDoi, isLoggedIn } from "@/utils/auth"
 
 export const Route = createFileRoute("/_layout")({
   component: Layout,
@@ -39,8 +40,18 @@ export const Route = createFileRoute("/_layout")({
 })
 
 function Layout() {
-  const { user: currentUser, logout } = useAuth()
+  const currentUser = getCurrentUser() 
+  const isAuth = isLoggedIn();
   const { theme, resolvedTheme, setTheme } = useTheme()
+  
+  const handleLogout = () => {
+    if (window.confirm("Bạn có chắc chắn muốn đăng xuất không?")) {
+      localStorage.removeItem("access_token")
+      localStorage.removeItem("currentUser")
+      window.location.href = "/login"
+    }
+  }
+
   const navItems = [
     { to: "/", label: "Trang chủ", Icon: Trophy },
     { to: "/fixtures", label: "Lịch thi đấu", Icon: Calendar },
@@ -51,11 +62,10 @@ function Layout() {
 
   return (
     <>
-      {/* SỬA: Tăng z-index lên 50 để luôn nằm trên các nội dung khác */}
       <header className="sticky top-0 z-50 shrink-0 border-b shadow-md">
         <div className="bg-gradient-to-r from-red-800 to-red-900 dark:from-neutral-900 dark:to-neutral-800">
           <div className="px-4 md:px-6">
-            {/* Dòng 1: Logo, Menu Desktop, User Actions */}
+            {/*Logo, Menu Desktop, User Actions */}
             <div className="flex h-16 items-center justify-between">
               <RouterLink to="/" className="flex items-center gap-3">
                 <div className="bg-white dark:bg-neutral-800 p-2 rounded-lg shadow-sm">
@@ -160,20 +170,18 @@ function Layout() {
                   </DropdownMenuContent>
                 </DropdownMenu>
 
-                {currentUser ? (
+                {isAuth ? (
                   <>
                     <div className="text-white dark:text-white text-sm">
                       <span className="hidden lg:inline opacity-90">Xin chào, </span>
                       <span className="font-medium">
-                        {currentUser.full_name ||
-                          (currentUser as any).tendangnhap ||
-                          currentUser.email}
+                        {currentUser?.tendangnhap || currentUser?.username || currentUser?.hoten || "User"}
                       </span>
                     </div>
                     <Button
                       variant="ghost"
                       size="sm"
-                      onClick={logout}
+                      onClick={handleLogout}
                       className="text-white hover:bg-white/10"
                       title="Đăng xuất"
                     >

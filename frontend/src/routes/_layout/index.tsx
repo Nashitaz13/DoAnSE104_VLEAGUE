@@ -228,17 +228,48 @@ function HomePage() {
                                 </tr>
                             </thead>
                             <tbody>
-                                {standings.map((team: any, idx: number) => (
-                                    <tr key={team.maclb} className="border-b last:border-0 hover:bg-muted/20">
-                                        <td className="px-4 py-3 text-center font-bold">
-                                            {idx === 0 ? <span className="text-yellow-600">1</span> : idx + 1}
-                                        </td>
-                                        <td className="px-4 py-3 font-medium">{team.ten_clb}</td>
-                                        <td className="px-4 py-3 text-center text-muted-foreground">{team.so_tran}</td>
-                                        <td className="px-4 py-3 text-center text-muted-foreground">{team.ban_thang - team.ban_thua}</td>
-                                        <td className="px-4 py-3 text-center font-bold text-primary">{team.diem}</td>
-                                    </tr>
-                                ))}
+                                {standings.length > 0 ? (
+                                  standings.map((team: any, idx: number) => {
+                                      // 1. Ép kiểu về số và mặc định là 0 nếu dữ liệu lỗi/null
+                                      const banThang = Number(team.ban_thang) || 0;
+                                      const banThua = Number(team.ban_thua) || 0;
+                                      
+                                      // 2. Tính hiệu số
+                                      const hieuSo = banThang - banThua;
+                                      
+                                      // 3. Xử lý hiển thị (Tránh NaN tuyệt đối)
+                                      // Nếu hieuSo dương thêm dấu +, nếu là NaN thì hiện 0
+                                      const isValidNumber = !isNaN(hieuSo);
+                                      const hieuSoDisplay = isValidNumber 
+                                          ? (hieuSo > 0 ? `+${hieuSo}` : hieuSo) 
+                                          : 0;
+
+                                      return (
+                                          <tr key={team.maclb} className="border-b last:border-0 hover:bg-muted/20">
+                                              <td className="px-4 py-3 text-center font-bold">
+                                                  {idx === 0 ? <span className="w-6 h-6 rounded-full bg-yellow-100 text-yellow-700 flex items-center justify-center mx-auto">1</span> : idx + 1}
+                                              </td>
+                                              <td className="px-4 py-3 font-medium">
+                                                  <div className="flex items-center gap-2">
+                                                      <span>{team.ten_clb || "CLB"}</span>
+                                                      {idx < 1 && <span className="text-[10px] bg-green-100 text-green-700 px-1 rounded">ACL</span>}
+                                                  </div>
+                                              </td>
+                                              <td className="px-4 py-3 text-center text-muted-foreground">{team.so_tran || 0}</td>
+                                              {/* Hiển thị biến đã xử lý an toàn */}
+                                              <td className="px-4 py-3 text-center text-muted-foreground font-medium">{hieuSoDisplay}</td>
+                                              <td className="px-4 py-3 text-center font-bold text-primary text-base">{team.diem || 0}</td>
+                                          </tr>
+                                      )
+                                  })
+                              ) : (
+                                  <tr>
+                                      <td colSpan={5} className="text-center py-8 text-muted-foreground">
+                                          {/* Hiển thị thông báo nhẹ nhàng khi API lỗi */}
+                                          Chưa có dữ liệu (Vui lòng kiểm tra kết nối API)
+                                      </td>
+                                  </tr>
+                              )}
                             </tbody>
                         </table>
                     </div>
