@@ -83,3 +83,16 @@ def require_role(*allowed_roles: str):
             )
         return current_user
     return role_checker
+
+# Compatibility dependency for routes expecting superuser access
+def get_current_active_superuser(
+    session: SessionDep,
+    current_user: CurrentUserVLeague,
+) -> TaiKhoan:
+    role = crud.get_user_role(session=session, user=current_user)
+    if role != "BTC":
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="The user doesn't have enough privileges",
+        )
+    return current_user

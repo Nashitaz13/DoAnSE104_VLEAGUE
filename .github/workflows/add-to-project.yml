@@ -11,6 +11,7 @@ jobs:
   add-to-project:
     name: Add to project
     runs-on: ubuntu-latest
+    if: ${{ secrets.PROJECTS_TOKEN }}
     steps:
       - uses: actions/add-to-project@v1.0.2
         with:
