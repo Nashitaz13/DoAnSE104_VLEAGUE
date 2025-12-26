@@ -33,4 +33,4 @@ python-dotenv==1.0.1
 
 
 # Monitoring (Optional)
-sentry-sdk[fastapi]>=1.40.6,<2.0.0
+sentry-sdk[fastapi]>=1.40.6,<3.0.0
