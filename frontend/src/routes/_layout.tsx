@@ -10,10 +10,12 @@ import {
   LogOut,
   Monitor,
   Moon,
+  Shield,
   Sun,
   Trophy,
   User,
   Users,
+  Flag, // [MỚI] Import icon lá cờ
 } from "lucide-react"
 import { Footer } from "@/components/Common/Footer"
 import { useTheme } from "@/components/theme-provider"
@@ -26,7 +28,7 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu"
 
-import { getCurrentUser, logoutUser, isBTC, isQuanLyDoi, isLoggedIn } from "@/utils/auth"
+import { getCurrentUser, logoutUser, isBTC, isQuanLyDoi, isLoggedIn, isQuanChuc } from "@/utils/auth"
 
 export const Route = createFileRoute("/_layout")({
   component: Layout,
@@ -97,6 +99,8 @@ function Layout() {
                     </RouterLink>
                   </Button>
                 ))}
+
+                {/* NÚT QUẢN TRỊ (BTC) */}
                 {isBTC() && (
                   <Button
                     asChild
@@ -104,28 +108,60 @@ function Layout() {
                     size="sm"
                     className="text-white hover:bg-white/10 dark:hover:bg-white/10 [&.active]:bg-white [&.active]:text-red-700"
                   >
-                    <RouterLink
-                      to="/admin-dashboard"
-                      className="flex items-center font-medium"
-                    >
-                      <User className="h-4 w-4 mr-2" />
+                  <RouterLink
+                    to="/admin-dashboard"
+                    className="
+                      flex items-center gap-2 px-3 py-1.5 rounded-full border border-white/20 transition-all font-medium text-sm
+                      text-white hover:bg-white/10 
+                      [&.active]:bg-white [&.active]:text-red-700 [&.active]:font-bold [&.active]:shadow-md
+                    "
+                  >
+                  <Shield className="w-4 h-4" />
                       Quản trị
                     </RouterLink>
                   </Button>
                 )}
+
+                {/* NÚT QUẢN LÝ ĐỘI */}
                 {isQuanLyDoi() && (
                   <Button
                     asChild
                     variant="ghost"
                     size="sm"
-                    className="text-white hover:bg-white/10 dark:hover:bg-white/10 [&.active]:bg-white [&.active]:text-red-700"
+                    className="text-white hover:bg-white/10 dark:hover:bg-white/10 [&.active]:bg-white [&.active]:text-blue-700"
                   >
                     <RouterLink
                       to="/team-manager"
-                      className="flex items-center font-medium"
+                      className="
+                        flex items-center gap-2 px-3 py-1.5 rounded-full border border-white/20 transition-all font-medium text-sm
+                        text-white hover:bg-white/10 
+                        [&.active]:bg-white [&.active]:text-blue-700 [&.active]:font-bold [&.active]:shadow-md
+                      "
                     >
-                      <User className="h-4 w-4 mr-2" />
+                      <User className="h-4 w-4" />
                       Quản lý đội
+                    </RouterLink>
+                  </Button>
+                )}
+
+                {/* [MỚI] NÚT QUAN CHỨC / TRỌNG TÀI */}
+                {isQuanChuc() && (
+                  <Button
+                    asChild
+                    variant="ghost"
+                    size="sm"
+                    className="text-white hover:bg-white/10 dark:hover:bg-white/10 [&.active]:bg-white [&.active]:text-purple-700"
+                  >
+                    <RouterLink
+                      to="/official-dashboard"
+                      className="
+                        flex items-center gap-2 px-3 py-1.5 rounded-full border border-white/20 transition-all font-medium text-sm
+                        text-white hover:bg-white/10 
+                        [&.active]:bg-white [&.active]:text-purple-700 [&.active]:font-bold [&.active]:shadow-md
+                      "
+                    >
+                      <Flag className="h-4 w-4" />
+                      Quan chức
                     </RouterLink>
                   </Button>
                 )}
@@ -204,6 +240,7 @@ function Layout() {
               </div>
             </div>
 
+            {/* Mobile Menu */}
             <div className="md:hidden pb-4 pt-1 border-t border-white/10">
               <div className="flex flex-wrap gap-2 justify-center">
                 {navItems.map(({ to, label, Icon }) => (
@@ -226,7 +263,7 @@ function Layout() {
         </div>
       </header>
       <main className="flex-1 p-0">
-        <div className="min-h-screen">
+        <div className="min-h-[calc(100vh-4rem)] bg-gray-50 font-sans">
           <Outlet />
         </div>
       </main>

@@ -35,3 +35,8 @@ export const isQuanLyDoi = () => {
   const user = getCurrentUser()
   return user?.role === "QuanLyDoi" || user?.role === "manager"
 }
+
+export const isQuanChuc = () => {
+  const user = getCurrentUser();
+  return user?.role === "TrongTai" || user?.role === "official"
+};
