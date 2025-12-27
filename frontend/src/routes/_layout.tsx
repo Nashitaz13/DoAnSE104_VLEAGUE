@@ -10,10 +10,12 @@ import {
   LogOut,
   Monitor,
   Moon,
+  Shield,
   Sun,
   Trophy,
   User,
   Users,
+  Flag, // [MỚI] Import icon lá cờ
 } from "lucide-react"
 import { Footer } from "@/components/Common/Footer"
 import { useTheme } from "@/components/theme-provider"
@@ -25,7 +27,8 @@ import {
   DropdownMenuRadioItem,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu"
-import useAuth, { isBTC, isLoggedIn, isQuanLyDoi } from "@/hooks/useAuth"
+
+import { getCurrentUser, logoutUser, isBTC, isQuanLyDoi, isLoggedIn, isQuanChuc } from "@/utils/auth"
 
 export const Route = createFileRoute("/_layout")({
   component: Layout,
@@ -39,8 +42,18 @@ export const Route = createFileRoute("/_layout")({
 })
 
 function Layout() {
-  const { user: currentUser, logout } = useAuth()
+  const currentUser = getCurrentUser() 
+  const isAuth = isLoggedIn();
   const { theme, resolvedTheme, setTheme } = useTheme()
+  
+  const handleLogout = () => {
+    if (window.confirm("Bạn có chắc chắn muốn đăng xuất không?")) {
+      localStorage.removeItem("access_token")
+      localStorage.removeItem("currentUser")
+      window.location.href = "/login"
+    }
+  }
+
   const navItems = [
     { to: "/", label: "Trang chủ", Icon: Trophy },
     { to: "/fixtures", label: "Lịch thi đấu", Icon: Calendar },
@@ -51,80 +64,117 @@ function Layout() {
 
   return (
     <>
-      <header className="sticky top-0 z-10 shrink-0 border-b">
+      <header className="sticky top-0 z-50 shrink-0 border-b shadow-md">
         <div className="bg-gradient-to-r from-red-800 to-red-900 dark:from-neutral-900 dark:to-neutral-800">
           <div className="px-4 md:px-6">
+            {/*Logo, Menu Desktop, User Actions */}
             <div className="flex h-16 items-center justify-between">
               <RouterLink to="/" className="flex items-center gap-3">
-                <div className="bg-white dark:bg-neutral-800 p-2 rounded-lg">
+                <div className="bg-white dark:bg-neutral-800 p-2 rounded-lg shadow-sm">
                   <Trophy className="h-6 w-6 text-red-600 dark:text-red-400" />
                 </div>
                 <div className="text-white dark:text-white">
                   <div className="text-lg font-bold leading-none">
                     V-League 1
                   </div>
-                  <div className="text-xs text-red-100 dark:text-red-200">
+                  <div className="text-xs text-red-100 dark:text-red-200 opacity-90">
                     Giải Vô Địch Bóng Đá Quốc Gia
                   </div>
                 </div>
               </RouterLink>
 
-              <nav className="hidden md:flex items-center gap-2">
+              {/* Desktop Nav */}
+              <nav className="hidden md:flex items-center gap-1">
                 {navItems.map(({ to, label, Icon }) => (
                   <Button
                     key={to}
                     asChild
                     variant="ghost"
                     size="sm"
-                    className="text-white hover:bg-red-500 dark:hover:bg-red-600 [&.active]:bg-white [&.active]:text-red-600 [&.active]:hover:bg-gray-100 dark:[&.active]:bg-neutral-800 dark:[&.active]:text-white dark:[&.active]:hover:bg-neutral-700"
+                    className="text-white hover:bg-white/10 dark:hover:bg-white/10 [&.active]:bg-white [&.active]:text-red-700 [&.active]:shadow-sm"
                   >
-                    <RouterLink to={to} className="flex items-center">
+                    <RouterLink to={to} className="flex items-center font-medium">
                       <Icon className="h-4 w-4 mr-2" />
                       {label}
                     </RouterLink>
                   </Button>
                 ))}
+
+                {/* NÚT QUẢN TRỊ (BTC) */}
                 {isBTC() && (
                   <Button
                     asChild
                     variant="ghost"
                     size="sm"
-                    className="text-white hover:bg-red-500 dark:hover:bg-red-600 [&.active]:bg-white [&.active]:text-red-600 [&.active]:hover:bg-gray-100 dark:[&.active]:bg-neutral-800 dark:[&.active]:text-white dark:[&.active]:hover:bg-neutral-700"
+                    className="text-white hover:bg-white/10 dark:hover:bg-white/10 [&.active]:bg-white [&.active]:text-red-700"
                   >
-                    <RouterLink
-                      to="/admin-dashboard"
-                      className="flex items-center"
-                    >
-                      <User className="h-4 w-4 mr-2" />
+                  <RouterLink
+                    to="/admin-dashboard"
+                    className="
+                      flex items-center gap-2 px-3 py-1.5 rounded-full border border-white/20 transition-all font-medium text-sm
+                      text-white hover:bg-white/10 
+                      [&.active]:bg-white [&.active]:text-red-700 [&.active]:font-bold [&.active]:shadow-md
+                    "
+                  >
+                  <Shield className="w-4 h-4" />
                       Quản trị
                     </RouterLink>
                   </Button>
                 )}
+
+                {/* NÚT QUẢN LÝ ĐỘI */}
                 {isQuanLyDoi() && (
                   <Button
                     asChild
                     variant="ghost"
                     size="sm"
-                    className="text-white hover:bg-red-500 dark:hover:bg-red-600 [&.active]:bg-white [&.active]:text-red-600 [&.active]:hover:bg-gray-100 dark:[&.active]:bg-neutral-800 dark:[&.active]:text-white dark:[&.active]:hover:bg-neutral-700"
+                    className="text-white hover:bg-white/10 dark:hover:bg-white/10 [&.active]:bg-white [&.active]:text-blue-700"
                   >
                     <RouterLink
                       to="/team-manager"
-                      className="flex items-center"
+                      className="
+                        flex items-center gap-2 px-3 py-1.5 rounded-full border border-white/20 transition-all font-medium text-sm
+                        text-white hover:bg-white/10 
+                        [&.active]:bg-white [&.active]:text-blue-700 [&.active]:font-bold [&.active]:shadow-md
+                      "
                     >
-                      <User className="h-4 w-4 mr-2" />
+                      <User className="h-4 w-4" />
                       Quản lý đội
+                    </RouterLink>
+                  </Button>
+                )}
+
+                {/* [MỚI] NÚT QUAN CHỨC / TRỌNG TÀI */}
+                {isQuanChuc() && (
+                  <Button
+                    asChild
+                    variant="ghost"
+                    size="sm"
+                    className="text-white hover:bg-white/10 dark:hover:bg-white/10 [&.active]:bg-white [&.active]:text-purple-700"
+                  >
+                    <RouterLink
+                      to="/official-dashboard"
+                      className="
+                        flex items-center gap-2 px-3 py-1.5 rounded-full border border-white/20 transition-all font-medium text-sm
+                        text-white hover:bg-white/10 
+                        [&.active]:bg-white [&.active]:text-purple-700 [&.active]:font-bold [&.active]:shadow-md
+                      "
+                    >
+                      <Flag className="h-4 w-4" />
+                      Quan chức
                     </RouterLink>
                   </Button>
                 )}
               </nav>
 
+              {/* User & Theme Actions */}
               <div className="flex items-center gap-2">
                 <DropdownMenu>
                   <DropdownMenuTrigger asChild>
                     <Button
                       variant="ghost"
                       size="sm"
-                      className="text-white hover:bg-red-500 dark:hover:bg-red-600"
+                      className="text-white hover:bg-white/10"
                       aria-label="Chế độ giao diện"
                     >
                       {resolvedTheme === "dark" ? (
@@ -155,21 +205,21 @@ function Layout() {
                     </DropdownMenuRadioGroup>
                   </DropdownMenuContent>
                 </DropdownMenu>
-                {currentUser ? (
+
+                {isAuth ? (
                   <>
                     <div className="text-white dark:text-white text-sm">
-                      <span className="hidden sm:inline">Xin chào, </span>
+                      <span className="hidden lg:inline opacity-90">Xin chào, </span>
                       <span className="font-medium">
-                        {currentUser.full_name ||
-                          (currentUser as any).tendangnhap ||
-                          currentUser.email}
+                        {currentUser?.tendangnhap || currentUser?.username || currentUser?.hoten || "User"}
                       </span>
                     </div>
                     <Button
                       variant="ghost"
                       size="sm"
-                      onClick={logout}
-                      className="text-white hover:bg-red-500 dark:hover:bg-red-600"
+                      onClick={handleLogout}
+                      className="text-white hover:bg-white/10"
+                      title="Đăng xuất"
                     >
                       <LogOut className="h-4 w-4" />
                     </Button>
@@ -179,40 +229,41 @@ function Layout() {
                     asChild
                     variant="ghost"
                     size="sm"
-                    className="text-white hover:bg-red-500 dark:hover:bg-red-600 [&.active]:bg-white [&.active]:text-red-600 [&.active]:hover:bg-gray-100 dark:[&.active]:bg-neutral-800 dark:[&.active]:text-white dark:[&.active]:hover:bg-neutral-700"
+                    className="text-white hover:bg-white/10"
                   >
-                    <RouterLink to="/login" className="flex items-center">
+                    <RouterLink to="/login" className="flex items-center font-medium">
                       <User className="h-4 w-4 mr-2" />
                       Đăng nhập
                     </RouterLink>
                   </Button>
                 )}
               </div>
+            </div>
 
-              <div className="md:hidden pb-3">
-                <div className="flex flex-wrap gap-2">
-                  {navItems.map(({ to, label, Icon }) => (
-                    <Button
-                      key={to}
-                      asChild
-                      variant="ghost"
-                      size="sm"
-                      className="text-white hover:bg-red-500 dark:hover:bg-red-600 [&.active]:bg-white [&.active]:text-red-600 [&.active]:hover:bg-gray-100 dark:[&.active]:bg-neutral-800 dark:[&.active]:text-white dark:[&.active]:hover:bg-neutral-700"
-                    >
-                      <RouterLink to={to} className="flex items-center">
-                        <Icon className="h-4 w-4 mr-1" />
-                        {label}
-                      </RouterLink>
-                    </Button>
-                  ))}
-                </div>
+            {/* Mobile Menu */}
+            <div className="md:hidden pb-4 pt-1 border-t border-white/10">
+              <div className="flex flex-wrap gap-2 justify-center">
+                {navItems.map(({ to, label, Icon }) => (
+                  <Button
+                    key={to}
+                    asChild
+                    variant="ghost"
+                    size="sm"
+                    className="text-white hover:bg-white/10 [&.active]:bg-white [&.active]:text-red-700 h-8 px-3 text-xs"
+                  >
+                    <RouterLink to={to} className="flex items-center">
+                      <Icon className="h-3 w-3 mr-1.5" />
+                      {label}
+                    </RouterLink>
+                  </Button>
+                ))}
               </div>
             </div>
           </div>
         </div>
       </header>
-      <main className="flex-1 p-6 md:p-8">
-        <div className="mx-auto max-w-7xl">
+      <main className="flex-1 p-0">
+        <div className="min-h-[calc(100vh-4rem)] bg-gray-50 font-sans">
           <Outlet />
         </div>
       </main>
