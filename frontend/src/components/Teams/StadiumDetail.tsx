@@ -67,17 +67,9 @@ export function StadiumDetail({ club }: StadiumDetailProps) {
             </CardTitle>
           </CardHeader>
           <CardContent className="space-y-2">
-             <div className="flex justify-between items-center py-2 border-b border-border">
+             <div className="flex justify-between items-center py-2">
                <span className="text-muted-foreground">Đánh giá FIFA:</span>
                <span className="font-bold text-primary">{club.danh_gia_fifa || club.danhgiafifa || "Chưa đánh giá"}</span>
-             </div>
-             <div className="flex justify-between items-center py-2 border-b border-border">
-               <span className="text-muted-foreground">Mặt cỏ:</span>
-               <span>Tự nhiên</span>
-             </div>
-             <div className="flex justify-between items-center py-2">
-               <span className="text-muted-foreground">Kích thước:</span>
-               <span>105m x 68m</span>
              </div>
           </CardContent>
         </Card>
