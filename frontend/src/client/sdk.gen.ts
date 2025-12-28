@@ -3,22 +3,1185 @@
 import type { CancelablePromise } from './core/CancelablePromise';
 import { OpenAPI } from './core/OpenAPI';
 import { request as __request } from './core/request';
-import type { ItemsReadItemsData, ItemsReadItemsResponse, ItemsCreateItemData, ItemsCreateItemResponse, ItemsReadItemData, ItemsReadItemResponse, ItemsUpdateItemData, ItemsUpdateItemResponse, ItemsDeleteItemData, ItemsDeleteItemResponse, LoginLoginAccessTokenData, LoginLoginAccessTokenResponse, LoginTestTokenResponse, LoginRecoverPasswordData, LoginRecoverPasswordResponse, LoginResetPasswordData, LoginResetPasswordResponse, LoginRecoverPasswordHtmlContentData, LoginRecoverPasswordHtmlContentResponse, PrivateCreateUserData, PrivateCreateUserResponse, UsersReadUsersData, UsersReadUsersResponse, UsersCreateUserData, UsersCreateUserResponse, UsersReadUserMeResponse, UsersDeleteUserMeResponse, UsersUpdateUserMeData, UsersUpdateUserMeResponse, UsersUpdatePasswordMeData, UsersUpdatePasswordMeResponse, UsersRegisterUserData, UsersRegisterUserResponse, UsersReadUserByIdData, UsersReadUserByIdResponse, UsersUpdateUserData, UsersUpdateUserResponse, UsersDeleteUserData, UsersDeleteUserResponse, UtilsTestEmailData, UtilsTestEmailResponse, UtilsHealthCheckResponse } from './types.gen';
+import type { Message } from './types.gen';
+import type { AuthLoginData, AuthLoginResponse, AuthSignupData, AuthSignupResponse, AuthLogoutResponse, AuthGetCurrentUserInfoResponse, ClubsGetClubsData, ClubsGetClubsResponse, ClubsCreateClubData, ClubsCreateClubResponse, ClubsGetClubData, ClubsGetClubResponse, ClubsUpdateClubData, ClubsUpdateClubResponse, ClubsDeleteClubData, ClubsDeleteClubResponse, MatchesReadMatchesData, MatchesReadMatchesResponse, MatchesCreateMatchData, MatchesCreateMatchResponse, MatchesReadMatchData, MatchesReadMatchResponse, MatchesUpdateMatchData, MatchesUpdateMatchResponse, MatchesDeleteMatchData, MatchesDeleteMatchResponse, MatchEventsReadMatchEventsData, MatchEventsReadMatchEventsResponse, MatchEventsCreateMatchEventData, MatchEventsCreateMatchEventResponse, MatchEventsUpdateMatchEventData, MatchEventsUpdateMatchEventResponse, MatchEventsDeleteMatchEventData, MatchEventsDeleteMatchEventResponse, MatchLineupReadMatchLineupData, MatchLineupReadMatchLineupResponse, MatchLineupAddPlayerToLineupData, MatchLineupAddPlayerToLineupResponse, MatchLineupUpdateLineupEntryData, MatchLineupUpdateLineupEntryResponse, MatchLineupRemovePlayerFromLineupData, MatchLineupRemovePlayerFromLineupResponse, MatchRefereesReadMatchRefereesData, MatchRefereesReadMatchRefereesResponse, MatchRefereesAssignRefereeToMatchData, MatchRefereesAssignRefereeToMatchResponse, MatchRefereesRemoveRefereeFromMatchData, MatchRefereesRemoveRefereeFromMatchResponse, PlayersGetPlayersData, PlayersGetPlayersResponse, PlayersCreatePlayerData, PlayersCreatePlayerResponse, PlayersGetPlayerData, PlayersGetPlayerResponse, PlayersUpdatePlayerData, PlayersUpdatePlayerResponse, PlayersDeletePlayerData, PlayersDeletePlayerResponse, RostersAddPlayerToRosterData, RostersAddPlayerToRosterResponse, RostersGetRosterData, RostersGetRosterResponse, RostersRemovePlayerFromRosterData, RostersRemovePlayerFromRosterResponse, RostersValidateRosterData, RostersValidateRosterResponse, ScheduleGetScheduleData, ScheduleGetScheduleResponse, ScheduleGenerateScheduleData, ScheduleGenerateScheduleResponse, ScheduleValidateScheduleData, ScheduleValidateScheduleResponse, SeasonManagementGetSeasonsData, SeasonManagementGetSeasonsResponse, SeasonManagementCreateSeasonData, SeasonManagementCreateSeasonResponse, SeasonManagementGetSeasonData, SeasonManagementGetSeasonResponse, SeasonManagementUpdateSeasonData, SeasonManagementUpdateSeasonResponse, SeasonManagementDeleteSeasonData, SeasonManagementDeleteSeasonResponse, SeasonManagementGetPlayerTypesData, SeasonManagementGetPlayerTypesResponse, SeasonManagementCreatePlayerTypeData, SeasonManagementCreatePlayerTypeResponse, SeasonManagementGetPlayerTypeData, SeasonManagementGetPlayerTypeResponse, SeasonManagementUpdatePlayerTypeData, SeasonManagementUpdatePlayerTypeResponse, SeasonManagementDeletePlayerTypeData, SeasonManagementDeletePlayerTypeResponse, StadiumsGetStadiumsData, StadiumsGetStadiumsResponse, StadiumsCreateStadiumData, StadiumsCreateStadiumResponse, StadiumsGetStadiumData, StadiumsGetStadiumResponse, StadiumsUpdateStadiumData, StadiumsUpdateStadiumResponse, StadiumsDeleteStadiumData, StadiumsDeleteStadiumResponse, StandingsGetStandingsData, StandingsGetStandingsResponse, StatisticsGetPlayerStatsData, StatisticsGetPlayerStatsResponse, StatisticsGetMatchStatsData, StatisticsGetMatchStatsResponse, StatisticsGetAwardsData, StatisticsGetAwardsResponse, StatisticsGetDisciplineData, StatisticsGetDisciplineResponse, UsersReadUsersData, UsersReadUsersResponse, UsersCreateUserData, UsersCreateUserResponse, UsersReadUserMeResponse, UsersDeleteUserMeResponse, UsersUpdateUserMeData, UsersUpdateUserMeResponse, UsersUpdatePasswordMeData, UsersUpdatePasswordMeResponse, UsersRegisterUserData, UsersRegisterUserResponse, UsersReadUserByIdData, UsersReadUserByIdResponse, UsersUpdateUserData, UsersUpdateUserResponse, UsersDeleteUserData, UsersDeleteUserResponse } from './types.gen';
 
-export class ItemsService {
+export class AuthService {
     /**
-     * Read Items
-     * Retrieve items.
+     * Login
+     * Login with username and password (V-League)
+     *
+     * Simple JSON-based authentication:
+     * - **username**: TenDangNhap (username)
+     * - **password**: Password (plaintext, will be verified)
+     *
+     * Returns JWT access token with role and expiration time.
+     * @param data The data for the request.
+     * @param data.requestBody
+     * @returns LoginResponse Successful Response
+     * @throws ApiError
+     */
+    public static login(data: AuthLoginData): CancelablePromise<AuthLoginResponse> {
+        return __request(OpenAPI, {
+            method: 'POST',
+            url: '/api/v1/auth/login',
+            body: data.requestBody,
+            mediaType: 'application/json',
+            errors: {
+                422: 'Validation Error'
+            }
+        });
+    }
+    
+    /**
+     * Signup
+     * Create a new V-League account
+     * @param data The data for the request.
+     * @param data.requestBody
+     * @returns TaiKhoanPublic Successful Response
+     * @throws ApiError
+     */
+    public static signup(data: AuthSignupData): CancelablePromise<AuthSignupResponse> {
+        return __request(OpenAPI, {
+            method: 'POST',
+            url: '/api/v1/auth/signup',
+            body: data.requestBody,
+            mediaType: 'application/json',
+            errors: {
+                422: 'Validation Error'
+            }
+        });
+    }
+    
+    /**
+     * Logout
+     * Logout (V-League)
+     *
+     * Simple logout endpoint. Since we're using stateless JWT tokens,
+     * the actual token invalidation happens on the client side.
+     *
+     * For production, consider implementing token blacklisting.
+     * @returns Message Successful Response
+     * @throws ApiError
+     */
+    public static logout(): CancelablePromise<AuthLogoutResponse> {
+        return __request(OpenAPI, {
+            method: 'POST',
+            url: '/api/v1/auth/logout'
+        });
+    }
+
+    /**
+     * Recover Password
+     * @param data The data for the request.
+     * @returns Message Successful Response
+     */
+    public static recoverPassword(data: { email: string }): CancelablePromise<Message> {
+        return __request(OpenAPI, {
+            method: 'POST',
+            url: '/api/v1/auth/recover-password',
+            body: data,
+            mediaType: 'application/json',
+        });
+    }
+
+    /**
+     * Reset Password
+     * @param data The data for the request.
+     * @returns Message Successful Response
+     */
+    public static resetPassword(data: { requestBody: { token: string, new_password: string } }): CancelablePromise<Message> {
+        return __request(OpenAPI, {
+            method: 'POST',
+            url: '/api/v1/auth/reset-password',
+            body: data.requestBody,
+            mediaType: 'application/json',
+        });
+    }
+    
+    /**
+     * Get Current User Info
+     * Get current user information (V-League)
+     *
+     * Returns public user data without password.
+     * Requires valid JWT token in Authorization header.
+     * @returns TaiKhoanPublic Successful Response
+     * @throws ApiError
+     */
+    public static getCurrentUserInfo(): CancelablePromise<AuthGetCurrentUserInfoResponse> {
+        return __request(OpenAPI, {
+            method: 'GET',
+            url: '/api/v1/auth/me'
+        });
+    }
+}
+
+export class ClubsService {
+    /**
+     * Get Clubs
+     * Get all clubs, optionally filtered by season
+     *
+     * **Query Parameters:**
+     * - muagiai: Optional filter by season ID
+     * @param data The data for the request.
+     * @param data.muagiai Filter by season, e.g., '2024-2025'
+     * @param data.skip
+     * @param data.limit
+     * @returns CauLacBoPublic Successful Response
+     * @throws ApiError
+     */
+    public static getClubs(data: ClubsGetClubsData = {}): CancelablePromise<ClubsGetClubsResponse> {
+        return __request(OpenAPI, {
+            method: 'GET',
+            url: '/api/v1/clubs/',
+            query: {
+                muagiai: data.muagiai,
+                skip: data.skip,
+                limit: data.limit
+            },
+            errors: {
+                422: 'Validation Error'
+            }
+        });
+    }
+    
+    /**
+     * Create Club
+     * Create new club
+     *
+     * **Requires BTC role** - Only Ban Tổ Chức can create clubs.
+     *
+     * Club is registered for a specific season (muagiai).
+     * Can link to home stadium via masanvandong (must match muagiai).
+     * @param data The data for the request.
+     * @param data.requestBody
+     * @returns CauLacBoPublic Successful Response
+     * @throws ApiError
+     */
+    public static createClub(data: ClubsCreateClubData): CancelablePromise<ClubsCreateClubResponse> {
+        return __request(OpenAPI, {
+            method: 'POST',
+            url: '/api/v1/clubs/',
+            body: data.requestBody,
+            mediaType: 'application/json',
+            errors: {
+                422: 'Validation Error'
+            }
+        });
+    }
+    
+    /**
+     * Get Club
+     * Get club by ID
+     *
+     * **Requires muagiai parameter** due to composite primary key (maclb, muagiai)
+     *
+     * Example: `/clubs/CLB001?muagiai=2024-2025`
+     * @param data The data for the request.
+     * @param data.clubId
+     * @param data.muagiai Season ID (required for composite PK)
+     * @returns CauLacBoPublic Successful Response
+     * @throws ApiError
+     */
+    public static getClub(data: ClubsGetClubData): CancelablePromise<ClubsGetClubResponse> {
+        return __request(OpenAPI, {
+            method: 'GET',
+            url: '/api/v1/clubs/{club_id}',
+            path: {
+                club_id: data.clubId
+            },
+            query: {
+                muagiai: data.muagiai
+            },
+            errors: {
+                422: 'Validation Error'
+            }
+        });
+    }
+    
+    /**
+     * Update Club
+     * Update club
+     *
+     * **Requires BTC role** - Only Ban Tổ Chức can update clubs.
+     * **Requires muagiai parameter** due to composite primary key.
+     *
+     * Cannot change primary key fields (maclb, muagiai).
+     * @param data The data for the request.
+     * @param data.clubId
+     * @param data.muagiai Season ID (required for composite PK)
+     * @param data.requestBody
+     * @returns CauLacBoPublic Successful Response
+     * @throws ApiError
+     */
+    public static updateClub(data: ClubsUpdateClubData): CancelablePromise<ClubsUpdateClubResponse> {
+        return __request(OpenAPI, {
+            method: 'PUT',
+            url: '/api/v1/clubs/{club_id}',
+            path: {
+                club_id: data.clubId
+            },
+            query: {
+                muagiai: data.muagiai
+            },
+            body: data.requestBody,
+            mediaType: 'application/json',
+            errors: {
+                422: 'Validation Error'
+            }
+        });
+    }
+    
+    /**
+     * Delete Club
+     * Delete club
+     *
+     * **Requires BTC role** - Only Ban Tổ Chức can delete clubs.
+     * **Requires muagiai parameter** due to composite primary key.
+     * @param data The data for the request.
+     * @param data.clubId
+     * @param data.muagiai Season ID (required for composite PK)
+     * @returns Message Successful Response
+     * @throws ApiError
+     */
+    public static deleteClub(data: ClubsDeleteClubData): CancelablePromise<ClubsDeleteClubResponse> {
+        return __request(OpenAPI, {
+            method: 'DELETE',
+            url: '/api/v1/clubs/{club_id}',
+            path: {
+                club_id: data.clubId
+            },
+            query: {
+                muagiai: data.muagiai
+            },
+            errors: {
+                422: 'Validation Error'
+            }
+        });
+    }
+}
+
+export class MatchesService {
+    /**
+     * Read Matches
+     * Retrieve matches with optional filters.
+     *
+     * - **muagiai**: Filter by season
+     * - **vong**: Filter by round number
+     * - **maclb**: Filter by club (home OR away)
+     * - **tungay**: Filter by date from (inclusive)
+     * - **denngay**: Filter by date to (inclusive)
      * @param data The data for the request.
      * @param data.skip
      * @param data.limit
-     * @returns ItemsPublic Successful Response
+     * @param data.muagiai
+     * @param data.vong
+     * @param data.maclb
+     * @param data.tungay
+     * @param data.denngay
+     * @returns LichThiDauPublic Successful Response
      * @throws ApiError
      */
-    public static readItems(data: ItemsReadItemsData = {}): CancelablePromise<ItemsReadItemsResponse> {
+    public static readMatches(data: MatchesReadMatchesData = {}): CancelablePromise<MatchesReadMatchesResponse> {
         return __request(OpenAPI, {
             method: 'GET',
-            url: '/api/items/',
+            url: '/api/v1/matches/',
+            query: {
+                skip: data.skip,
+                limit: data.limit,
+                muagiai: data.muagiai,
+                vong: data.vong,
+                maclb: data.maclb,
+                tungay: data.tungay,
+                denngay: data.denngay
+            },
+            errors: {
+                422: 'Validation Error'
+            }
+        });
+    }
+    
+    /**
+     * Create Match
+     * Create new match.
+     *
+     * **Requires BTC role.**
+     *
+     * Validates:
+     * - Season exists
+     * - Home != away clubs
+     * - Both clubs exist in season
+     * - Stadium exists in season (if provided)
+     * - Match time within season dates
+     * - Round number > 0
+     * @param data The data for the request.
+     * @param data.requestBody
+     * @returns LichThiDauPublic Successful Response
+     * @throws ApiError
+     */
+    public static createMatch(data: MatchesCreateMatchData): CancelablePromise<MatchesCreateMatchResponse> {
+        return __request(OpenAPI, {
+            method: 'POST',
+            url: '/api/v1/matches/',
+            body: data.requestBody,
+            mediaType: 'application/json',
+            errors: {
+                422: 'Validation Error'
+            }
+        });
+    }
+    
+    /**
+     * Read Match
+     * Get match details with lineup, events, and referees.
+     * @param data The data for the request.
+     * @param data.matran
+     * @returns LichThiDauDetail Successful Response
+     * @throws ApiError
+     */
+    public static readMatch(data: MatchesReadMatchData): CancelablePromise<MatchesReadMatchResponse> {
+        return __request(OpenAPI, {
+            method: 'GET',
+            url: '/api/v1/matches/{matran}',
+            path: {
+                matran: data.matran
+            },
+            errors: {
+                422: 'Validation Error'
+            }
+        });
+    }
+    
+    /**
+     * Update Match
+     * Partially update match (PATCH)
+     *
+     * **Requires BTC role.**
+     *
+     * **PATCH semantics:** Only provided fields will be updated.
+     * Empty body ({}) returns 200 with no changes.
+     *
+     * **Common use cases:**
+     * - Update match time: `{"thoigianthidau": "2024-03-15T19:00:00"}`
+     * - Update final score: `{"tiso": "2-1"}`
+     * - Update stadium: `{"masanvandong": "SVD_02"}`
+     * - Update attendance: `{"sokhangia": 15000}`
+     * @param data The data for the request.
+     * @param data.matran
+     * @param data.requestBody
+     * @returns LichThiDauPublic Successful Response
+     * @throws ApiError
+     */
+    public static updateMatch(data: MatchesUpdateMatchData): CancelablePromise<MatchesUpdateMatchResponse> {
+        return __request(OpenAPI, {
+            method: 'PATCH',
+            url: '/api/v1/matches/{matran}',
+            path: {
+                matran: data.matran
+            },
+            body: data.requestBody,
+            mediaType: 'application/json',
+            errors: {
+                422: 'Validation Error'
+            }
+        });
+    }
+    
+    /**
+     * Delete Match
+     * Delete match (cascades to events, lineup, referees).
+     *
+     * **Requires BTC role.**
+     * @param data The data for the request.
+     * @param data.matran
+     * @returns Message Successful Response
+     * @throws ApiError
+     */
+    public static deleteMatch(data: MatchesDeleteMatchData): CancelablePromise<MatchesDeleteMatchResponse> {
+        return __request(OpenAPI, {
+            method: 'DELETE',
+            url: '/api/v1/matches/{matran}',
+            path: {
+                matran: data.matran
+            },
+            errors: {
+                422: 'Validation Error'
+            }
+        });
+    }
+}
+
+export class MatchEventsService {
+    /**
+     * Read Match Events
+     * Get events for match, ordered by time.
+     *
+     * - **loaisukien**: Optional filter by event type (BanThang, TheVang, TheDo, ThayNguoi)
+     * @param data The data for the request.
+     * @param data.matran
+     * @param data.loaisukien
+     * @returns SuKienTranDauPublic Successful Response
+     * @throws ApiError
+     */
+    public static readMatchEvents(data: MatchEventsReadMatchEventsData): CancelablePromise<MatchEventsReadMatchEventsResponse> {
+        return __request(OpenAPI, {
+            method: 'GET',
+            url: '/api/v1/matches/{matran}/events',
+            path: {
+                matran: data.matran
+            },
+            query: {
+                loaisukien: data.loaisukien
+            },
+            errors: {
+                422: 'Validation Error'
+            }
+        });
+    }
+    
+    /**
+     * Create Match Event
+     * Create match event.
+     *
+     * **Requires BTC role.**
+     *
+     * Validates:
+     * - Match exists
+     * - Player exists
+     * - Player in roster for club in that season
+     * - Club is one of the two teams playing
+     * - Event time 1-130 minutes
+     * - Event type valid (BanThang, TheVang, TheDo, ThayNguoi)
+     *
+     * **Note:** Event types are auto-normalized. Both "BanThang" and "Ban Thang" are accepted.
+     * @param data The data for the request.
+     * @param data.matran
+     * @param data.requestBody
+     * @returns SuKienTranDauPublic Successful Response
+     * @throws ApiError
+     */
+    public static createMatchEvent(data: MatchEventsCreateMatchEventData): CancelablePromise<MatchEventsCreateMatchEventResponse> {
+        return __request(OpenAPI, {
+            method: 'POST',
+            url: '/api/v1/matches/{matran}/events',
+            path: {
+                matran: data.matran
+            },
+            body: data.requestBody,
+            mediaType: 'application/json',
+            errors: {
+                422: 'Validation Error'
+            }
+        });
+    }
+    
+    /**
+     * Update Match Event
+     * Partially update match event (PATCH)
+     *
+     * **Requires BTC role.**
+     *
+     * **PATCH semantics:** Only provided fields will be updated.
+     * Empty body ({}) returns 200 with no changes.
+     *
+     * **Allowed fields to update:**
+     * - `loaisukien`: Event type (BanThang, TheVang, TheDo, ThayNguoi)
+     * - `phutthidau`: Minute of event (1-130)
+     * - `bugio`: Half period (0, 1, 2 for extra time)
+     * - `motasukien`: Description text
+     * - `cauthulienquan`: Related player ID (for substitutions)
+     *
+     * **Note:** Cannot update `macauthu`, `maclb`, or `matran` via PATCH.
+     * Extra fields will be rejected with 422 Unprocessable Entity.
+     *
+     * **Common use cases:**
+     * - Fix event time: `{"phutthidau": 25, "bugio": 0}`
+     * - Change event type: `{"loaisukien": "TheVang"}`
+     * - Add description: `{"motasukien": "Phạm lỗi thô bạo"}`
+     * @param data The data for the request.
+     * @param data.matran
+     * @param data.masukien
+     * @param data.requestBody
+     * @returns SuKienTranDauPublic Successful Response
+     * @throws ApiError
+     */
+    public static updateMatchEvent(data: MatchEventsUpdateMatchEventData): CancelablePromise<MatchEventsUpdateMatchEventResponse> {
+        return __request(OpenAPI, {
+            method: 'PATCH',
+            url: '/api/v1/matches/{matran}/events/{masukien}',
+            path: {
+                matran: data.matran,
+                masukien: data.masukien
+            },
+            body: data.requestBody,
+            mediaType: 'application/json',
+            errors: {
+                422: 'Validation Error'
+            }
+        });
+    }
+    
+    /**
+     * Delete Match Event
+     * Delete match event.
+     *
+     * **Requires BTC role.**
+     * @param data The data for the request.
+     * @param data.matran
+     * @param data.masukien
+     * @returns Message Successful Response
+     * @throws ApiError
+     */
+    public static deleteMatchEvent(data: MatchEventsDeleteMatchEventData): CancelablePromise<MatchEventsDeleteMatchEventResponse> {
+        return __request(OpenAPI, {
+            method: 'DELETE',
+            url: '/api/v1/matches/{matran}/events/{masukien}',
+            path: {
+                matran: data.matran,
+                masukien: data.masukien
+            },
+            errors: {
+                422: 'Validation Error'
+            }
+        });
+    }
+}
+
+export class MatchLineupService {
+    /**
+     * Read Match Lineup
+     * Get lineup for match with starting XI, substitutes, and captains.
+     *
+     * - **maclb**: Optional filter by team
+     * @param data The data for the request.
+     * @param data.matran
+     * @param data.maclb
+     * @returns LineupResponse Successful Response
+     * @throws ApiError
+     */
+    public static readMatchLineup(data: MatchLineupReadMatchLineupData): CancelablePromise<MatchLineupReadMatchLineupResponse> {
+        return __request(OpenAPI, {
+            method: 'GET',
+            url: '/api/v1/matches/{matran}/lineup',
+            path: {
+                matran: data.matran
+            },
+            query: {
+                maclb: data.maclb
+            },
+            errors: {
+                422: 'Validation Error'
+            }
+        });
+    }
+    
+    /**
+     * Add Player To Lineup
+     * Add player to match lineup.
+     *
+     * **Requires BTC role.**
+     *
+     * Validates:
+     * - Match exists
+     * - Player in roster for one of the teams in that season
+     * - Not already in lineup
+     * - Max 11 starting players per team
+     * - Max 1 captain per team
+     * @param data The data for the request.
+     * @param data.matran
+     * @param data.requestBody
+     * @returns DoiHinhXuatPhatPublic Successful Response
+     * @throws ApiError
+     */
+    public static addPlayerToLineup(data: MatchLineupAddPlayerToLineupData): CancelablePromise<MatchLineupAddPlayerToLineupResponse> {
+        return __request(OpenAPI, {
+            method: 'POST',
+            url: '/api/v1/matches/{matran}/lineup',
+            path: {
+                matran: data.matran
+            },
+            body: data.requestBody,
+            mediaType: 'application/json',
+            errors: {
+                422: 'Validation Error'
+            }
+        });
+    }
+    
+    /**
+     * Update Lineup Entry
+     * Partially update lineup entry (PATCH)
+     *
+     * **Requires BTC role.**
+     *
+     * **PATCH semantics:** Only provided fields will be updated.
+     * Empty body ({}) returns 200 with no changes.
+     *
+     * **Common use cases:**
+     * - Set as captain: `{"ladoitruong": true}`
+     * - Move to bench: `{"duocxuatphat": false}`
+     * - Change position: `{"vitri": "Tien Dao"}`
+     * - Promote substitute to starting XI: `{"duocxuatphat": true}`
+     * @param data The data for the request.
+     * @param data.matran
+     * @param data.macauthu
+     * @param data.requestBody
+     * @returns DoiHinhXuatPhatPublic Successful Response
+     * @throws ApiError
+     */
+    public static updateLineupEntry(data: MatchLineupUpdateLineupEntryData): CancelablePromise<MatchLineupUpdateLineupEntryResponse> {
+        return __request(OpenAPI, {
+            method: 'PATCH',
+            url: '/api/v1/matches/{matran}/lineup/{macauthu}',
+            path: {
+                matran: data.matran,
+                macauthu: data.macauthu
+            },
+            body: data.requestBody,
+            mediaType: 'application/json',
+            errors: {
+                422: 'Validation Error'
+            }
+        });
+    }
+    
+    /**
+     * Remove Player From Lineup
+     * Remove player from lineup.
+     *
+     * **Requires BTC role.**
+     * @param data The data for the request.
+     * @param data.matran
+     * @param data.macauthu
+     * @returns Message Successful Response
+     * @throws ApiError
+     */
+    public static removePlayerFromLineup(data: MatchLineupRemovePlayerFromLineupData): CancelablePromise<MatchLineupRemovePlayerFromLineupResponse> {
+        return __request(OpenAPI, {
+            method: 'DELETE',
+            url: '/api/v1/matches/{matran}/lineup/{macauthu}',
+            path: {
+                matran: data.matran,
+                macauthu: data.macauthu
+            },
+            errors: {
+                422: 'Validation Error'
+            }
+        });
+    }
+}
+
+export class MatchRefereesService {
+    /**
+     * Read Match Referees
+     * Get referees for match.
+     * @param data The data for the request.
+     * @param data.matran
+     * @returns ChiTietTrongTaiPublic Successful Response
+     * @throws ApiError
+     */
+    public static readMatchReferees(data: MatchRefereesReadMatchRefereesData): CancelablePromise<MatchRefereesReadMatchRefereesResponse> {
+        return __request(OpenAPI, {
+            method: 'GET',
+            url: '/api/v1/matches/{matran}/referees',
+            path: {
+                matran: data.matran
+            },
+            errors: {
+                422: 'Validation Error'
+            }
+        });
+    }
+    
+    /**
+     * Assign Referee To Match
+     * Assign referee to match.
+     *
+     * **Requires BTC role.**
+     *
+     * Validates:
+     * - Match exists
+     * - Not duplicate (matran, tentrongtai)
+     * @param data The data for the request.
+     * @param data.matran
+     * @param data.requestBody
+     * @returns ChiTietTrongTaiPublic Successful Response
+     * @throws ApiError
+     */
+    public static assignRefereeToMatch(data: MatchRefereesAssignRefereeToMatchData): CancelablePromise<MatchRefereesAssignRefereeToMatchResponse> {
+        return __request(OpenAPI, {
+            method: 'POST',
+            url: '/api/v1/matches/{matran}/referees',
+            path: {
+                matran: data.matran
+            },
+            body: data.requestBody,
+            mediaType: 'application/json',
+            errors: {
+                422: 'Validation Error'
+            }
+        });
+    }
+    
+    /**
+     * Remove Referee From Match
+     * Remove referee from match.
+     *
+     * **Requires BTC role.**
+     * @param data The data for the request.
+     * @param data.matran
+     * @param data.tentrongtai
+     * @returns Message Successful Response
+     * @throws ApiError
+     */
+    public static removeRefereeFromMatch(data: MatchRefereesRemoveRefereeFromMatchData): CancelablePromise<MatchRefereesRemoveRefereeFromMatchResponse> {
+        return __request(OpenAPI, {
+            method: 'DELETE',
+            url: '/api/v1/matches/{matran}/referees/{tentrongtai}',
+            path: {
+                matran: data.matran,
+                tentrongtai: data.tentrongtai
+            },
+            errors: {
+                422: 'Validation Error'
+            }
+        });
+    }
+}
+
+export class PlayersService {
+    /**
+     * Get Players
+     * Get all players with optional filters
+     *
+     * **Authentication required** - Any authenticated user can view players
+     *
+     * **Query Parameters:**
+     * - keyword: Search in player name (case-insensitive)
+     * - quoctich: Filter by nationality
+     * - vitrithidau: Filter by position (GK, DF, MF, FW)
+     * @param data The data for the request.
+     * @param data.keyword Search by player name
+     * @param data.quoctich Filter by nationality (e.g., 'VN')
+     * @param data.vitrithidau Filter by position (GK, DF, MF, FW)
+     * @param data.skip
+     * @param data.limit
+     * @returns CauThuPublic Successful Response
+     * @throws ApiError
+     */
+    public static getPlayers(data: PlayersGetPlayersData = {}): CancelablePromise<PlayersGetPlayersResponse> {
+        return __request(OpenAPI, {
+            method: 'GET',
+            url: '/api/v1/players/',
+            query: {
+                keyword: data.keyword,
+                quoctich: data.quoctich,
+                vitrithidau: data.vitrithidau,
+                skip: data.skip,
+                limit: data.limit
+            },
+            errors: {
+                422: 'Validation Error'
+            }
+        });
+    }
+    
+    /**
+     * Create Player
+     * Create new player
+     *
+     * **Requires BTC role** - Only Ban Tổ Chức can create players
+     *
+     * Player fields:
+     * - macauthu: Unique player ID (e.g., "CT001")
+     * - tencauthu: Full name
+     * - ngaysinh: Date of birth
+     * - quoctich: Nationality ("VN" for Vietnamese)
+     * - vitrithidau: Position (GK, DF, MF, FW)
+     * - chieucao: Height in cm
+     * - cannang: Weight in kg
+     * @param data The data for the request.
+     * @param data.requestBody
+     * @returns CauThuPublic Successful Response
+     * @throws ApiError
+     */
+    public static createPlayer(data: PlayersCreatePlayerData): CancelablePromise<PlayersCreatePlayerResponse> {
+        return __request(OpenAPI, {
+            method: 'POST',
+            url: '/api/v1/players/',
+            body: data.requestBody,
+            mediaType: 'application/json',
+            errors: {
+                422: 'Validation Error'
+            }
+        });
+    }
+    
+    /**
+     * Get Player
+     * Get player by ID
+     *
+     * **Authentication required** - Any authenticated user can view player details
+     * @param data The data for the request.
+     * @param data.playerId
+     * @returns CauThuPublic Successful Response
+     * @throws ApiError
+     */
+    public static getPlayer(data: PlayersGetPlayerData): CancelablePromise<PlayersGetPlayerResponse> {
+        return __request(OpenAPI, {
+            method: 'GET',
+            url: '/api/v1/players/{player_id}',
+            path: {
+                player_id: data.playerId
+            },
+            errors: {
+                422: 'Validation Error'
+            }
+        });
+    }
+    
+    /**
+     * Update Player
+     * Partially update player information (PATCH)
+     *
+     * **Requires BTC role** - Only Ban Tổ Chức can update players
+     *
+     * **PATCH semantics:** Only fields provided in request body will be updated.
+     * Omitted fields remain unchanged. Empty body ({}) returns 200 with no changes.
+     *
+     * **Restrictions:**
+     * - Cannot change player ID (macauthu) - must delete and recreate
+     *
+     * **Example:**
+     * ```json
+     * {"quoctich": "BR", "chieucao": 180.0}
+     * ```
+     * Only nationality and height will be updated.
+     * @param data The data for the request.
+     * @param data.playerId
+     * @param data.requestBody
+     * @returns CauThuPublic Successful Response
+     * @throws ApiError
+     */
+    public static updatePlayer(data: PlayersUpdatePlayerData): CancelablePromise<PlayersUpdatePlayerResponse> {
+        return __request(OpenAPI, {
+            method: 'PATCH',
+            url: '/api/v1/players/{player_id}',
+            path: {
+                player_id: data.playerId
+            },
+            body: data.requestBody,
+            mediaType: 'application/json',
+            errors: {
+                422: 'Validation Error'
+            }
+        });
+    }
+    
+    /**
+     * Delete Player
+     * Delete player
+     *
+     * **Requires BTC role** - Only Ban Tổ Chức can delete players
+     *
+     * **Warning:** This will also remove player from all rosters (cascade delete)
+     * @param data The data for the request.
+     * @param data.playerId
+     * @returns Message Successful Response
+     * @throws ApiError
+     */
+    public static deletePlayer(data: PlayersDeletePlayerData): CancelablePromise<PlayersDeletePlayerResponse> {
+        return __request(OpenAPI, {
+            method: 'DELETE',
+            url: '/api/v1/players/{player_id}',
+            path: {
+                player_id: data.playerId
+            },
+            errors: {
+                422: 'Validation Error'
+            }
+        });
+    }
+}
+
+export class RostersService {
+    /**
+     * Add Player To Roster
+     * Register player to club roster for a season
+     *
+     * **Requires BTC role** - Only Ban Tổ Chức can register players to rosters
+     *
+     * Validations performed:
+     * - Player exists
+     * - Club exists for that season
+     * - Season exists
+     * - Player age meets season requirements (TuoiCauThuToiThieu/ToiDa)
+     * - Shirt number unique within club+season (range 1-99, REQUIRED)
+     * - Foreign player quota not exceeded (based on LoaiCauThu rules)
+     *
+     * **Body:**
+     * ```json
+     * {
+     * "macauthu": "CT001",
+     * "maclb": "CLB001",
+     * "muagiai": "2024-2025",
+     * "soaothidau": 10
+     * }
+     * ```
+     *
+     * **Error Responses:**
+     * - 400: Validation failed (age, quota, shirt number)
+     * - 404: Player/Club/Season not found
+     * - 409: Player already registered to this club+season
+     * @param data The data for the request.
+     * @param data.requestBody
+     * @returns ChiTietDoiBongPublic Successful Response
+     * @throws ApiError
+     */
+    public static addPlayerToRoster(data: RostersAddPlayerToRosterData): CancelablePromise<RostersAddPlayerToRosterResponse> {
+        return __request(OpenAPI, {
+            method: 'POST',
+            url: '/api/v1/rosters/',
+            body: data.requestBody,
+            mediaType: 'application/json',
+            errors: {
+                422: 'Validation Error'
+            }
+        });
+    }
+    
+    /**
+     * Get Roster
+     * Get club roster for a season with player details
+     *
+     * **Authentication required** - Any authenticated user can view rosters
+     *
+     * **Required Query Parameters:**
+     * - maclb: Club ID (e.g., "CLB001")
+     * - muagiai: Season ID (e.g., "2024-2025")
+     *
+     * Returns list of players registered to the club for that season,
+     * including player details (name, nationality, position, shirt number)
+     * @param data The data for the request.
+     * @param data.maclb Club ID (required)
+     * @param data.muagiai Season ID (required)
+     * @returns RosterPlayerDetail Successful Response
+     * @throws ApiError
+     */
+    public static getRoster(data: RostersGetRosterData): CancelablePromise<RostersGetRosterResponse> {
+        return __request(OpenAPI, {
+            method: 'GET',
+            url: '/api/v1/rosters/',
+            query: {
+                maclb: data.maclb,
+                muagiai: data.muagiai
+            },
+            errors: {
+                422: 'Validation Error'
+            }
+        });
+    }
+    
+    /**
+     * Remove Player From Roster
+     * Remove player from club roster
+     *
+     * **Requires BTC role** - Only Ban Tổ Chức can remove players from rosters
+     *
+     * **Required Query Parameters:**
+     * - maclb: Club ID
+     * - muagiai: Season ID
+     *
+     * Example: `DELETE /api/rosters/CT001?maclb=CLB001&muagiai=2024-2025`
+     * @param data The data for the request.
+     * @param data.playerId
+     * @param data.maclb Club ID (required)
+     * @param data.muagiai Season ID (required)
+     * @returns Message Successful Response
+     * @throws ApiError
+     */
+    public static removePlayerFromRoster(data: RostersRemovePlayerFromRosterData): CancelablePromise<RostersRemovePlayerFromRosterResponse> {
+        return __request(OpenAPI, {
+            method: 'DELETE',
+            url: '/api/v1/rosters/{player_id}',
+            path: {
+                player_id: data.playerId
+            },
+            query: {
+                maclb: data.maclb,
+                muagiai: data.muagiai
+            },
+            errors: {
+                422: 'Validation Error'
+            }
+        });
+    }
+    
+    /**
+     * Validate Roster
+     * Validate club roster against season regulations
+     *
+     * **Authentication required** - Any authenticated user can validate rosters
+     *
+     * **Required Query Parameters:**
+     * - maclb: Club ID
+     * - muagiai: Season ID
+     *
+     * Checks:
+     * - Roster size (min/max players)
+     * - Goalkeeper count (minimum required)
+     * - All validations already done during registration
+     *
+     * Returns:
+     * ```json
+     * {
+     * "valid": true,
+     * "violations": [],
+     * "warnings": ["Only 2 goalkeepers, minimum recommended is 3"],
+     * "stats": {
+     * "total_players": 25,
+     * "goalkeepers": 2,
+     * "foreign_players": 3
+     * }
+     * }
+     * ```
+     *
+     * **Use case:** Check roster compliance before finalizing registration
+     * @param data The data for the request.
+     * @param data.maclb Club ID (required)
+     * @param data.muagiai Season ID (required)
+     * @returns RosterValidationResult Successful Response
+     * @throws ApiError
+     */
+    public static validateRoster(data: RostersValidateRosterData): CancelablePromise<RostersValidateRosterResponse> {
+        return __request(OpenAPI, {
+            method: 'GET',
+            url: '/api/v1/rosters/validate',
+            query: {
+                maclb: data.maclb,
+                muagiai: data.muagiai
+            },
+            errors: {
+                422: 'Validation Error'
+            }
+        });
+    }
+}
+
+export class ScheduleService {
+    /**
+     * Get Schedule
+     * Get all matches for a season, sorted by round and time.
+     *
+     * **Authentication required.**
+     *
+     * Returns matches ordered by:
+     * 1. Round (vong) ascending
+     * 2. Match time (thoigianthidau) ascending
+     * 3. Match ID (matran) ascending
+     * @param data The data for the request.
+     * @param data.muagiai
+     * @returns LichThiDauPublic Successful Response
+     * @throws ApiError
+     */
+    public static getSchedule(data: ScheduleGetScheduleData): CancelablePromise<ScheduleGetScheduleResponse> {
+        return __request(OpenAPI, {
+            method: 'GET',
+            url: '/api/v1/schedule/{muagiai}',
+            path: {
+                muagiai: data.muagiai
+            },
+            errors: {
+                422: 'Validation Error'
+            }
+        });
+    }
+    
+    /**
+     * Generate Schedule
+     * Generate round-robin schedule for season.
+     *
+     * **Requires BTC role.**
+     *
+     * Algorithm:
+     * - Get all clubs in season
+     * - Generate (n-1) rounds per leg (for n teams)
+     * - First leg: home/away assigned
+     * - Second leg: swap home/away
+     * - Assign match times with interval
+     *
+     * Request parameters:
+     * - **muagiai**: Season ID
+     * - **ngaybatdau_lutdi**: Start date for first leg
+     * - **ngaybatdau_lutve**: Start date for return leg
+     * - **interval_days**: Days between rounds (default 7)
+     *
+     * Returns 200 OK even if generation fails (check success field and errors array).
+     * @param data The data for the request.
+     * @param data.requestBody
+     * @returns ScheduleGenerationResult Successful Response
+     * @throws ApiError
+     */
+    public static generateSchedule(data: ScheduleGenerateScheduleData): CancelablePromise<ScheduleGenerateScheduleResponse> {
+        return __request(OpenAPI, {
+            method: 'POST',
+            url: '/api/v1/schedule/generate',
+            body: data.requestBody,
+            mediaType: 'application/json',
+            errors: {
+                422: 'Validation Error'
+            }
+        });
+    }
+    
+    /**
+     * Validate Schedule
+     * Validate schedule for season.
+     *
+     * **Requires BTC role.**
+     *
+     * Checks:
+     * - Each club plays (n-1) * 2 matches
+     * - Each pair plays exactly 2 times (home & away)
+     * - No duplicate rounds for same clubs
+     * - All matches within season dates
+     *
+     * Request parameters:
+     * - **muagiai**: Season ID
+     * @param data The data for the request.
+     * @param data.requestBody
+     * @returns ScheduleValidationResult Successful Response
+     * @throws ApiError
+     */
+    public static validateSchedule(data: ScheduleValidateScheduleData): CancelablePromise<ScheduleValidateScheduleResponse> {
+        return __request(OpenAPI, {
+            method: 'POST',
+            url: '/api/v1/schedule/validate',
+            body: data.requestBody,
+            mediaType: 'application/json',
+            errors: {
+                422: 'Validation Error'
+            }
+        });
+    }
+}
+
+export class SeasonManagementService {
+    /**
+     * Get Seasons
+     * Get all seasons with integrated regulations
+     *
+     * Public access - any authenticated user can view seasons and their regulations.
+     * @param data The data for the request.
+     * @param data.skip
+     * @param data.limit
+     * @returns MuaGiaiPublic Successful Response
+     * @throws ApiError
+     */
+    public static getSeasons(data: SeasonManagementGetSeasonsData = {}): CancelablePromise<SeasonManagementGetSeasonsResponse> {
+        return __request(OpenAPI, {
+            method: 'GET',
+            url: '/api/v1/season-management/seasons',
             query: {
                 skip: data.skip,
                 limit: data.limit
@@ -30,17 +1193,26 @@ export class ItemsService {
     }
     
     /**
-     * Create Item
-     * Create new item.
+     * Create Season
+     * Create new season with regulations
+     *
+     * **Requires BTC role** - Only Ban Tổ Chức can create seasons.
+     *
+     * Sets all regulations for the season:
+     * - Player limits, age limits
+     * - Club requirements
+     * - Stadium requirements
+     * - Coach certifications
+     * - Match regulations
      * @param data The data for the request.
      * @param data.requestBody
-     * @returns ItemPublic Successful Response
+     * @returns MuaGiaiPublic Successful Response
      * @throws ApiError
      */
-    public static createItem(data: ItemsCreateItemData): CancelablePromise<ItemsCreateItemResponse> {
+    public static createSeason(data: SeasonManagementCreateSeasonData): CancelablePromise<SeasonManagementCreateSeasonResponse> {
         return __request(OpenAPI, {
             method: 'POST',
-            url: '/api/items/',
+            url: '/api/v1/season-management/seasons',
             body: data.requestBody,
             mediaType: 'application/json',
             errors: {
@@ -50,19 +1222,21 @@ export class ItemsService {
     }
     
     /**
-     * Read Item
-     * Get item by ID.
+     * Get Season
+     * Get season by ID with all regulations
+     *
+     * **season_id**: e.g., "2024-2025"
      * @param data The data for the request.
-     * @param data.id
-     * @returns ItemPublic Successful Response
+     * @param data.seasonId
+     * @returns MuaGiaiPublic Successful Response
      * @throws ApiError
      */
-    public static readItem(data: ItemsReadItemData): CancelablePromise<ItemsReadItemResponse> {
+    public static getSeason(data: SeasonManagementGetSeasonData): CancelablePromise<SeasonManagementGetSeasonResponse> {
         return __request(OpenAPI, {
             method: 'GET',
-            url: '/api/items/{id}',
+            url: '/api/v1/season-management/seasons/{season_id}',
             path: {
-                id: data.id
+                season_id: data.seasonId
             },
             errors: {
                 422: 'Validation Error'
@@ -71,20 +1245,24 @@ export class ItemsService {
     }
     
     /**
-     * Update Item
-     * Update an item.
+     * Update Season
+     * Update season regulations
+     *
+     * **Requires BTC role** - Only Ban Tổ Chức can update season regulations.
+     *
+     * Can update any regulation fields without affecting others (partial update).
      * @param data The data for the request.
-     * @param data.id
+     * @param data.seasonId
      * @param data.requestBody
-     * @returns ItemPublic Successful Response
+     * @returns MuaGiaiPublic Successful Response
      * @throws ApiError
      */
-    public static updateItem(data: ItemsUpdateItemData): CancelablePromise<ItemsUpdateItemResponse> {
+    public static updateSeason(data: SeasonManagementUpdateSeasonData): CancelablePromise<SeasonManagementUpdateSeasonResponse> {
         return __request(OpenAPI, {
             method: 'PUT',
-            url: '/api/items/{id}',
+            url: '/api/v1/season-management/seasons/{season_id}',
             path: {
-                id: data.id
+                season_id: data.seasonId
             },
             body: data.requestBody,
             mediaType: 'application/json',
@@ -95,75 +1273,21 @@ export class ItemsService {
     }
     
     /**
-     * Delete Item
-     * Delete an item.
+     * Delete Season
+     * Delete season
+     *
+     * **Requires BTC role** - Only Ban Tổ Chức can delete seasons.
      * @param data The data for the request.
-     * @param data.id
+     * @param data.seasonId
      * @returns Message Successful Response
      * @throws ApiError
      */
-    public static deleteItem(data: ItemsDeleteItemData): CancelablePromise<ItemsDeleteItemResponse> {
+    public static deleteSeason(data: SeasonManagementDeleteSeasonData): CancelablePromise<SeasonManagementDeleteSeasonResponse> {
         return __request(OpenAPI, {
             method: 'DELETE',
-            url: '/api/items/{id}',
+            url: '/api/v1/season-management/seasons/{season_id}',
             path: {
-                id: data.id
-            },
-            errors: {
-                422: 'Validation Error'
-            }
-        });
-    }
-}
-
-export class LoginService {
-    /**
-     * Login Access Token
-     * OAuth2 compatible token login, get an access token for future requests
-     * @param data The data for the request.
-     * @param data.formData
-     * @returns Token Successful Response
-     * @throws ApiError
-     */
-    public static loginAccessToken(data: LoginLoginAccessTokenData): CancelablePromise<LoginLoginAccessTokenResponse> {
-        return __request(OpenAPI, {
-            method: 'POST',
-            url: '/api/login/access-token',
-            formData: data.formData,
-            mediaType: 'application/x-www-form-urlencoded',
-            errors: {
-                422: 'Validation Error'
-            }
-        });
-    }
-    
-    /**
-     * Test Token
-     * Test access token
-     * @returns UserPublic Successful Response
-     * @throws ApiError
-     */
-    public static testToken(): CancelablePromise<LoginTestTokenResponse> {
-        return __request(OpenAPI, {
-            method: 'POST',
-            url: '/api/login/test-token'
-        });
-    }
-    
-    /**
-     * Recover Password
-     * Password Recovery
-     * @param data The data for the request.
-     * @param data.email
-     * @returns Message Successful Response
-     * @throws ApiError
-     */
-    public static recoverPassword(data: LoginRecoverPasswordData): CancelablePromise<LoginRecoverPasswordResponse> {
-        return __request(OpenAPI, {
-            method: 'POST',
-            url: '/api/password-recovery/{email}',
-            path: {
-                email: data.email
+                season_id: data.seasonId
             },
             errors: {
                 422: 'Validation Error'
@@ -172,17 +1296,51 @@ export class LoginService {
     }
     
     /**
-     * Reset Password
-     * Reset password
+     * Get Player Types
+     * Get player type regulations
+     *
+     * Optionally filter by season to see player type limits per season.
+     *
+     * **Query Parameters:**
+     * - muagiai: Filter by season ID (e.g., "2024-2025")
+     * @param data The data for the request.
+     * @param data.muagiai Filter by season, e.g., '2024-2025'
+     * @param data.skip
+     * @param data.limit
+     * @returns LoaiCauThuPublic Successful Response
+     * @throws ApiError
+     */
+    public static getPlayerTypes(data: SeasonManagementGetPlayerTypesData = {}): CancelablePromise<SeasonManagementGetPlayerTypesResponse> {
+        return __request(OpenAPI, {
+            method: 'GET',
+            url: '/api/v1/season-management/player-types',
+            query: {
+                muagiai: data.muagiai,
+                skip: data.skip,
+                limit: data.limit
+            },
+            errors: {
+                422: 'Validation Error'
+            }
+        });
+    }
+    
+    /**
+     * Create Player Type
+     * Create player type regulation
+     *
+     * **Requires BTC role** - Only Ban Tổ Chức can create player type regulations.
+     *
+     * Defines maximum number of players per type (e.g., foreign players) for a season.
      * @param data The data for the request.
      * @param data.requestBody
-     * @returns Message Successful Response
+     * @returns LoaiCauThuPublic Successful Response
      * @throws ApiError
      */
-    public static resetPassword(data: LoginResetPasswordData): CancelablePromise<LoginResetPasswordResponse> {
+    public static createPlayerType(data: SeasonManagementCreatePlayerTypeData): CancelablePromise<SeasonManagementCreatePlayerTypeResponse> {
         return __request(OpenAPI, {
             method: 'POST',
-            url: '/api/reset-password/',
+            url: '/api/v1/season-management/player-types',
             body: data.requestBody,
             mediaType: 'application/json',
             errors: {
@@ -192,19 +1350,68 @@ export class LoginService {
     }
     
     /**
-     * Recover Password Html Content
-     * HTML Content for Password Recovery
+     * Get Player Type
+     * Get player type regulation by ID
      * @param data The data for the request.
-     * @param data.email
-     * @returns string Successful Response
+     * @param data.playerTypeId
+     * @returns LoaiCauThuPublic Successful Response
      * @throws ApiError
      */
-    public static recoverPasswordHtmlContent(data: LoginRecoverPasswordHtmlContentData): CancelablePromise<LoginRecoverPasswordHtmlContentResponse> {
+    public static getPlayerType(data: SeasonManagementGetPlayerTypeData): CancelablePromise<SeasonManagementGetPlayerTypeResponse> {
         return __request(OpenAPI, {
-            method: 'POST',
-            url: '/api/password-recovery-html-content/{email}',
+            method: 'GET',
+            url: '/api/v1/season-management/player-types/{player_type_id}',
             path: {
-                email: data.email
+                player_type_id: data.playerTypeId
+            },
+            errors: {
+                422: 'Validation Error'
+            }
+        });
+    }
+    
+    /**
+     * Update Player Type
+     * Update player type regulation
+     *
+     * **Requires BTC role** - Only Ban Tổ Chức can update player type regulations.
+     * @param data The data for the request.
+     * @param data.playerTypeId
+     * @param data.requestBody
+     * @returns LoaiCauThuPublic Successful Response
+     * @throws ApiError
+     */
+    public static updatePlayerType(data: SeasonManagementUpdatePlayerTypeData): CancelablePromise<SeasonManagementUpdatePlayerTypeResponse> {
+        return __request(OpenAPI, {
+            method: 'PUT',
+            url: '/api/v1/season-management/player-types/{player_type_id}',
+            path: {
+                player_type_id: data.playerTypeId
+            },
+            body: data.requestBody,
+            mediaType: 'application/json',
+            errors: {
+                422: 'Validation Error'
+            }
+        });
+    }
+    
+    /**
+     * Delete Player Type
+     * Delete player type regulation
+     *
+     * **Requires BTC role** - Only Ban Tổ Chức can delete player type regulations.
+     * @param data The data for the request.
+     * @param data.playerTypeId
+     * @returns Message Successful Response
+     * @throws ApiError
+     */
+    public static deletePlayerType(data: SeasonManagementDeletePlayerTypeData): CancelablePromise<SeasonManagementDeletePlayerTypeResponse> {
+        return __request(OpenAPI, {
+            method: 'DELETE',
+            url: '/api/v1/season-management/player-types/{player_type_id}',
+            path: {
+                player_type_id: data.playerTypeId
             },
             errors: {
                 422: 'Validation Error'
@@ -213,21 +1420,395 @@ export class LoginService {
     }
 }
 
-export class PrivateService {
+export class StadiumsService {
     /**
-     * Create User
-     * Create a new user.
+     * Get Stadiums
+     * Get all stadiums, optionally filtered by season
+     *
+     * **Query Parameters:**
+     * - muagiai: Optional filter by season ID
      * @param data The data for the request.
-     * @param data.requestBody
-     * @returns UserPublic Successful Response
+     * @param data.muagiai Filter by season, e.g., '2024-2025'
+     * @param data.skip
+     * @param data.limit
+     * @returns SanVanDongPublic Successful Response
      * @throws ApiError
      */
-    public static createUser(data: PrivateCreateUserData): CancelablePromise<PrivateCreateUserResponse> {
+    public static getStadiums(data: StadiumsGetStadiumsData = {}): CancelablePromise<StadiumsGetStadiumsResponse> {
+        return __request(OpenAPI, {
+            method: 'GET',
+            url: '/api/v1/stadiums/',
+            query: {
+                muagiai: data.muagiai,
+                skip: data.skip,
+                limit: data.limit
+            },
+            errors: {
+                422: 'Validation Error'
+            }
+        });
+    }
+    
+    /**
+     * Create Stadium
+     * Create new stadium
+     *
+     * **Requires BTC role** - Only Ban Tổ Chức can create stadiums.
+     *
+     * Stadium is created for a specific season (muagiai).
+     * @param data The data for the request.
+     * @param data.requestBody
+     * @returns SanVanDongPublic Successful Response
+     * @throws ApiError
+     */
+    public static createStadium(data: StadiumsCreateStadiumData): CancelablePromise<StadiumsCreateStadiumResponse> {
         return __request(OpenAPI, {
             method: 'POST',
-            url: '/api/private/users/',
+            url: '/api/v1/stadiums/',
             body: data.requestBody,
             mediaType: 'application/json',
+            errors: {
+                422: 'Validation Error'
+            }
+        });
+    }
+    
+    /**
+     * Get Stadium
+     * Get stadium by ID
+     *
+     * **Requires muagiai parameter** due to composite primary key (masanvandong, muagiai)
+     *
+     * Example: `/stadiums/SVD001?muagiai=2024-2025`
+     * @param data The data for the request.
+     * @param data.stadiumId
+     * @param data.muagiai Season ID (required for composite PK)
+     * @returns SanVanDongPublic Successful Response
+     * @throws ApiError
+     */
+    public static getStadium(data: StadiumsGetStadiumData): CancelablePromise<StadiumsGetStadiumResponse> {
+        return __request(OpenAPI, {
+            method: 'GET',
+            url: '/api/v1/stadiums/{stadium_id}',
+            path: {
+                stadium_id: data.stadiumId
+            },
+            query: {
+                muagiai: data.muagiai
+            },
+            errors: {
+                422: 'Validation Error'
+            }
+        });
+    }
+    
+    /**
+     * Update Stadium
+     * Update stadium
+     *
+     * **Requires BTC role** - Only Ban Tổ Chức can update stadiums.
+     * **Requires muagiai parameter** due to composite primary key.
+     *
+     * Cannot change primary key fields (masanvandong, muagiai).
+     * @param data The data for the request.
+     * @param data.stadiumId
+     * @param data.muagiai Season ID (required for composite PK)
+     * @param data.requestBody
+     * @returns SanVanDongPublic Successful Response
+     * @throws ApiError
+     */
+    public static updateStadium(data: StadiumsUpdateStadiumData): CancelablePromise<StadiumsUpdateStadiumResponse> {
+        return __request(OpenAPI, {
+            method: 'PUT',
+            url: '/api/v1/stadiums/{stadium_id}',
+            path: {
+                stadium_id: data.stadiumId
+            },
+            query: {
+                muagiai: data.muagiai
+            },
+            body: data.requestBody,
+            mediaType: 'application/json',
+            errors: {
+                422: 'Validation Error'
+            }
+        });
+    }
+    
+    /**
+     * Delete Stadium
+     * Delete stadium
+     *
+     * **Requires BTC role** - Only Ban Tổ Chức can delete stadiums.
+     * **Requires muagiai parameter** due to composite primary key.
+     * @param data The data for the request.
+     * @param data.stadiumId
+     * @param data.muagiai Season ID (required for composite PK)
+     * @returns Message Successful Response
+     * @throws ApiError
+     */
+    public static deleteStadium(data: StadiumsDeleteStadiumData): CancelablePromise<StadiumsDeleteStadiumResponse> {
+        return __request(OpenAPI, {
+            method: 'DELETE',
+            url: '/api/v1/stadiums/{stadium_id}',
+            path: {
+                stadium_id: data.stadiumId
+            },
+            query: {
+                muagiai: data.muagiai
+            },
+            errors: {
+                422: 'Validation Error'
+            }
+        });
+    }
+}
+
+export class StandingsService {
+    /**
+     * Get Standings
+     * Get standings table for a season.
+     *
+     * Public endpoint - no authentication required.
+     *
+     * **Algorithm:**
+     * - Computes from match results (`lichthidau.tiso`)
+     * - Win = 3 points, Draw = 1 point, Loss = 0 points
+     * - Sorted by: Points DESC → Goal Difference DESC → Goals For DESC
+     *
+     * **Handles:**
+     * - Null/invalid `tiso` gracefully (skips match)
+     * - Returns empty standings if season not found
+     *
+     * **Query Parameters:**
+     * - `muagiai`: Season ID (required)
+     *
+     * **Response:**
+     * - `muagiai`: Season ID
+     * - `last_updated`: Timestamp of computation
+     * - `standings`: Array of team standings (sorted by position)
+     *
+     * **Example:**
+     * ```
+     * GET /api/standings?muagiai=2024-2025
+     * ```
+     * @param data The data for the request.
+     * @param data.muagiai Season ID (e.g., '2024-2025')
+     * @returns StandingsResponse Successful Response
+     * @throws ApiError
+     */
+    public static getStandings(data: StandingsGetStandingsData): CancelablePromise<StandingsGetStandingsResponse> {
+        return __request(OpenAPI, {
+            method: 'GET',
+            url: '/api/v1/standings',
+            query: {
+                muagiai: data.muagiai
+            },
+            errors: {
+                422: 'Validation Error'
+            }
+        });
+    }
+}
+
+export class StatisticsService {
+    /**
+     * Get Player Stats
+     * Get player statistics for a season.
+     *
+     * **Authentication required** - Any authenticated user can view stats.
+     *
+     * **Algorithm:**
+     * - Computes from match events (`sukientrandau`)
+     * - Goals: `loaisukien = "BanThang"`
+     * - Assists: Count as `cauthulienquan` in goal events
+     * - Yellow cards: `loaisukien = "TheVang"`
+     * - Red cards: `loaisukien = "TheDo"`
+     * - Matches played: Distinct `matran` from `doihinhxuatphat`
+     *
+     * **Handles:**
+     * - Returns empty list if season not found
+     * - Skips players with no activity
+     *
+     * **Query Parameters:**
+     * - `muagiai`: Season ID (required)
+     *
+     * **Response:**
+     * - `muagiai`: Season ID
+     * - `total_players`: Number of players with statistics
+     * - `stats`: Array of player statistics (sorted by goals DESC, assists DESC)
+     *
+     * **Example:**
+     * ```
+     * GET /api/stats/players?muagiai=2024-2025
+     * ```
+     * @param data The data for the request.
+     * @param data.muagiai Season ID (e.g., '2024-2025')
+     * @returns PlayerStatsResponse Successful Response
+     * @throws ApiError
+     */
+    public static getPlayerStats(data: StatisticsGetPlayerStatsData): CancelablePromise<StatisticsGetPlayerStatsResponse> {
+        return __request(OpenAPI, {
+            method: 'GET',
+            url: '/api/v1/stats/players',
+            query: {
+                muagiai: data.muagiai
+            },
+            errors: {
+                422: 'Validation Error'
+            }
+        });
+    }
+    
+    /**
+     * Get Match Stats
+     * Get match statistics.
+     *
+     * **Authentication required** - Any authenticated user can view stats.
+     *
+     * **Note:** Since `thong_ke_tran_dau` table is not implemented,
+     * returns limited statistics from match events only (cards).
+     *
+     * **Available Stats:**
+     * - Yellow cards (computed from events)
+     * - Red cards (computed from events)
+     * - Other stats (shots, corners, fouls) return 0
+     *
+     * **Response:**
+     * - `matran`: Match ID
+     * - `muagiai`: Season ID
+     * - `home_team`: Home team statistics
+     * - `away_team`: Away team statistics
+     * - `available`: True if stats available (partial or full)
+     * - `message`: Info message about data availability
+     *
+     * **Example:**
+     * ```
+     * GET /api/stats/matches/MT_V1_01
+     * ```
+     * @param data The data for the request.
+     * @param data.matran
+     * @returns MatchStatsResponse Successful Response
+     * @throws ApiError
+     */
+    public static getMatchStats(data: StatisticsGetMatchStatsData): CancelablePromise<StatisticsGetMatchStatsResponse> {
+        return __request(OpenAPI, {
+            method: 'GET',
+            url: '/api/v1/stats/matches/{matran}',
+            path: {
+                matran: data.matran
+            },
+            errors: {
+                422: 'Validation Error'
+            }
+        });
+    }
+    
+    /**
+     * Get Awards
+     * Get awards for top scorers and top assist providers.
+     *
+     * **Authentication required** - Any authenticated user can view awards.
+     *
+     * **Algorithm:**
+     * - Top scorers: Count `loaisukien = "BanThang"` per player
+     * - Top assists: Count `cauthulienquan` in goal events
+     * - Returns top N with ties handled (if position N has ties, all tied players included)
+     * - Sorted by value DESC, player name ASC
+     *
+     * **Event types:**
+     * - Uses canonical event type "BanThang" (no space)
+     * - Auto-normalizes old data: "Ban Thang" → "BanThang"
+     * - Handles backward compatibility with spaced formats
+     *
+     * **Query Parameters:**
+     * - `muagiai`: Season ID (required)
+     * - `limit`: Maximum number to return (default 10, range 1-200)
+     * If position N has ties, all tied players are included (may exceed limit)
+     *
+     * **Response:**
+     * - `muagiai`: Season ID
+     * - `top_scorers`: Top N goal scorers (with ties)
+     * - `top_assists`: Top N assist providers (with ties)
+     * - `generated_at`: Timestamp
+     *
+     * **Example:**
+     * ```
+     * GET /api/stats/awards?muagiai=2024-2025&limit=10
+     * ```
+     * @param data The data for the request.
+     * @param data.muagiai Season ID (e.g., '2024-2025')
+     * @param data.limit Max number to return (ties may exceed limit)
+     * @returns AwardsResponse Successful Response
+     * @throws ApiError
+     */
+    public static getAwards(data: StatisticsGetAwardsData): CancelablePromise<StatisticsGetAwardsResponse> {
+        return __request(OpenAPI, {
+            method: 'GET',
+            url: '/api/v1/stats/awards',
+            query: {
+                muagiai: data.muagiai,
+                limit: data.limit
+            },
+            errors: {
+                422: 'Validation Error'
+            }
+        });
+    }
+    
+    /**
+     * Get Discipline
+     * Get discipline statistics (yellow/red cards).
+     *
+     * **Authentication required** - Any authenticated user can view discipline stats.
+     *
+     * **Algorithm:**
+     * - Yellow cards: Count `loaisukien = "TheVang"`
+     * - Red cards: Count `loaisukien = "TheDo"`
+     * - Second yellows: If player gets 2+ yellow cards in SAME match, extras count as second yellow
+     * - Discipline points: yellow=1, second_yellow=2, red=3
+     * - Sorted by: discipline_points DESC, red_cards DESC, yellow_cards DESC, name ASC
+     * - Returns top N with ties (if position N has ties, all tied players included)
+     *
+     * **Event types:**
+     * - Uses canonical event types "TheVang", "TheDo" (no space)
+     * - Auto-normalizes old data: "The Vang" → "TheVang", "The Do" → "TheDo"
+     * - Handles backward compatibility with spaced formats
+     *
+     * **Discipline points calculation:**
+     * - Each yellow card = 1 point
+     * - Each second yellow (2+ in same match) = 2 points
+     * - Each red card = 3 points
+     *
+     * **Query Parameters:**
+     * - `muagiai`: Season ID (required)
+     * - `limit`: Maximum number to return (default 50, range 1-200)
+     * If position N has ties, all tied players are included (may exceed limit)
+     *
+     * **Response:**
+     * - `muagiai`: Season ID
+     * - `leaderboard`: Top N players with discipline statistics (with ties)
+     * - `generated_at`: Timestamp
+     * - `rules`: Description of discipline points calculation
+     *
+     * **Example:**
+     * ```
+     * GET /api/stats/discipline?muagiai=2024-2025&limit=50
+     * ```
+     * @param data The data for the request.
+     * @param data.muagiai Season ID (e.g., '2024-2025')
+     * @param data.limit Max number to return (ties may exceed limit)
+     * @returns DisciplineResponse Successful Response
+     * @throws ApiError
+     */
+    public static getDiscipline(data: StatisticsGetDisciplineData): CancelablePromise<StatisticsGetDisciplineResponse> {
+        return __request(OpenAPI, {
+            method: 'GET',
+            url: '/api/v1/stats/discipline',
+            query: {
+                muagiai: data.muagiai,
+                limit: data.limit
+            },
             errors: {
                 422: 'Validation Error'
             }
@@ -248,7 +1829,7 @@ export class UsersService {
     public static readUsers(data: UsersReadUsersData = {}): CancelablePromise<UsersReadUsersResponse> {
         return __request(OpenAPI, {
             method: 'GET',
-            url: '/api/users/',
+            url: '/api/v1/users/users/',
             query: {
                 skip: data.skip,
                 limit: data.limit
@@ -270,7 +1851,7 @@ export class UsersService {
     public static createUser(data: UsersCreateUserData): CancelablePromise<UsersCreateUserResponse> {
         return __request(OpenAPI, {
             method: 'POST',
-            url: '/api/users/',
+            url: '/api/v1/users/users/',
             body: data.requestBody,
             mediaType: 'application/json',
             errors: {
@@ -288,7 +1869,7 @@ export class UsersService {
     public static readUserMe(): CancelablePromise<UsersReadUserMeResponse> {
         return __request(OpenAPI, {
             method: 'GET',
-            url: '/api/users/me'
+            url: '/api/v1/users/users/me'
         });
     }
     
@@ -301,7 +1882,7 @@ export class UsersService {
     public static deleteUserMe(): CancelablePromise<UsersDeleteUserMeResponse> {
         return __request(OpenAPI, {
             method: 'DELETE',
-            url: '/api/users/me'
+            url: '/api/v1/users/users/me'
         });
     }
     
@@ -316,7 +1897,7 @@ export class UsersService {
     public static updateUserMe(data: UsersUpdateUserMeData): CancelablePromise<UsersUpdateUserMeResponse> {
         return __request(OpenAPI, {
             method: 'PATCH',
-            url: '/api/users/me',
+            url: '/api/v1/users/users/me',
             body: data.requestBody,
             mediaType: 'application/json',
             errors: {
@@ -336,7 +1917,7 @@ export class UsersService {
     public static updatePasswordMe(data: UsersUpdatePasswordMeData): CancelablePromise<UsersUpdatePasswordMeResponse> {
         return __request(OpenAPI, {
             method: 'PATCH',
-            url: '/api/users/me/password',
+            url: '/api/v1/users/users/me/password',
             body: data.requestBody,
             mediaType: 'application/json',
             errors: {
@@ -356,7 +1937,7 @@ export class UsersService {
     public static registerUser(data: UsersRegisterUserData): CancelablePromise<UsersRegisterUserResponse> {
         return __request(OpenAPI, {
             method: 'POST',
-            url: '/api/users/signup',
+            url: '/api/v1/users/users/signup',
             body: data.requestBody,
             mediaType: 'application/json',
             errors: {
@@ -376,7 +1957,7 @@ export class UsersService {
     public static readUserById(data: UsersReadUserByIdData): CancelablePromise<UsersReadUserByIdResponse> {
         return __request(OpenAPI, {
             method: 'GET',
-            url: '/api/users/{user_id}',
+            url: '/api/v1/users/users/{user_id}',
             path: {
                 user_id: data.userId
             },
@@ -398,7 +1979,7 @@ export class UsersService {
     public static updateUser(data: UsersUpdateUserData): CancelablePromise<UsersUpdateUserResponse> {
         return __request(OpenAPI, {
             method: 'PATCH',
-            url: '/api/users/{user_id}',
+            url: '/api/v1/users/users/{user_id}',
             path: {
                 user_id: data.userId
             },
@@ -421,48 +2002,13 @@ export class UsersService {
     public static deleteUser(data: UsersDeleteUserData): CancelablePromise<UsersDeleteUserResponse> {
         return __request(OpenAPI, {
             method: 'DELETE',
-            url: '/api/users/{user_id}',
+            url: '/api/v1/users/users/{user_id}',
             path: {
                 user_id: data.userId
             },
             errors: {
                 422: 'Validation Error'
             }
-        });
-    }
-}
-
-export class UtilsService {
-    /**
-     * Test Email
-     * Test emails.
-     * @param data The data for the request.
-     * @param data.emailTo
-     * @returns Message Successful Response
-     * @throws ApiError
-     */
-    public static testEmail(data: UtilsTestEmailData): CancelablePromise<UtilsTestEmailResponse> {
-        return __request(OpenAPI, {
-            method: 'POST',
-            url: '/api/utils/test-email/',
-            query: {
-                email_to: data.emailTo
-            },
-            errors: {
-                422: 'Validation Error'
-            }
-        });
-    }
-    
-    /**
-     * Health Check
-     * @returns boolean Successful Response
-     * @throws ApiError
-     */
-    public static healthCheck(): CancelablePromise<UtilsHealthCheckResponse> {
-        return __request(OpenAPI, {
-            method: 'GET',
-            url: '/api/utils/health-check/'
         });
     }
 }

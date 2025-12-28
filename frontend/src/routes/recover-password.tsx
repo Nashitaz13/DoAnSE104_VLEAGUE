@@ -8,7 +8,7 @@ import {
 import { useForm } from "react-hook-form"
 import { z } from "zod"
 
-import { LoginService } from "@/client"
+import { AuthService } from "@/client"
 import { AuthLayout } from "@/components/Common/AuthLayout"
 import {
   Form,
@@ -25,7 +25,7 @@ import useCustomToast from "@/hooks/useCustomToast"
 import { handleError } from "@/utils"
 
 const formSchema = z.object({
-  email: z.email(),
+  email: z.email({ message: "Email không hợp lệ" }),
 })
 
 type FormData = z.infer<typeof formSchema>
@@ -42,7 +42,7 @@ export const Route = createFileRoute("/recover-password")({
   head: () => ({
     meta: [
       {
-        title: "Recover Password - FastAPI Cloud",
+        title: "Khôi phục mật khẩu - V-League",
       },
     ],
   }),
@@ -58,7 +58,7 @@ function RecoverPassword() {
   const { showSuccessToast, showErrorToast } = useCustomToast()
 
   const recoverPassword = async (data: FormData) => {
-    await LoginService.recoverPassword({
+    await AuthService.recoverPassword({
       email: data.email,
     })
   }
@@ -66,7 +66,7 @@ function RecoverPassword() {
   const mutation = useMutation({
     mutationFn: recoverPassword,
     onSuccess: () => {
-      showSuccessToast("Password recovery email sent successfully")
+      showSuccessToast("Email khôi phục mật khẩu đã được gửi")
       form.reset()
     },
     onError: handleError.bind(showErrorToast),
@@ -85,7 +85,7 @@ function RecoverPassword() {
           className="flex flex-col gap-6"
         >
           <div className="flex flex-col items-center gap-2 text-center">
-            <h1 className="text-2xl font-bold">Password Recovery</h1>
+            <h1 className="text-2xl font-bold">Khôi phục mật khẩu</h1>
           </div>
 
           <div className="grid gap-4">
@@ -113,14 +113,14 @@ function RecoverPassword() {
               className="w-full"
               loading={mutation.isPending}
             >
-              Continue
+              Tiếp tục
             </LoadingButton>
           </div>
 
           <div className="text-center text-sm">
-            Remember your password?{" "}
+            Bạn đã nhớ mật khẩu?{" "}
             <RouterLink to="/login" className="underline underline-offset-4">
-              Log in
+              Đăng nhập
             </RouterLink>
           </div>
         </form>

@@ -8,12 +8,14 @@ import {
   ChevronLeft,
   ChevronRight,
   Clock,
+  Eye,
   Filter,
   MapPin,
 } from "lucide-react"
 import { useMemo, useState } from "react"
 
-import { OpenAPI } from "@/client"
+import { OpenAPI, SeasonManagementService } from "@/client"
+import { MatchDetailModal } from "@/components/Match/MatchDetailModal"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent } from "@/components/ui/card"
@@ -61,10 +63,37 @@ const ImageWithFallback = ({
 }
 
 function FixturesPage() {
+  // Mặc định chọn 2024-2025
+  const [selectedSeason, setSelectedSeason] = useState<string>("2024-2025")
   const [selectedDate, setSelectedDate] = useState<string>("all")
   const [selectedTeam, setSelectedTeam] = useState<string>("all")
   const [selectedStatus, setSelectedStatus] = useState<string>("all")
   const [showFilters, setShowFilters] = useState<boolean>(false)
+
+  const [isDetailModalOpen, setIsDetailModalOpen] = useState(false)
+  const [selectedMatchForDetail, setSelectedMatchForDetail] = useState<{
+    id: string
+    homeId: string
+    awayId: string
+    homeName: string
+    awayName: string
+  } | null>(null)
+
+  // 1. Lấy danh sách Mùa giải
+  const { data: seasonsData } = useQuery({
+    queryKey: ["seasons"],
+    queryFn: () => SeasonManagementService.getSeasons({ limit: 100 }),
+  })
+
+  const seasonList = useMemo(() => {
+    const listFromApi = Array.isArray(seasonsData) ? seasonsData : (seasonsData as any)?.data || [];
+    const requiredSeasons = ["2025-2026", "2024-2025", "2023-2024"];
+    const seasonSet = new Set(listFromApi.map((s: any) => s.muagiai));
+    requiredSeasons.forEach(s => seasonSet.add(s));
+    return Array.from(seasonSet)
+        .map(s => ({ muagiai: s }))
+        .sort((a: any, b: any) => b.muagiai.localeCompare(a.muagiai));
+  }, [seasonsData]);
 
   // Fetch matches
   const {
@@ -73,13 +102,13 @@ function FixturesPage() {
     isError,
     error,
   } = useQuery({
-    queryKey: ["matches", "2024-2025"],
+    queryKey: ["matches", selectedSeason],
     queryFn: async () => {
       const token = localStorage.getItem("access_token") || ""
       const headers = token ? { Authorization: `Bearer ${token}` } : undefined
       try {
         const res = await axios.get(
-          `${OpenAPI.BASE}/api/v1/matches?skip=0&limit=100&muagiai=2024-2025`,
+          `${OpenAPI.BASE}/api/v1/matches?skip=0&limit=100&muagiai=${selectedSeason}`,
           { headers },
         )
         return res.data as Array<{
@@ -101,12 +130,12 @@ function FixturesPage() {
 
   // Fetch teams for filter
   const { data: teamsData } = useQuery({
-    queryKey: ["clubs", "2024-2025"],
+    queryKey: ["clubs", selectedSeason],
     queryFn: async () => {
       const token = localStorage.getItem("access_token") || ""
       const headers = token ? { Authorization: `Bearer ${token}` } : undefined
       const res = await axios.get(
-        `${OpenAPI.BASE}/api/v1/clubs?muagiai=2024-2025`,
+        `${OpenAPI.BASE}/api/v1/clubs?muagiai=${selectedSeason}`,
         { headers },
       )
       return res.data as Array<{
@@ -164,6 +193,17 @@ function FixturesPage() {
     if (!masanvandong) return "Đang cập nhật"
     const stadium = stadiums?.find((s) => s.masanvandong === masanvandong)
     return stadium ? stadium.tensanvandong : masanvandong
+  }
+
+  const handleViewDetail = (match: any) => {
+    setSelectedMatchForDetail({
+      id: match.matran,
+      homeId: match.maclbnha,
+      awayId: match.maclbkhach,
+      homeName: getClubName(match.maclbnha),
+      awayName: getClubName(match.maclbkhach),
+    })
+    setIsDetailModalOpen(true)
   }
 
   // Filter matches
@@ -243,31 +283,49 @@ function FixturesPage() {
   }
 
   return (
-    <div>
+    <div className="min-h-screen bg-gray-50 dark:bg-background pb-12 transition-colors duration-300">
       {/* Header Section */}
-      <section className="bg-gradient-to-r from-red-800 to-red-900 text-white py-8 rounded-md mb-6">
+      <section className="bg-gradient-to-r from-red-800 to-red-900 dark:from-neutral-900 dark:to-neutral-800 text-white py-8 rounded-md mb-6 shadow-lg">
         <div className="container mx-auto px-6">
           <div className="flex items-center justify-between flex-wrap gap-4">
             <div>
               <h1 className="text-4xl font-bold mb-2">
                 Lịch thi đấu & Kết quả
               </h1>
-              <p className="text-red-100">
-                V-League 1 2024-2025 - Thể thức vòng tròn 2 lượt
-              </p>
+              <div className="flex items-center gap-2 mt-2">
+                <p className="text-red-100 dark:text-gray-400">
+                  V-League 1
+                </p>
+                <Select value={selectedSeason} onValueChange={setSelectedSeason}>
+                  <SelectTrigger className="w-[140px] h-8 bg-white/10 border-white/20 text-white">
+                    <SelectValue placeholder="Chọn mùa giải" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {seasonList.map((s: any) => (
+                      <SelectItem key={s.muagiai} value={s.muagiai}>
+                        {s.muagiai}
+                      </SelectItem>
+                    ))}
+
+                  </SelectContent>
+                </Select>
+                <p className="text-red-100 dark:text-gray-400 text-sm">
+                  - Thể thức vòng tròn 2 lượt
+                </p>
+              </div>
             </div>
 
             <div className="flex gap-3">
               <Button
                 variant="outline"
-                className="border-white text-white hover:bg-white hover:text-red-900 bg-transparent"
+                className="border-white text-white hover:bg-white hover:text-red-900 dark:border-gray-600 dark:hover:bg-gray-700 dark:hover:text-white bg-transparent transition-colors"
               >
                 <Bell className="w-4 h-4 mr-2" />
                 Thông báo
               </Button>
               <Button
                 variant="outline"
-                className="border-white text-white hover:bg-white hover:text-red-900 bg-transparent"
+                className="border-white text-white hover:bg-white hover:text-red-900 dark:border-gray-600 dark:hover:bg-gray-700 dark:hover:text-white bg-transparent transition-colors"
                 onClick={() => setShowFilters((v) => !v)}
               >
                 <Filter className="w-4 h-4 mr-2" />
@@ -282,7 +340,7 @@ function FixturesPage() {
         {/* Date Navigation */}
         <section className="mb-8">
           <div className="flex items-center gap-4 mb-4">
-            <Button variant="ghost" size="sm" className="p-2">
+            <Button variant="ghost" size="sm" className="p-2 hover:bg-gray-100 dark:hover:bg-gray-800">
               <ChevronLeft className="w-4 h-4" />
             </Button>
 
@@ -292,8 +350,8 @@ function FixturesPage() {
                 onClick={() => setSelectedDate("all")}
                 className={`whitespace-nowrap ${
                   selectedDate === "all"
-                    ? "bg-red-600 text-white hover:bg-red-700"
-                    : "hover:bg-red-50 hover:text-red-600 dark:hover:bg-red-950"
+                    ? "bg-red-600 text-white hover:bg-red-700 dark:bg-red-700 dark:hover:bg-red-600"
+                    : "hover:bg-red-50 hover:text-red-600 dark:bg-card dark:text-foreground dark:hover:bg-red-900/30 dark:hover:text-red-400 border-gray-200 dark:border-gray-700"
                 }`}
               >
                 Tất cả
@@ -317,8 +375,8 @@ function FixturesPage() {
                     onClick={() => setSelectedDate(item.date)}
                     className={`flex flex-col h-auto py-2 px-3 min-w-[80px] ${
                       selectedDate === item.date
-                        ? "bg-red-600 text-white hover:bg-red-700 border-red-600"
-                        : "hover:bg-red-50 hover:text-red-600 dark:hover:bg-red-950 border-gray-200 dark:border-gray-700"
+                        ? "bg-red-600 text-white hover:bg-red-700 border-red-600 dark:bg-red-700 dark:hover:bg-red-600 dark:border-red-700"
+                        : "hover:bg-red-50 hover:text-red-600 border-gray-200 dark:bg-card dark:border-gray-700 dark:text-foreground dark:hover:bg-red-900/30 dark:hover:text-red-400"
                     }`}
                   >
                     <span className="text-[10px] uppercase font-medium opacity-80 mb-0.5">
@@ -336,7 +394,7 @@ function FixturesPage() {
                 ))}
             </div>
 
-            <Button variant="ghost" size="sm" className="p-2">
+            <Button variant="ghost" size="sm" className="p-2 hover:bg-gray-100 dark:hover:bg-gray-800">
               <ChevronRight className="w-4 h-4" />
             </Button>
           </div>
@@ -345,7 +403,7 @@ function FixturesPage() {
           {showFilters && (
             <div className="flex gap-4 items-center flex-wrap">
               <Select value={selectedTeam} onValueChange={setSelectedTeam}>
-                <SelectTrigger className="w-48">
+                <SelectTrigger className="w-48 bg-white dark:bg-card dark:border-gray-700">
                   <SelectValue placeholder="Chọn đội bóng" />
                 </SelectTrigger>
                 <SelectContent>
@@ -358,7 +416,7 @@ function FixturesPage() {
                 </SelectContent>
               </Select>
               <Select value={selectedStatus} onValueChange={setSelectedStatus}>
-                <SelectTrigger className="w-40">
+                <SelectTrigger className="w-40 bg-white dark:bg-card dark:border-gray-700">
                   <SelectValue placeholder="Trạng thái" />
                 </SelectTrigger>
                 <SelectContent>
@@ -374,7 +432,7 @@ function FixturesPage() {
         {/* Matches List */}
         <section className="space-y-8">
           {sortedDates.length === 0 ? (
-            <div className="text-center py-10 text-muted-foreground">
+            <div className="text-center py-10 text-muted-foreground bg-white dark:bg-card rounded-xl border border-dashed dark:border-gray-700">
               Không tìm thấy trận đấu nào phù hợp.
             </div>
           ) : (
@@ -395,7 +453,7 @@ function FixturesPage() {
                   {groupedMatches[dateStr].map((match) => (
                     <Card
                       key={match.matran}
-                      className="border shadow-sm rounded-xl overflow-hidden hover:shadow-md transition-shadow"
+                      className="border shadow-sm rounded-xl overflow-hidden hover:shadow-md transition-shadow dark:bg-card dark:border-gray-700"
                     >
                       <CardContent className="p-0">
                         <div className="flex flex-col md:flex-row items-center justify-between p-6 gap-6">
@@ -407,7 +465,7 @@ function FixturesPage() {
                               className="w-10 h-10 md:w-14 md:h-14 object-contain"
                             />
                             <div className="flex flex-col items-start text-left">
-                              <span className="font-bold text-sm md:text-lg leading-tight">
+                              <span className="font-bold text-sm md:text-lg leading-tight dark:text-foreground">
                                 {getClubName(match.maclbnha)}
                               </span>
                               <span className="text-xs text-muted-foreground mt-0.5">
@@ -419,11 +477,11 @@ function FixturesPage() {
                           {/* Center Info: Time & Status */}
                           <div className="flex flex-col items-center justify-center w-1/3 md:order-2 px-2">
                             {match.tiso ? (
-                              <span className="text-3xl md:text-4xl font-bold mb-2 text-red-600 tracking-widest">
+                              <span className="text-3xl md:text-4xl font-bold mb-2 text-red-600 dark:text-red-500 tracking-widest">
                                 {match.tiso.replace("-", " - ")}
                               </span>
                             ) : (
-                              <span className="text-xl md:text-2xl font-bold mb-2">
+                              <span className="text-xl md:text-2xl font-bold mb-2 dark:text-foreground">
                                 {format(
                                   new Date(match.thoigianthidau),
                                   "HH:mm",
@@ -436,7 +494,7 @@ function FixturesPage() {
                           {/* Away Team */}
                           <div className="flex items-center justify-end w-1/3 md:order-3 gap-3 md:gap-4">
                             <div className="flex flex-col items-end text-right">
-                              <span className="font-bold text-sm md:text-lg leading-tight">
+                              <span className="font-bold text-sm md:text-lg leading-tight dark:text-foreground">
                                 {getClubName(match.maclbkhach)}
                               </span>
                               <span className="text-xs text-muted-foreground mt-0.5">
@@ -452,22 +510,34 @@ function FixturesPage() {
                         </div>
 
                         {/* Footer: Stadium & Time */}
-                        <div className="bg-slate-50 dark:bg-slate-900 py-3 px-6 flex justify-center items-center gap-6 text-sm text-muted-foreground border-t">
-                          <div className="flex items-center gap-2">
-                            <MapPin className="w-4 h-4" />
-                            <span>{getStadiumName(match.masanvandong)}</span>
+                        <div className="bg-slate-50 dark:bg-muted/30 py-3 px-6 flex flex-col md:flex-row justify-between items-center gap-4 text-sm text-muted-foreground border-t dark:border-gray-700">
+                          <div className="flex items-center gap-6">
+                            <div className="flex items-center gap-2">
+                              <MapPin className="w-4 h-4" />
+                              <span>{getStadiumName(match.masanvandong)}</span>
+                            </div>
+                            <div className="flex items-center gap-2">
+                              <Clock className="w-4 h-4" />
+                              <span>
+                                {getMatchStatus(match) === "Kết thúc"
+                                  ? "Kết thúc"
+                                  : format(
+                                      new Date(match.thoigianthidau),
+                                      "HH:mm",
+                                    )}
+                              </span>
+                            </div>
                           </div>
-                          <div className="flex items-center gap-2">
-                            <Clock className="w-4 h-4" />
-                            <span>
-                              {getMatchStatus(match) === "Kết thúc"
-                                ? "Kết thúc"
-                                : format(
-                                    new Date(match.thoigianthidau),
-                                    "HH:mm",
-                                  )}
-                            </span>
-                          </div>
+
+                          <Button
+                            size="sm"
+                            variant="outline"
+                            className="w-full md:w-auto hover:bg-red-50 hover:text-red-600 dark:hover:bg-red-900/30 dark:hover:text-red-400"
+                            onClick={() => handleViewDetail(match)}
+                          >
+                            <Eye className="w-4 h-4 mr-2" />
+                            Xem chi tiết
+                          </Button>
                         </div>
                       </CardContent>
                     </Card>
@@ -478,6 +548,16 @@ function FixturesPage() {
           )}
         </section>
       </div>
+
+      <MatchDetailModal
+        isOpen={isDetailModalOpen}
+        onClose={() => setIsDetailModalOpen(false)}
+        matchId={selectedMatchForDetail?.id || null}
+        homeTeamId={selectedMatchForDetail?.homeId || ""}
+        awayTeamId={selectedMatchForDetail?.awayId || ""}
+        homeTeamName={selectedMatchForDetail?.homeName}
+        awayTeamName={selectedMatchForDetail?.awayName}
+      />
     </div>
   )
 }

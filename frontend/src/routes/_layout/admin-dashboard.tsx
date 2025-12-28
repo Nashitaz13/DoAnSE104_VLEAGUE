@@ -3,7 +3,7 @@ import { createFileRoute } from "@tanstack/react-router"
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query"
 import { 
   LayoutDashboard, FileText, Users, CalendarDays, 
-  CheckCircle, XCircle, Search, Filter, AlertTriangle, Inbox, Clock, Plus, Loader2
+  CheckCircle, AlertTriangle, Inbox, Clock, Plus, Loader2
 } from "lucide-react"
 
 import { Button } from "@/components/ui/button"
@@ -43,10 +43,10 @@ function AdminDashboard() {
   const currentUser = getCurrentUser()
 
   return (
-    <div className="min-h-[calc(100vh-4rem)] bg-gray-50 font-sans pb-10">
+    <div className="min-h-[calc(100vh-4rem)] bg-background font-sans pb-10">
       
       {/* HEADER */}
-      <div className="bg-gradient-to-r from-red-700 to-orange-600 text-white p-6 shadow-lg">
+      <div className="bg-gradient-to-r from-red-700 to-orange-600 dark:from-red-900 dark:to-orange-800 text-white p-6 shadow-lg">
         <div className="max-w-7xl mx-auto">
           <div className="flex items-center gap-4 mb-2">
             <div className="p-3 bg-white/20 rounded-lg">
@@ -63,10 +63,10 @@ function AdminDashboard() {
       {/* STATS CARDS */}
       <div className="max-w-7xl mx-auto px-6 -mt-8">
          <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
-            <StatCard title="Báo cáo chờ duyệt" value="0" icon={FileText} color="text-orange-600" />
-            <StatCard title="Yêu cầu nhân sự" value="0" icon={Users} color="text-blue-600" />
-            <StatCard title="Vòng đấu hiện tại" value="0" icon={Clock} color="text-green-600" />
-            <StatCard title="Tổng số trận" value="0" icon={CalendarDays} color="text-purple-600" />
+            <StatCard title="Báo cáo chờ duyệt" value="0" icon={FileText} color="text-orange-600 dark:text-orange-400" />
+            <StatCard title="Yêu cầu nhân sự" value="0" icon={Users} color="text-blue-600 dark:text-blue-400" />
+            <StatCard title="Vòng đấu hiện tại" value="0" icon={Clock} color="text-green-600 dark:text-green-400" />
+            <StatCard title="Tổng số trận" value="0" icon={CalendarDays} color="text-purple-600 dark:text-purple-400" />
          </div>
       </div>
 
@@ -74,15 +74,15 @@ function AdminDashboard() {
       <div className="max-w-7xl mx-auto p-6 space-y-6">
         
         {/* Navigation */}
-        <div className="bg-white p-1 rounded-xl shadow-sm border border-gray-200 flex flex-wrap gap-1">
+        <div className="bg-white dark:bg-card p-1 rounded-xl shadow-sm border border-border flex flex-wrap gap-1">
             {TABS.map((tab) => (
                 <button
                     key={tab.id}
                     onClick={() => setActiveTab(tab.id)}
                     className={`flex items-center gap-2 px-6 py-3 rounded-lg text-sm font-bold transition-all flex-1 justify-center ${
                         activeTab === tab.id 
-                        ? 'bg-gray-100 text-gray-900 shadow-inner' 
-                        : 'text-gray-500 hover:bg-gray-50 hover:text-gray-900'
+                        ? 'bg-muted text-foreground shadow-inner' 
+                        : 'text-muted-foreground hover:bg-muted/50 hover:text-foreground'
                     }`}
                 >
                     <tab.icon className="w-4 h-4" /> {tab.label}
@@ -107,30 +107,30 @@ function AdminDashboard() {
 function OverviewTab({ onChangeTab }: { onChangeTab: (tab: string) => void }) {
     return (
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-            <div className="bg-white rounded-xl shadow-sm border border-orange-200 overflow-hidden flex flex-col h-full min-h-[300px]">
-                <div className="px-6 py-4 border-b bg-orange-50 flex justify-between items-center">
-                    <div className="flex items-center gap-2 text-orange-800">
+            <div className="bg-white dark:bg-card rounded-xl shadow-sm border border-orange-200 dark:border-orange-800 overflow-hidden flex flex-col h-full min-h-[300px]">
+                <div className="px-6 py-4 border-b bg-orange-50 dark:bg-orange-900/20 flex justify-between items-center">
+                    <div className="flex items-center gap-2 text-orange-800 dark:text-orange-200">
                         <AlertTriangle className="w-5 h-5" />
                         <h3 className="font-bold">Báo cáo cần xử lý</h3>
                     </div>
                     <Button variant="ghost" size="sm" className="text-orange-600 hover:text-orange-700" onClick={() => onChangeTab('reports')}>Xem tất cả</Button>
                 </div>
-                <div className="flex-1 flex flex-col items-center justify-center p-12 text-center text-gray-400">
+                <div className="flex-1 flex flex-col items-center justify-center p-12 text-center text-muted-foreground">
                     <Inbox className="w-12 h-12 mb-3 opacity-20"/>
                     <p>Hiện không có báo cáo nào cần duyệt.</p>
                 </div>
             </div>
 
-            <div className="bg-white rounded-xl shadow-sm border border-blue-200 overflow-hidden flex flex-col h-full min-h-[300px]">
-                <div className="px-6 py-4 border-b bg-blue-50 flex justify-between items-center">
-                    <div className="flex items-center gap-2 text-blue-800">
+            <div className="bg-white dark:bg-card rounded-xl shadow-sm border border-blue-200 dark:border-blue-800 overflow-hidden flex flex-col h-full min-h-[300px]">
+                <div className="px-6 py-4 border-b bg-blue-50 dark:bg-blue-900/20 flex justify-between items-center">
+                    <div className="flex items-center gap-2 text-blue-800 dark:text-blue-200">
                         <CalendarDays className="w-5 h-5" />
                         <h3 className="font-bold">Quản lý Lịch thi đấu</h3>
                     </div>
                     <Button variant="ghost" size="sm" className="text-blue-600 hover:text-blue-700" onClick={() => onChangeTab('schedule')}>Quản lý</Button>
                 </div>
                 <div className="flex-1 flex flex-col items-center justify-center p-8 text-center">
-                    <p className="text-gray-600 mb-4">Tạo lịch thi đấu mới cho các vòng tiếp theo.</p>
+                    <p className="text-muted-foreground mb-4">Tạo lịch thi đấu mới cho các vòng tiếp theo.</p>
                     <Button onClick={() => onChangeTab('schedule')} className="bg-blue-600 hover:bg-blue-700">Đi tới Lịch thi đấu</Button>
                 </div>
             </div>
@@ -142,11 +142,10 @@ function OverviewTab({ onChangeTab }: { onChangeTab: (tab: string) => void }) {
 // TAB 2 & 3 (Empty)
 // ====================================================================
 function MatchReportsTab() {
-    const pendingReports: any[] = []; 
     return (
         <div className="space-y-6">
-            <div className="flex items-center gap-2 text-gray-800 font-bold text-lg"><FileText className="w-5 h-5"/> Danh sách báo cáo chờ duyệt</div>
-            <div className="bg-white p-12 rounded-xl border border-dashed border-gray-300 text-center flex flex-col items-center justify-center text-gray-400">
+            <div className="flex items-center gap-2 text-foreground font-bold text-lg"><FileText className="w-5 h-5"/> Danh sách báo cáo chờ duyệt</div>
+            <div className="bg-white dark:bg-card p-12 rounded-xl border border-dashed border-border text-center flex flex-col items-center justify-center text-muted-foreground">
                 <CheckCircle className="w-12 h-12 mb-3 text-green-500 opacity-30"/>
                 <p>Tất cả báo cáo đã được xử lý.</p>
             </div>
@@ -155,11 +154,11 @@ function MatchReportsTab() {
 }
 
 function TeamManagementTab() {
-    const requests: any[] = [];
+    // const requests: any[] = [];
     return (
         <div className="space-y-6">
-            <div className="flex justify-between items-center"><div className="flex items-center gap-2 text-gray-800 font-bold text-lg"><Users className="w-5 h-5"/> Yêu cầu nhân sự từ các đội</div></div>
-            <div className="bg-white p-12 rounded-xl border border-dashed border-gray-300 text-center flex flex-col items-center justify-center text-gray-400">
+            <div className="flex justify-between items-center"><div className="flex items-center gap-2 text-foreground font-bold text-lg"><Users className="w-5 h-5"/> Yêu cầu nhân sự từ các đội</div></div>
+            <div className="bg-white dark:bg-card p-12 rounded-xl border border-dashed border-border text-center flex flex-col items-center justify-center text-muted-foreground">
                 <Users className="w-12 h-12 mb-3 opacity-20"/>
                 <p>Không có yêu cầu nhân sự nào mới.</p>
             </div>
@@ -191,24 +190,24 @@ function ScheduleTab() {
     return (
         <div className="space-y-6">
             <div className="flex items-center justify-between">
-                <div className="flex items-center gap-2 text-gray-800 font-bold text-lg"><CalendarDays className="w-5 h-5"/> Danh sách trận đấu</div>
-                <Button className="bg-gray-900 text-white hover:bg-black" onClick={() => setIsCreateModalOpen(true)}>
+                <div className="flex items-center gap-2 text-foreground font-bold text-lg"><CalendarDays className="w-5 h-5"/> Danh sách trận đấu</div>
+                <Button className="bg-primary text-primary-foreground hover:bg-primary/90" onClick={() => setIsCreateModalOpen(true)}>
                     <Plus className="w-4 h-4 mr-2"/> Tạo lịch thi đấu
                 </Button>
             </div>
 
-            <div className="bg-white p-4 rounded-lg border shadow-sm flex flex-col md:flex-row gap-4 items-end">
+            <div className="bg-white dark:bg-card p-4 rounded-lg border shadow-sm flex flex-col md:flex-row gap-4 items-end">
                 <div className="flex-1 w-full">
-                    <label className="text-xs font-bold text-gray-500 mb-1 block">Vòng đấu</label>
+                    <label className="text-xs font-bold text-muted-foreground mb-1 block">Vòng đấu</label>
                     <Select value={selectedRound} onValueChange={setSelectedRound}>
-                        <SelectTrigger className="bg-gray-50 border-gray-200"><SelectValue placeholder="Tất cả vòng" /></SelectTrigger>
+                        <SelectTrigger className="bg-background border-input"><SelectValue placeholder="Tất cả vòng" /></SelectTrigger>
                         <SelectContent><SelectItem value="all">Tất cả vòng</SelectItem>{Array.from({length: 18}, (_, i) => i + 1).map(r => (<SelectItem key={r} value={String(r)}>Vòng {r}</SelectItem>))}</SelectContent>
                     </Select>
                 </div>
                 <div className="flex-1 w-full">
-                    <label className="text-xs font-bold text-gray-500 mb-1 block">Trạng thái</label>
+                    <label className="text-xs font-bold text-muted-foreground mb-1 block">Trạng thái</label>
                     <Select value={selectedStatus} onValueChange={setSelectedStatus}>
-                        <SelectTrigger className="bg-gray-50 border-gray-200"><SelectValue placeholder="Tất cả trạng thái" /></SelectTrigger>
+                        <SelectTrigger className="bg-background border-input"><SelectValue placeholder="Tất cả trạng thái" /></SelectTrigger>
                         <SelectContent><SelectItem value="all">Tất cả</SelectItem><SelectItem value="upcoming">Sắp diễn ra</SelectItem><SelectItem value="finished">Đã kết thúc</SelectItem></SelectContent>
                     </Select>
                 </div>
@@ -216,21 +215,21 @@ function ScheduleTab() {
 
             <div className="space-y-2">
                 {matches.length === 0 ? (
-                    <div className="text-center py-20 bg-white rounded-lg border border-dashed border-gray-300">
-                        <p className="text-gray-400">Không tìm thấy trận đấu nào phù hợp.</p>
+                    <div className="text-center py-20 bg-white dark:bg-card rounded-lg border border-dashed border-border">
+                        <p className="text-muted-foreground">Không tìm thấy trận đấu nào phù hợp.</p>
                     </div>
                 ) : (
                     matches.map((m: any) => (
-                        <div key={m.matran} className="bg-white p-4 rounded-lg border flex justify-between items-center hover:bg-gray-50">
+                        <div key={m.matran} className="bg-white dark:bg-card p-4 rounded-lg border border-border flex justify-between items-center hover:bg-muted/50 transition-colors">
                             <div className="flex items-center gap-4">
-                                <span className="bg-gray-100 text-gray-600 px-2 py-1 rounded text-xs font-bold w-16 text-center">Vòng {m.vong}</span>
+                                <span className="bg-muted text-muted-foreground px-2 py-1 rounded text-xs font-bold w-16 text-center">Vòng {m.vong}</span>
                                 <div className="text-sm">
                                     <span className="font-bold">{m.doi_nha?.tenclb || m.maclb_nha}</span>
-                                    <span className="mx-2 text-gray-400">vs</span>
+                                    <span className="mx-2 text-muted-foreground">vs</span>
                                     <span className="font-bold">{m.doi_khach?.tenclb || m.maclb_khach}</span>
                                 </div>
                             </div>
-                            <div className="text-sm text-gray-500">{new Date(m.thoigianthidau).toLocaleString('vi-VN')}</div>
+                            <div className="text-sm text-muted-foreground">{new Date(m.thoigianthidau).toLocaleString('vi-VN')}</div>
                         </div>
                     ))
                 )}
@@ -381,7 +380,7 @@ function CreateMatchModal({ isOpen, onClose }: { isOpen: boolean, onClose: () =>
                         <Input 
                             value={formData.san} 
                             disabled 
-                            className="bg-gray-100 font-mono text-gray-600" 
+                            className="bg-muted font-mono text-muted-foreground" 
                             placeholder="Chưa chọn đội nhà..."
                         />
                     </div>
@@ -403,13 +402,14 @@ function CreateMatchModal({ isOpen, onClose }: { isOpen: boolean, onClose: () =>
 }
 
 function StatCard({ title, value, icon: Icon, color }: any) {
+    const bgClass = color.replace(/text-/g, 'bg-');
     return (
-      <div className="bg-white p-6 rounded-xl shadow-sm border border-gray-100 flex flex-col items-center justify-center text-center hover:shadow-md transition-shadow">
-          <div className={`p-3 rounded-full mb-3 bg-opacity-10 ${color.replace('text-', 'bg-')}`}>
+      <div className="bg-white dark:bg-card p-6 rounded-xl shadow-sm border border-border flex flex-col items-center justify-center text-center hover:shadow-md transition-shadow">
+          <div className={`p-3 rounded-full mb-3 bg-opacity-10 dark:bg-opacity-20 ${bgClass}`}>
               <Icon className={`w-6 h-6 ${color}`} />
           </div>
           <div className={`text-3xl font-bold ${color} mb-1`}>{value}</div>
-          <div className="text-gray-500 text-xs font-bold uppercase tracking-wide">{title}</div>
+          <div className="text-muted-foreground text-xs font-bold uppercase tracking-wide">{title}</div>
       </div>
     )
 }

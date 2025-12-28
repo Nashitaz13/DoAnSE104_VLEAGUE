@@ -1,10 +1,10 @@
 import { useState, useMemo } from "react"
 import { createFileRoute } from "@tanstack/react-router"
-import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query"
+import { useQuery, useMutation } from "@tanstack/react-query"
 import { 
   LayoutDashboard, CalendarDays, FileText, 
   CheckCircle, AlertCircle, Clock, Flag, 
-  Plus, Trash2, Save, User, MapPin
+  Plus, Save, MapPin
 } from "lucide-react"
 
 import { Button } from "@/components/ui/button"
@@ -19,7 +19,7 @@ import {
   SelectValue,
 } from "@/components/ui/select"
 
-import { MatchesService, RostersService, SeasonManagementService } from "@/client"
+import { MatchesService, SeasonManagementService } from "@/client"
 import { getCurrentUser } from "@/utils/auth"
 
 export const Route = createFileRoute("/_layout/official-dashboard")({
@@ -73,10 +73,10 @@ function OfficialDashboard() {
   }
 
   return (
-    <div className="min-h-[calc(100vh-4rem)] bg-gray-50 font-sans pb-10">
+    <div className="min-h-[calc(100vh-4rem)] bg-background font-sans pb-10">
       
       {/* 1. HEADER (Màu Tím chủ đạo) */}
-      <div className="bg-gradient-to-r from-purple-700 to-blue-600 text-white p-6 shadow-lg">
+      <div className="bg-gradient-to-r from-purple-700 to-blue-600 dark:from-purple-900 dark:to-blue-800 text-white p-6 shadow-lg">
         <div className="max-w-7xl mx-auto">
           <div className="flex items-center gap-4 mb-2">
             <div className="p-3 bg-white/20 rounded-lg">
@@ -96,37 +96,37 @@ function OfficialDashboard() {
             <StatCard 
                 title="Trận được phân công" 
                 value={isLoading ? "-" : stats.totalAssigned} 
-                icon={CalendarDays} color="text-blue-600" 
+                icon={CalendarDays} color="text-blue-600 dark:text-blue-400" 
             />
             <StatCard 
                 title="Báo cáo đã nộp" 
                 value={isLoading ? "-" : stats.submitted} 
-                icon={CheckCircle} color="text-green-600" 
+                icon={CheckCircle} color="text-green-600 dark:text-green-400" 
             />
             <StatCard 
                 title="Chờ báo cáo" 
                 value={isLoading ? "-" : stats.pending} 
-                icon={AlertCircle} color="text-orange-600" 
+                icon={AlertCircle} color="text-orange-600 dark:text-orange-400" 
             />
             <StatCard 
                 title="Vòng đấu hiện tại" 
                 value={stats.upcoming ? stats.upcoming.vong : "KT"} 
-                icon={Clock} color="text-purple-600" 
+                icon={Clock} color="text-purple-600 dark:text-purple-400" 
             />
          </div>
       </div>
 
       {/* 3. TABS */}
       <div className="max-w-7xl mx-auto p-6 space-y-6">
-        <div className="bg-white p-1 rounded-xl shadow-sm border border-gray-200 inline-flex">
+        <div className="bg-white dark:bg-card p-1 rounded-xl shadow-sm border border-border inline-flex">
             {TABS.map((tab) => (
                 <button
                     key={tab.id}
                     onClick={() => setActiveTab(tab.id)}
                     className={`flex items-center gap-2 px-6 py-3 rounded-lg text-sm font-medium transition-all ${
                         activeTab === tab.id 
-                        ? 'bg-purple-50 text-purple-700 shadow-sm font-bold ring-1 ring-purple-200' 
-                        : 'text-gray-500 hover:bg-gray-50 hover:text-gray-900'
+                        ? 'bg-purple-50 dark:bg-purple-900/20 text-purple-700 dark:text-purple-300 shadow-sm font-bold ring-1 ring-purple-200 dark:ring-purple-800' 
+                        : 'text-muted-foreground hover:bg-muted/50 hover:text-foreground'
                     }`}
                 >
                     <tab.icon className="w-4 h-4" /> {tab.label}
@@ -174,31 +174,31 @@ function OverviewTab({ upcomingMatch, recentList, onReport }: any) {
     return (
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
             {/* Lịch trình sắp tới */}
-            <div className="bg-white p-6 rounded-xl shadow-sm border border-gray-100">
-                <h3 className="font-bold text-lg text-gray-800 mb-4 flex items-center gap-2">
+            <div className="bg-white dark:bg-card p-6 rounded-xl shadow-sm border border-border">
+                <h3 className="font-bold text-lg text-foreground mb-4 flex items-center gap-2">
                     <CalendarDays className="w-5 h-5 text-purple-600"/> Lịch trình sắp tới
                 </h3>
                 
                 {upcomingMatch ? (
-                    <div className="border border-purple-100 bg-purple-50/50 rounded-xl p-5">
+                    <div className="border border-purple-100 dark:border-purple-800 bg-purple-50/50 dark:bg-purple-900/20 rounded-xl p-5 transition-colors">
                         <div className="flex justify-between items-start mb-4">
                             <div>
-                                <div className="text-sm font-bold text-purple-700 bg-purple-100 px-2 py-1 rounded inline-block mb-2">
+                                <div className="text-sm font-bold text-purple-700 bg-purple-100 dark:text-purple-300 dark:bg-purple-900/50 px-2 py-1 rounded inline-block mb-2">
                                     Vòng {upcomingMatch.vong}
                                 </div>
-                                <h4 className="text-xl font-bold text-gray-900">
-                                    {upcomingMatch.doi_nha?.tenclb} <span className="text-gray-400 mx-2">vs</span> {upcomingMatch.doi_khach?.tenclb}
+                                <h4 className="text-xl font-bold text-foreground">
+                                    {upcomingMatch.doi_nha?.tenclb} <span className="text-muted-foreground mx-2">vs</span> {upcomingMatch.doi_khach?.tenclb}
                                 </h4>
-                                <div className="flex items-center gap-2 text-gray-500 mt-2 text-sm">
+                                <div className="flex items-center gap-2 text-muted-foreground mt-2 text-sm">
                                     <Clock className="w-4 h-4"/> 
                                     {new Date(upcomingMatch.thoigianthidau).toLocaleString('vi-VN')}
                                 </div>
-                                <div className="flex items-center gap-2 text-gray-500 mt-1 text-sm">
+                                <div className="flex items-center gap-2 text-muted-foreground mt-1 text-sm">
                                     <MapPin className="w-4 h-4"/> 
                                     {upcomingMatch.san_nha?.tensan || upcomingMatch.masanvandong}
                                 </div>
                             </div>
-                            <span className="bg-white border text-xs px-3 py-1 rounded-full font-medium shadow-sm">
+                            <span className="bg-white dark:bg-background border text-xs px-3 py-1 rounded-full font-medium shadow-sm">
                                 Trọng tài chính
                             </span>
                         </div>
@@ -210,30 +210,30 @@ function OverviewTab({ upcomingMatch, recentList, onReport }: any) {
                         </Button>
                     </div>
                 ) : (
-                    <div className="text-center py-10 text-gray-500">Hiện không có lịch phân công sắp tới.</div>
+                    <div className="text-center py-10 text-muted-foreground">Hiện không có lịch phân công sắp tới.</div>
                 )}
             </div>
 
             {/* Trạng thái báo cáo gần đây */}
-            <div className="bg-white p-6 rounded-xl shadow-sm border border-gray-100">
-                <h3 className="font-bold text-lg text-gray-800 mb-4 flex items-center gap-2">
+            <div className="bg-white dark:bg-card p-6 rounded-xl shadow-sm border border-border">
+                <h3 className="font-bold text-lg text-foreground mb-4 flex items-center gap-2">
                     <CheckCircle className="w-5 h-5 text-green-600"/> Báo cáo đã hoàn thành
                 </h3>
                 <div className="space-y-3">
                     {recentList.filter((m:any) => m.tiso).length === 0 && (
-                        <p className="text-gray-500 italic">Chưa có báo cáo nào được nộp.</p>
+                        <p className="text-muted-foreground italic">Chưa có báo cáo nào được nộp.</p>
                     )}
                     {recentList.filter((m:any) => m.tiso).map((match: any) => (
-                        <div key={match.matran} className="flex items-center justify-between p-3 border rounded-lg bg-gray-50">
+                        <div key={match.matran} className="flex items-center justify-between p-3 border rounded-lg bg-muted dark:bg-muted/50 transition-colors">
                             <div>
-                                <div className="font-bold text-sm">
+                                <div className="font-bold text-sm text-foreground">
                                     {match.doi_nha?.tenclb} {match.tiso} {match.doi_khach?.tenclb}
                                 </div>
-                                <div className="text-xs text-gray-500">
-                                    Vòng {match.vong} • {new Date(match.thoigianthidau).toLocaleDateString()}
+                                <div className="text-xs text-muted-foreground">
+                                    Vòng {match.vong} • {new Date(match.thoigianthidau).toLocaleDateString('vi-VN')}
                                 </div>
                             </div>
-                            <span className="text-[10px] bg-green-100 text-green-700 px-2 py-1 rounded font-bold uppercase">
+                            <span className="text-[10px] bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-300 px-2 py-1 rounded font-bold uppercase">
                                 Đã xác nhận
                             </span>
                         </div>
@@ -249,32 +249,32 @@ function OverviewTab({ upcomingMatch, recentList, onReport }: any) {
 // ====================================================================
 function AssignmentsTab({ matches, onReport }: any) {
     return (
-        <div className="bg-white rounded-xl shadow-sm border border-gray-100 overflow-hidden">
-            <div className="px-6 py-4 border-b bg-gray-50 flex justify-between items-center">
-                <h3 className="font-bold text-gray-800">Các trận đấu được phân công</h3>
+        <div className="bg-white dark:bg-card rounded-xl shadow-sm border border-border overflow-hidden">
+            <div className="px-6 py-4 border-b bg-muted flex justify-between items-center">
+                <h3 className="font-bold text-foreground">Các trận đấu được phân công</h3>
             </div>
             
             <div className="divide-y">
                 {matches.length === 0 ? (
-                    <div className="p-10 text-center text-gray-500">Chưa có dữ liệu phân công.</div>
+                    <div className="p-10 text-center text-muted-foreground">Chưa có dữ liệu phân công.</div>
                 ) : (
                     matches.map((m: any) => {
                         const isPending = !m.tiso;
                         return (
-                            <div key={m.matran} className="p-5 flex flex-col md:flex-row items-center justify-between hover:bg-gray-50 transition-colors gap-4">
+                            <div key={m.matran} className="p-5 flex flex-col md:flex-row items-center justify-between hover:bg-muted/50 transition-colors gap-4">
                                 <div className="flex-1">
                                     <div className="flex items-center gap-3 mb-1">
-                                        <span className="text-xs font-bold bg-gray-200 text-gray-700 px-2 py-0.5 rounded">
+                                        <span className="text-xs font-bold bg-muted text-foreground px-2 py-0.5 rounded">
                                             Vòng {m.vong}
                                         </span>
-                                        <span className="text-xs text-gray-500">
+                                        <span className="text-xs text-muted-foreground">
                                             {new Date(m.thoigianthidau).toLocaleString('vi-VN')}
                                         </span>
                                     </div>
-                                    <div className="text-lg font-bold text-gray-900">
-                                        {m.doi_nha?.tenclb || m.maclb_nha} <span className="mx-2 text-gray-400">vs</span> {m.doi_khach?.tenclb || m.maclb_khach}
+                                    <div className="text-lg font-bold text-foreground">
+                                        {m.doi_nha?.tenclb || m.maclb_nha} <span className="mx-2 text-muted-foreground">vs</span> {m.doi_khach?.tenclb || m.maclb_khach}
                                     </div>
-                                    <div className="text-sm text-gray-500 flex items-center gap-1 mt-1">
+                                    <div className="text-sm text-muted-foreground flex items-center gap-1 mt-1">
                                         <MapPin className="w-3 h-3"/> {m.san_nha?.tensan || m.masanvandong}
                                     </div>
                                 </div>
@@ -282,12 +282,12 @@ function AssignmentsTab({ matches, onReport }: any) {
                                 <div>
                                     {isPending ? (
                                         <div className="flex flex-col items-end gap-2">
-                                            <span className="text-xs bg-orange-100 text-orange-700 px-2 py-1 rounded-full font-medium">
+                                            <span className="text-xs bg-orange-100 text-orange-700 dark:bg-orange-900/30 dark:text-orange-300 px-2 py-1 rounded-full font-medium">
                                                 Chưa nộp báo cáo
                                             </span>
                                             <Button 
                                                 size="sm" 
-                                                className="bg-gray-900 text-white hover:bg-black"
+                                                className="bg-primary text-primary-foreground hover:bg-primary/90"
                                                 onClick={() => onReport(m.matran)}
                                             >
                                                 <FileText className="w-3 h-3 mr-2"/> Nộp báo cáo
@@ -295,7 +295,7 @@ function AssignmentsTab({ matches, onReport }: any) {
                                         </div>
                                     ) : (
                                         <div className="flex flex-col items-end gap-2">
-                                            <span className="text-xs bg-green-100 text-green-700 px-2 py-1 rounded-full font-medium">
+                                            <span className="text-xs bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-300 px-2 py-1 rounded-full font-medium">
                                                 Đã xác nhận ({m.tiso})
                                             </span>
                                             <Button variant="outline" size="sm" disabled>
@@ -317,11 +317,10 @@ function AssignmentsTab({ matches, onReport }: any) {
 // TAB 3: FORM BÁO CÁO TRẬN ĐẤU (CHI TIẾT)
 // ====================================================================
 function ReportFormTab({ matchId, matches, onCancel }: any) {
-    const queryClient = useQueryClient();
     const match = matches.find((m: any) => m.matran === matchId);
 
     const [score, setScore] = useState({ home: 0, away: 0 });
-    const [events, setEvents] = useState<any[]>([]); // Bàn thắng, thẻ phạt
+    const [events] = useState<any[]>([]); // Bàn thắng, thẻ phạt
     const [mvp, setMvp] = useState("");
     const [notes, setNotes] = useState("");
 
@@ -338,9 +337,9 @@ function ReportFormTab({ matchId, matches, onCancel }: any) {
 
     if (!matchId) {
         return (
-            <div className="bg-white p-10 rounded-xl shadow-sm text-center border border-dashed">
-                <FileText className="w-12 h-12 text-gray-300 mx-auto mb-3"/>
-                <p className="text-gray-500">Vui lòng chọn một trận đấu từ tab "Trận được phân công" để viết báo cáo.</p>
+            <div className="bg-white dark:bg-card p-10 rounded-xl shadow-sm text-center border border-dashed border-border">
+                <FileText className="w-12 h-12 text-muted-foreground mx-auto mb-3 opacity-50"/>
+                <p className="text-muted-foreground">Vui lòng chọn một trận đấu từ tab "Trận được phân công" để viết báo cáo.</p>
             </div>
         )
     }
@@ -348,9 +347,9 @@ function ReportFormTab({ matchId, matches, onCancel }: any) {
     if (!match) return <div>Không tìm thấy trận đấu.</div>;
 
     return (
-        <div className="bg-white rounded-xl shadow-sm border border-gray-100 overflow-hidden">
-            <div className="px-6 py-4 border-b bg-purple-50 flex justify-between items-center">
-                <h3 className="font-bold text-lg text-purple-900 flex items-center gap-2">
+        <div className="bg-white dark:bg-card rounded-xl shadow-sm border border-border overflow-hidden">
+            <div className="px-6 py-4 border-b bg-purple-50 dark:bg-purple-900/20 flex justify-between items-center">
+                <h3 className="font-bold text-lg text-purple-900 dark:text-purple-100 flex items-center gap-2">
                     <FileText className="w-5 h-5"/> Báo cáo trận đấu: {match.doi_nha?.tenclb} vs {match.doi_khach?.tenclb}
                 </h3>
                 <span className="text-sm text-purple-600 font-medium">Vòng {match.vong}</span>
@@ -360,10 +359,10 @@ function ReportFormTab({ matchId, matches, onCancel }: any) {
                 
                 {/* 1. TỈ SỐ TRẬN ĐẤU */}
                 <div>
-                    <h4 className="font-bold text-gray-800 mb-4 text-sm uppercase tracking-wider">Tỷ số trận đấu</h4>
-                    <div className="flex items-center justify-between gap-8 p-6 bg-gray-50 rounded-xl border">
+                    <h4 className="font-bold text-foreground mb-4 text-sm uppercase tracking-wider">Tỷ số trận đấu</h4>
+                    <div className="flex items-center justify-between gap-8 p-6 bg-muted rounded-xl border">
                         <div className="flex-1 text-center">
-                            <label className="block font-bold text-xl mb-2 text-gray-700">{match.doi_nha?.tenclb}</label>
+                            <label className="block font-bold text-xl mb-2 text-foreground">{match.doi_nha?.tenclb}</label>
                             <Input 
                                 type="number" 
                                 min="0" 
@@ -372,9 +371,9 @@ function ReportFormTab({ matchId, matches, onCancel }: any) {
                                 onChange={(e) => setScore({...score, home: parseInt(e.target.value) || 0})}
                             />
                         </div>
-                        <div className="text-4xl font-bold text-gray-300">-</div>
+                        <div className="text-4xl font-bold text-muted-foreground">-</div>
                         <div className="flex-1 text-center">
-                            <label className="block font-bold text-xl mb-2 text-gray-700">{match.doi_khach?.tenclb}</label>
+                            <label className="block font-bold text-xl mb-2 text-foreground">{match.doi_khach?.tenclb}</label>
                             <Input 
                                 type="number" 
                                 min="0" 
@@ -390,19 +389,19 @@ function ReportFormTab({ matchId, matches, onCancel }: any) {
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                     <div>
                         <div className="flex justify-between items-center mb-3">
-                            <h4 className="font-bold text-gray-800 text-sm uppercase">Danh sách ghi bàn</h4>
+                            <h4 className="font-bold text-foreground text-sm uppercase">Danh sách ghi bàn</h4>
                             <Button size="sm" variant="outline" className="h-7 text-xs"><Plus className="w-3 h-3 mr-1"/> Thêm bàn thắng</Button>
                         </div>
-                        <div className="bg-gray-50 rounded-lg p-4 border border-dashed text-center text-sm text-gray-400 min-h-[100px] flex items-center justify-center">
+                        <div className="bg-muted rounded-lg p-4 border border-dashed text-center text-sm text-muted-foreground min-h-[100px] flex items-center justify-center">
                             Chưa có dữ liệu bàn thắng (Demo)
                         </div>
                     </div>
                     <div>
                         <div className="flex justify-between items-center mb-3">
-                            <h4 className="font-bold text-gray-800 text-sm uppercase">Thẻ phạt</h4>
+                            <h4 className="font-bold text-foreground text-sm uppercase">Thẻ phạt</h4>
                             <Button size="sm" variant="outline" className="h-7 text-xs"><Plus className="w-3 h-3 mr-1"/> Thêm thẻ</Button>
                         </div>
-                        <div className="bg-gray-50 rounded-lg p-4 border border-dashed text-center text-sm text-gray-400 min-h-[100px] flex items-center justify-center">
+                        <div className="bg-muted rounded-lg p-4 border border-dashed text-center text-sm text-muted-foreground min-h-[100px] flex items-center justify-center">
                             Chưa có dữ liệu thẻ phạt (Demo)
                         </div>
                     </div>
@@ -444,9 +443,9 @@ function ReportFormTab({ matchId, matches, onCancel }: any) {
 
             </div>
 
-            <div className="p-6 bg-gray-50 border-t flex justify-end gap-3">
+            <div className="p-6 bg-muted/50 border-t flex justify-end gap-3">
                 <Button variant="outline" onClick={onCancel}>Hủy</Button>
-                <Button className="bg-black hover:bg-gray-800 text-white min-w-[150px]" onClick={() => mutation.mutate()}>
+                <Button className="bg-primary text-primary-foreground hover:bg-primary/90 min-w-[150px]" onClick={() => mutation.mutate()}>
                     <Save className="w-4 h-4 mr-2"/> Nộp báo cáo
                 </Button>
             </div>
@@ -456,12 +455,12 @@ function ReportFormTab({ matchId, matches, onCancel }: any) {
 
 function StatCard({ title, value, icon: Icon, color }: any) {
     return (
-      <div className="bg-white p-6 rounded-xl shadow-sm border border-gray-100 flex flex-col items-center justify-center text-center hover:shadow-md transition-shadow">
-          <div className={`p-3 rounded-full mb-3 bg-opacity-10 ${color.replace('text-', 'bg-')}`}>
+      <div className="bg-white dark:bg-card p-6 rounded-xl shadow-sm border border-border flex flex-col items-center justify-center text-center hover:shadow-md transition-shadow">
+          <div className={`p-3 rounded-full mb-3 bg-opacity-10 dark:bg-opacity-20 ${color.replace('text-', 'bg-')}`}>
               <Icon className={`w-6 h-6 ${color}`} />
           </div>
           <div className={`text-3xl font-bold ${color} mb-1`}>{value}</div>
-          <div className="text-gray-500 text-xs font-bold uppercase tracking-wide">{title}</div>
+          <div className="text-muted-foreground text-xs font-bold uppercase tracking-wide">{title}</div>
       </div>
     )
 }

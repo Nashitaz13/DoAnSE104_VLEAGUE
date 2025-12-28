@@ -15,23 +15,23 @@ export function TopScorersTab({ muagiai }: { muagiai: string }) {
   const scorers = data?.top_scorers || [];
   const assists = data?.top_assists || [];
 
-  const renderList = (list: any[], valueKey: string, unit: string, icon: any) => (
+  const renderList = (list: any[], valueKey: string, unit: string) => (
     <div className="space-y-3">
       {list.length === 0 ? <p className="text-muted-foreground text-sm">Chưa có dữ liệu</p> : null}
       {list.map((player, index) => (
         <div key={index} className="flex items-center justify-between p-3 bg-muted/30 rounded-lg">
           <div className="flex items-center gap-3">
             <div className={`
-              w-8 h-8 flex items-center justify-center rounded-full font-bold text-sm
-              ${index === 0 ? "bg-yellow-100 text-yellow-700" : 
-                index === 1 ? "bg-slate-100 text-slate-700" : 
-                index === 2 ? "bg-orange-100 text-orange-700" : "bg-card border"}
+              w-8 h-8 flex items-center justify-center rounded-full font-bold text-sm transition-colors duration-300
+              ${index === 0 ? "bg-yellow-100 text-yellow-700 dark:bg-yellow-900/30 dark:text-yellow-400" : 
+                index === 1 ? "bg-slate-100 text-slate-700 dark:bg-slate-800 dark:text-slate-300" : 
+                index === 2 ? "bg-orange-100 text-orange-700 dark:bg-orange-900/30 dark:text-orange-400" : "bg-card border dark:bg-muted/20"}
             `}>
               {index + 1}
             </div>
             <div>
               <div className="font-bold text-sm">{player.tencauthu}</div>
-              <div className="text-xs text-muted-foreground">{player.clb || "CLB"}</div>
+              <div className="text-xs text-muted-foreground">{player.tenclb || "CLB"}</div>
             </div>
           </div>
           <div className="text-right">
@@ -51,7 +51,7 @@ export function TopScorersTab({ muagiai }: { muagiai: string }) {
             <Medal className="w-5 h-5 text-yellow-500" /> Bảng xếp hạng Vua phá lưới
           </CardTitle>
         </CardHeader>
-        <CardContent>{renderList(scorers, "ban_thang", "bàn thắng", <Medal />)}</CardContent>
+        <CardContent>{renderList(scorers, "value", "Bàn thắng")}</CardContent>
       </Card>
 
       <Card>
@@ -60,7 +60,7 @@ export function TopScorersTab({ muagiai }: { muagiai: string }) {
             <Zap className="w-5 h-5 text-blue-500" /> Kiến tạo xuất sắc
           </CardTitle>
         </CardHeader>
-        <CardContent>{renderList(assists, "kien_tao", "kiến tạo", <Zap />)}</CardContent>
+        <CardContent>{renderList(assists, "value", "kiến tạo")}</CardContent>
       </Card>
     </div>
   )

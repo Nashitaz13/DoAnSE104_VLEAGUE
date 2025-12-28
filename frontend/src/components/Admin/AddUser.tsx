@@ -33,20 +33,20 @@ import { handleError } from "@/utils"
 
 const formSchema = z
   .object({
-    email: z.email({ message: "Invalid email address" }),
+    email: z.email({ message: "Email không hợp lệ" }),
     full_name: z.string().optional(),
     password: z
       .string()
-      .min(1, { message: "Password is required" })
-      .min(8, { message: "Password must be at least 8 characters" }),
+      .min(1, { message: "Mật khẩu là bắt buộc" })
+      .min(8, { message: "Mật khẩu phải có ít nhất 8 ký tự" }),
     confirm_password: z
       .string()
-      .min(1, { message: "Please confirm your password" }),
+      .min(1, { message: "Vui lòng xác nhận mật khẩu" }),
     is_superuser: z.boolean(),
     is_active: z.boolean(),
   })
   .refine((data) => data.password === data.confirm_password, {
-    message: "The passwords don't match",
+    message: "Mật khẩu xác nhận không khớp",
     path: ["confirm_password"],
   })
 
@@ -75,7 +75,7 @@ const AddUser = () => {
     mutationFn: (data: UserCreate) =>
       UsersService.createUser({ requestBody: data }),
     onSuccess: () => {
-      showSuccessToast("User created successfully")
+      showSuccessToast("Tạo người dùng thành công")
       form.reset()
       setIsOpen(false)
     },
@@ -94,7 +94,7 @@ const AddUser = () => {
       <DialogTrigger asChild>
         <Button className="my-4">
           <Plus className="mr-2" />
-          Add User
+          Thêm người dùng
         </Button>
       </DialogTrigger>
       <DialogContent className="sm:max-w-md">

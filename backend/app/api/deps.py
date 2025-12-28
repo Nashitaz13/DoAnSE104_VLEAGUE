@@ -67,6 +67,7 @@ def get_current_user_vleague(session: SessionDep, credentials: TokenDep) -> TaiK
 
 
 CurrentUserVLeague = Annotated[TaiKhoan, Depends(get_current_user_vleague)]
+CurrentUser = CurrentUserVLeague
 
 
 def require_role(*allowed_roles: str):

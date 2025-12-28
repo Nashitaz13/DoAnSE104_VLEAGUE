@@ -30,17 +30,17 @@ export function DisciplineTab({ muagiai }: { muagiai: string }) {
                    <span className="font-mono text-muted-foreground w-4">{idx + 1}</span>
                    <div>
                       <div className="font-bold text-sm">{p.tencauthu}</div>
-                      <div className="text-xs text-muted-foreground">{p.clb}</div>
+                      <div className="text-xs text-muted-foreground">{p.tenclb || "CLB"}</div>
                    </div>
                 </div>
                 <div className="flex gap-2">
-                    <div className="flex flex-col items-center bg-yellow-100 px-2 py-1 rounded">
-                        <span className="font-bold text-yellow-700">{p.the_vang}</span>
-                        <div className="w-3 h-4 bg-yellow-400 rounded-sm"></div>
+                    <div className="flex flex-col items-center bg-yellow-100 dark:bg-yellow-900/30 px-2 py-1 rounded">
+                        <span className="font-bold text-yellow-700 dark:text-yellow-400">{p.yellow_cards}</span>
+                        <div className="w-3 h-4 bg-yellow-400 dark:bg-yellow-500 rounded-sm"></div>
                     </div>
-                    <div className="flex flex-col items-center bg-red-100 px-2 py-1 rounded">
-                        <span className="font-bold text-red-700">{p.the_do}</span>
-                        <div className="w-3 h-4 bg-red-500 rounded-sm"></div>
+                    <div className="flex flex-col items-center bg-red-100 dark:bg-red-900/30 px-2 py-1 rounded">
+                        <span className="font-bold text-red-700 dark:text-red-400">{p.red_cards}</span>
+                        <div className="w-3 h-4 bg-red-500 dark:bg-red-600 rounded-sm"></div>
                     </div>
                 </div>
              </div>
@@ -49,9 +49,9 @@ export function DisciplineTab({ muagiai }: { muagiai: string }) {
       </Card>
 
       {/* Cột 2: Cầu thủ bị treo giò (Logic này Backend chưa có, tạm thời Mockup giao diện) */}
-      <Card className="md:col-span-2 lg:col-span-1 border-red-200 bg-red-50/20">
+      <Card className="md:col-span-2 lg:col-span-1 border-red-200 bg-red-50/20 dark:border-red-900/50 dark:bg-red-900/10 transition-colors duration-300">
         <CardHeader className="pb-2">
-          <CardTitle className="flex items-center gap-2 text-base text-red-600">
+          <CardTitle className="flex items-center gap-2 text-base text-red-600 dark:text-red-400">
             <Ban className="w-5 h-5" /> Cầu thủ bị treo giò (Dự kiến)
           </CardTitle>
         </CardHeader>

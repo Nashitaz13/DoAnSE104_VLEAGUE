@@ -6,6 +6,11 @@ from pydantic import EmailStr, ConfigDict
 from sqlmodel import Field, Relationship, SQLModel
 
 
+# User DTOs
+class UserBase(SQLModel):
+    email: EmailStr = Field(unique=True, index=True, max_length=255)
+
+
 # =============================================
 # V-LEAGUE MODELS (Database Tables)
 # =============================================
@@ -865,6 +870,44 @@ class MatchStatsResponse(SQLModel):
     away_team: MatchStatsRow
     available: bool = True
     message: Optional[str] = None
+
+
+# =============================================
+# LEGACY / TEMPLATE MODELS (For compatibility)
+# =============================================
+
+class UpdatePassword(SQLModel):
+    current_password: str
+    new_password: str
+
+# Map User to TaiKhoan for compatibility
+User = TaiKhoan
+UserPublic = TaiKhoanPublic
+
+class UserCreate(SQLModel):
+    email: EmailStr
+    password: str
+    full_name: str | None = None
+    is_superuser: bool = False
+
+class UserRegister(SQLModel):
+    email: EmailStr
+    password: str
+    full_name: str | None = None
+
+class UsersPublic(SQLModel):
+    data: list[UserPublic]
+    count: int
+
+class UserUpdate(SQLModel):
+    email: EmailStr | None = None
+    full_name: str | None = None
+    password: str | None = None
+
+class UserUpdateMe(SQLModel):
+    email: EmailStr | None = None
+    full_name: str | None = None
+    password: str | None = None
 
 
 # Export all models for easy import

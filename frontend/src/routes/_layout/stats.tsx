@@ -1,8 +1,8 @@
 import { useState, useMemo, useEffect } from "react"
 import { createFileRoute } from "@tanstack/react-router"
 import { useQuery } from "@tanstack/react-query"
-import { SeasonManagementService } from "@/client"
-import { Filter, Loader2, Trophy, BarChart3, AlertTriangle, Users } from "lucide-react"
+import { SeasonManagementService, StandingsService, StatisticsService } from "@/client"
+import { Filter, Loader2, Trophy, BarChart3, AlertTriangle, Users, Goal } from "lucide-react"
 import {
   Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
 } from "@/components/ui/select"
@@ -40,6 +40,32 @@ function StatisticsPage() {
     }
   }, [seasonList, selectedSeason]);
 
+  // 4. Lấy dữ liệu tổng hợp (Bàn thắng, Thẻ phạt)
+  const { data: standingsData } = useQuery({
+    queryKey: ["standings", selectedSeason],
+    queryFn: () => StandingsService.getStandings({ muagiai: selectedSeason }),
+    enabled: !!selectedSeason
+  })
+
+  const { data: disciplineData } = useQuery({
+    queryKey: ["discipline", selectedSeason],
+    queryFn: () => StatisticsService.getDiscipline({ muagiai: selectedSeason, limit: 200 }),
+    enabled: !!selectedSeason
+  })
+
+  const totalGoals = useMemo(() => {
+    const list = (standingsData as any)?.standings || [];
+    return list.reduce((acc: number, team: any) => acc + (team.goals_for || 0), 0);
+  }, [standingsData]);
+
+  const { totalYellow, totalRed } = useMemo(() => {
+    const list = (disciplineData as any)?.leaderboard || [];
+    return list.reduce((acc: any, player: any) => ({
+      totalYellow: acc.totalYellow + (player.yellow_cards || 0),
+      totalRed: acc.totalRed + (player.red_cards || 0)
+    }), { totalYellow: 0, totalRed: 0 });
+  }, [disciplineData]);
+
   if (loadingSeasons && !selectedSeason) {
       return <div className="flex h-screen items-center justify-center"><Loader2 className="animate-spin" /></div>
   }
@@ -47,17 +73,17 @@ function StatisticsPage() {
   return (
     <div className="container mx-auto p-6 space-y-6 max-w-6xl">
       {/* Header & Filter */}
-      <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 bg-gradient-to-r from-primary/10 to-transparent p-6 rounded-xl border">
+      <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 bg-gradient-to-r from-primary/10 to-transparent dark:from-primary/20 p-6 rounded-xl border transition-colors duration-300">
         <div>
             <h1 className="text-3xl font-bold tracking-tight">Thống kê giải đấu</h1>
             <p className="text-muted-foreground mt-1">Các chỉ số chi tiết về cầu thủ và đội bóng mùa giải {selectedSeason}</p>
         </div>
 
-        <div className="flex items-center gap-2 bg-background p-2 rounded-lg border shadow-sm">
+        <div className="flex items-center gap-2 bg-background p-2 rounded-lg border shadow-sm transition-colors duration-300">
             <Filter className="w-4 h-4 text-muted-foreground ml-2" />
             <span className="text-sm font-medium hidden sm:inline">Mùa giải:</span>
             <Select value={selectedSeason} onValueChange={setSelectedSeason}>
-            <SelectTrigger className="w-[140px] border-0 shadow-none focus:ring-0 font-bold">
+            <SelectTrigger className="w-[140px] border-0 shadow-none focus:ring-0 font-bold bg-transparent">
                 <SelectValue placeholder="Chọn mùa" />
             </SelectTrigger>
             <SelectContent>
@@ -66,6 +92,39 @@ function StatisticsPage() {
                 ))}
             </SelectContent>
             </Select>
+        </div>
+      </div>
+
+      {/* Summary Cards */}
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+        <div className="bg-card dark:bg-card/50 p-4 rounded-xl border shadow-sm flex items-center gap-4 transition-all hover:shadow-md">
+            <div className="p-3 bg-blue-100 dark:bg-blue-900/30 rounded-full text-blue-600 dark:text-blue-400">
+                <Goal className="w-6 h-6" />
+            </div>
+            <div>
+                <p className="text-sm font-medium text-muted-foreground">Tổng số bàn thắng</p>
+                <h3 className="text-2xl font-bold">{totalGoals}</h3>
+            </div>
+        </div>
+
+        <div className="bg-card dark:bg-card/50 p-4 rounded-xl border shadow-sm flex items-center gap-4 transition-all hover:shadow-md">
+            <div className="p-3 bg-yellow-100 dark:bg-yellow-900/30 rounded-full text-yellow-600 dark:text-yellow-400">
+                <div className="w-6 h-6 flex items-center justify-center font-bold border-2 border-current rounded-sm text-xs">Y</div>
+            </div>
+            <div>
+                <p className="text-sm font-medium text-muted-foreground">Tổng thẻ vàng</p>
+                <h3 className="text-2xl font-bold">{totalYellow}</h3>
+            </div>
+        </div>
+
+        <div className="bg-card dark:bg-card/50 p-4 rounded-xl border shadow-sm flex items-center gap-4 transition-all hover:shadow-md">
+            <div className="p-3 bg-red-100 dark:bg-red-900/30 rounded-full text-red-600 dark:text-red-400">
+                 <div className="w-6 h-6 flex items-center justify-center font-bold bg-current rounded-sm"></div>
+            </div>
+            <div>
+                <p className="text-sm font-medium text-muted-foreground">Tổng thẻ đỏ</p>
+                <h3 className="text-2xl font-bold">{totalRed}</h3>
+            </div>
         </div>
       </div>
 

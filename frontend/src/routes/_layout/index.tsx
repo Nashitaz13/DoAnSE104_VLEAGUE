@@ -141,7 +141,7 @@ function HomePage() {
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
           {/* Cột Trái: Kết quả gần nhất */}
           <div className="lg:col-span-2 space-y-4">
-            <div className="flex items-center justify-between bg-white/90 p-2 rounded-lg backdrop-blur-sm shadow-sm">
+            <div className="flex items-center justify-between bg-white/90 dark:bg-card/90 p-2 rounded-lg backdrop-blur-sm shadow-sm">
               <h2 className="text-xl font-bold flex items-center gap-2">⚡ Kết quả gần nhất</h2>
               <Link to="/fixtures" className="text-sm text-primary hover:underline flex items-center">
                 Xem tất cả <ArrowRight className="w-4 h-4 ml-1"/>
@@ -176,7 +176,7 @@ function HomePage() {
 
           {/* Cột Phải: Lịch sắp tới */}
           <div className="space-y-4">
-            <div className="flex items-center justify-between bg-white/90 p-2 rounded-lg">
+            <div className="flex items-center justify-between bg-white/90 dark:bg-card/90 p-2 rounded-lg">
                <h2 className="text-xl font-bold">📅 Sắp diễn ra</h2>
                <Link to="/fixtures" className="text-sm text-primary hover:underline">Chi tiết</Link>
             </div>
@@ -247,12 +247,12 @@ function HomePage() {
                                       return (
                                           <tr key={team.maclb} className="border-b last:border-0 hover:bg-muted/20">
                                               <td className="px-4 py-3 text-center font-bold">
-                                                  {idx === 0 ? <span className="w-6 h-6 rounded-full bg-yellow-100 text-yellow-700 flex items-center justify-center mx-auto">1</span> : idx + 1}
+                                                  {idx === 0 ? <span className="w-6 h-6 rounded-full bg-yellow-100 text-yellow-700 dark:bg-yellow-900 dark:text-yellow-100 flex items-center justify-center mx-auto">1</span> : idx + 1}
                                               </td>
                                               <td className="px-4 py-3 font-medium">
                                                   <div className="flex items-center gap-2">
                                                       <span>{team.ten_clb || "CLB"}</span>
-                                                      {idx < 1 && <span className="text-[10px] bg-green-100 text-green-700 px-1 rounded">ACL</span>}
+                                                      {idx < 1 && <span className="text-[10px] bg-green-100 text-green-700 dark:bg-green-900 dark:text-green-100 px-1 rounded">ACL</span>}
                                                   </div>
                                               </td>
                                               <td className="px-4 py-3 text-center text-muted-foreground">{team.so_tran || 0}</td>
@@ -287,7 +287,7 @@ function HomePage() {
                     {topScorers.map((p: any, idx: number) => (
                         <div key={idx} className="flex items-center justify-between">
                             <div className="flex items-center gap-3">
-                                <div className={`w-6 h-6 rounded-full flex items-center justify-center text-xs font-bold ${idx === 0 ? "bg-yellow-100 text-yellow-700" : "bg-gray-100 text-gray-600"}`}>
+                                <div className={`w-6 h-6 rounded-full flex items-center justify-center text-xs font-bold ${idx === 0 ? "bg-yellow-100 text-yellow-700 dark:bg-yellow-900 dark:text-yellow-100" : "bg-gray-100 text-gray-600 dark:bg-muted dark:text-muted-foreground"}`}>
                                     {idx + 1}
                                 </div>
                                 <div>

@@ -249,7 +249,7 @@ function Layout() {
                     asChild
                     variant="ghost"
                     size="sm"
-                    className="text-white hover:bg-white/10 [&.active]:bg-white [&.active]:text-red-700 h-8 px-3 text-xs"
+                    className="text-white hover:bg-white/10 [&.active]:bg-white [&.active]:text-red-700 dark:[&.active]:bg-neutral-800 dark:[&.active]:text-red-400 h-8 px-3 text-xs"
                   >
                     <RouterLink to={to} className="flex items-center">
                       <Icon className="h-3 w-3 mr-1.5" />
@@ -263,7 +263,7 @@ function Layout() {
         </div>
       </header>
       <main className="flex-1 p-0">
-        <div className="min-h-[calc(100vh-4rem)] bg-gray-50 font-sans">
+        <div className="min-h-[calc(100vh-4rem)] bg-gray-50 dark:bg-background font-sans">
           <Outlet />
         </div>
       </main>

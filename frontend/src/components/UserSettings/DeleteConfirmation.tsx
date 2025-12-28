@@ -44,25 +44,25 @@ const DeleteConfirmation = () => {
     <Dialog>
       <DialogTrigger asChild>
         <Button variant="destructive" className="mt-3">
-          Delete Account
+          Xóa tài khoản
         </Button>
       </DialogTrigger>
       <DialogContent>
         <form onSubmit={handleSubmit(onSubmit)}>
           <DialogHeader>
-            <DialogTitle>Confirmation Required</DialogTitle>
+            <DialogTitle>Yêu cầu xác nhận</DialogTitle>
             <DialogDescription>
-              All your account data will be{" "}
-              <strong>permanently deleted.</strong> If you are sure, please
-              click <strong>"Confirm"</strong> to proceed. This action cannot be
-              undone.
+              Tất cả dữ liệu tài khoản của bạn sẽ bị{" "}
+              <strong>xóa vĩnh viễn.</strong> Nếu bạn chắc chắn, vui lòng
+              nhấn <strong>"Xác nhận"</strong> để tiếp tục. Hành động này không thể
+              hoàn tác.
             </DialogDescription>
           </DialogHeader>
 
           <DialogFooter className="mt-4">
             <DialogClose asChild>
               <Button variant="outline" disabled={mutation.isPending}>
-                Cancel
+                Hủy
               </Button>
             </DialogClose>
             <LoadingButton
@@ -70,7 +70,7 @@ const DeleteConfirmation = () => {
               type="submit"
               loading={mutation.isPending}
             >
-              Delete
+              Xác nhận
             </LoadingButton>
           </DialogFooter>
         </form>

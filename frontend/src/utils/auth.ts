@@ -28,15 +28,15 @@ export const isLoggedIn = () => {
 
 export const isBTC = () => {
   const user = getCurrentUser()
-  return user?.role === "BTC" || user?.role === "admin"
+  return user?.role === "BTC" || user?.role === "admin" || user?.role === "btc"
 }
 
 export const isQuanLyDoi = () => {
   const user = getCurrentUser()
-  return user?.role === "QuanLyDoi" || user?.role === "manager"
+  return user?.role === "QuanLyDoi" || user?.role === "manager" || user?.role === "club"
 }
 
 export const isQuanChuc = () => {
   const user = getCurrentUser();
-  return user?.role === "TrongTai" || user?.role === "official"
+  return user?.role === "TrongTai" || user?.role === "official" || user?.role === "referee"
 };

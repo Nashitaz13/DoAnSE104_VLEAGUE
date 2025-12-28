@@ -9,9 +9,6 @@ interface TeamListProps {
 export function TeamList({ clubs, selectedId, onSelect }: TeamListProps) {
   return (
     <div className="flex flex-col p-2 gap-2">
-      <h2 className="px-4 py-2 text-lg font-semibold border-b">
-        Danh sách Đội bóng ({clubs.length})
-      </h2>
       {clubs.map((club) => (
         <div
           key={club.maclb || club.id} 

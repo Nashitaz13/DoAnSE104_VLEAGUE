@@ -2,8 +2,8 @@ import { useState, useMemo, useEffect } from "react"
 import { createFileRoute } from "@tanstack/react-router"
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query"
 import { 
-  LayoutDashboard, Users, CalendarDays, ClipboardEdit, 
-  CheckCircle, AlertCircle, User, Target, MapPin, Plus, X, Loader2, Pencil
+  LayoutDashboard, Users, CalendarDays, 
+  CheckCircle, User, Target, MapPin, Plus, X, Loader2, Pencil
 } from "lucide-react"
 
 import { Button } from "@/components/ui/button"
@@ -124,11 +124,11 @@ function ManagerDashboard() {
   if (!myClub) return <div className="p-20 text-center text-red-500">Chưa liên kết đội bóng!</div>;
 
   return (
-    <div className="min-h-[calc(100vh-4rem)] bg-gray-50 font-sans pb-10">
-      <div className="bg-gradient-to-r from-blue-700 to-blue-500 text-white p-6 shadow-lg">
+    <div className="min-h-[calc(100vh-4rem)] bg-background font-sans pb-10">
+      <div className="bg-gradient-to-r from-blue-700 to-blue-500 dark:from-blue-900 dark:to-blue-800 text-white p-6 shadow-lg">
         <div className="max-w-7xl mx-auto flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
           <div className="flex items-center gap-4">
-            <div className="w-16 h-16 bg-white text-blue-700 rounded-full flex items-center justify-center font-bold text-2xl shadow-md border-4 border-blue-400">
+            <div className="w-16 h-16 bg-white dark:bg-slate-900 text-blue-700 dark:text-blue-400 rounded-full flex items-center justify-center font-bold text-2xl shadow-md border-4 border-blue-400">
                 {myClub.tenclb?.substring(0,2).toUpperCase()}
             </div>
             <div>
@@ -141,7 +141,7 @@ function ManagerDashboard() {
           <div className="bg-white/10 p-2 rounded-lg backdrop-blur-sm border border-white/20">
               <label className="text-xs font-bold text-blue-100 uppercase mb-1 block">Mùa giải hoạt động</label>
               <Select value={selectedSeason} onValueChange={setSelectedSeason}>
-                <SelectTrigger className="w-[180px] bg-white text-blue-900 border-none font-bold h-9">
+                <SelectTrigger className="w-[180px] bg-white text-blue-900 dark:bg-neutral-800 dark:text-blue-100 border-none font-bold h-9">
                     <SelectValue placeholder="Chọn mùa giải" />
                 </SelectTrigger>
                 <SelectContent>
@@ -155,13 +155,13 @@ function ManagerDashboard() {
       </div>
 
       <div className="max-w-7xl mx-auto p-6 space-y-6">
-        <div className="bg-white p-1.5 rounded-xl shadow-sm border border-gray-200 inline-flex">
+        <div className="bg-white dark:bg-card p-1.5 rounded-xl shadow-sm border border-gray-200 dark:border-border inline-flex">
             {TABS.map((tab) => (
                 <button
                     key={tab.id}
                     onClick={() => setActiveTab(tab.id)}
                     className={`flex items-center gap-2 px-5 py-2.5 rounded-lg text-sm font-medium transition-all ${
-                        activeTab === tab.id ? 'bg-blue-50 text-blue-700 shadow-sm font-bold' : 'text-gray-500 hover:bg-gray-50 hover:text-gray-900'
+                        activeTab === tab.id ? 'bg-blue-50 dark:bg-blue-900/20 text-blue-700 dark:text-blue-300 shadow-sm font-bold' : 'text-muted-foreground hover:bg-muted/50 hover:text-foreground'
                     }`}
                 >
                     <tab.icon className="w-4 h-4" /> {tab.label}
@@ -206,10 +206,10 @@ function AddPlayerModal({ isOpen, onClose, clubId, season }: { isOpen: boolean, 
 
     return (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm p-4 animate-in fade-in">
-            <div className="bg-white rounded-xl shadow-xl w-full max-w-lg overflow-hidden">
-                <div className="px-6 py-4 border-b flex justify-between items-center bg-gray-50">
-                    <h3 className="font-bold text-lg text-gray-800">Đăng ký bổ sung</h3>
-                    <button onClick={onClose}><X className="w-5 h-5 text-gray-400"/></button>
+            <div className="bg-white dark:bg-card rounded-xl shadow-xl w-full max-w-lg overflow-hidden border border-border">
+                <div className="px-6 py-4 border-b flex justify-between items-center bg-muted/50">
+                    <h3 className="font-bold text-lg text-foreground">Đăng ký bổ sung</h3>
+                    <button onClick={onClose}><X className="w-5 h-5 text-muted-foreground hover:text-foreground transition-colors"/></button>
                 </div>
                 <div className="p-6 space-y-4">
                     <div className="grid grid-cols-2 gap-4">
@@ -217,7 +217,7 @@ function AddPlayerModal({ isOpen, onClose, clubId, season }: { isOpen: boolean, 
                         <div><Label>Số áo</Label><Input type="number" value={formData.soaothidau} onChange={(e)=>setFormData({...formData, soaothidau: e.target.value})}/></div>
                         <div>
                             <Label>Vị trí</Label>
-                            <select className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm" value={formData.vitrithidau} onChange={(e)=>setFormData({...formData, vitrithidau: e.target.value})}>
+                            <select className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2" value={formData.vitrithidau} onChange={(e)=>setFormData({...formData, vitrithidau: e.target.value})}>
                                 <option value="GK">Thủ môn (GK)</option><option value="DF">Hậu vệ (DF)</option><option value="MF">Tiền vệ (MF)</option><option value="FW">Tiền đạo (FW)</option>
                             </select>
                         </div>
@@ -227,7 +227,7 @@ function AddPlayerModal({ isOpen, onClose, clubId, season }: { isOpen: boolean, 
                         <div><Label>Cân nặng (kg)</Label><Input type="number" value={formData.cannang} onChange={(e)=>setFormData({...formData, cannang: e.target.value})}/></div>
                     </div>
                 </div>
-                <div className="px-6 py-4 border-t bg-gray-50 flex justify-end gap-2">
+                <div className="px-6 py-4 border-t bg-muted/50 flex justify-end gap-2">
                     <Button variant="outline" onClick={onClose}>Hủy</Button>
                     <Button className="bg-blue-600 hover:bg-blue-700" onClick={() => mutation.mutate(formData)} disabled={mutation.isPending || !formData.tencauthu}>{mutation.isPending ? "Đang lưu..." : "Lưu hồ sơ"}</Button>
                 </div>
@@ -271,7 +271,7 @@ function EditPlayerModal({ isOpen, onClose, player, clubId, season }: { isOpen: 
 
             // --- GIAI ĐOẠN 2: KHI ĐÃ CÓ BACKEND API (Bỏ comment dòng dưới) ---
         },
-        onSuccess: (savedPlayer: any) => {
+        onSuccess: (/* savedPlayer: any */) => {
             queryClient.setQueryData(['roster', clubId, season], (oldData: any) => {
                 const currentList = Array.isArray(oldData) ? oldData : (oldData?.data || []);
                 
@@ -294,12 +294,12 @@ function EditPlayerModal({ isOpen, onClose, player, clubId, season }: { isOpen: 
 
     return (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm p-4 animate-in fade-in">
-            <div className="bg-white rounded-xl shadow-xl w-full max-w-lg overflow-hidden border border-orange-200">
-                <div className="px-6 py-4 border-b flex justify-between items-center bg-orange-50">
-                    <h3 className="font-bold text-lg text-orange-800 flex items-center gap-2">
+            <div className="bg-white dark:bg-card rounded-xl shadow-xl w-full max-w-lg overflow-hidden border border-orange-200 dark:border-orange-800">
+                <div className="px-6 py-4 border-b flex justify-between items-center bg-orange-50 dark:bg-orange-900/20">
+                    <h3 className="font-bold text-lg text-orange-800 dark:text-orange-300 flex items-center gap-2">
                         <Pencil className="w-4 h-4"/> Chỉnh sửa thông tin
                     </h3>
-                    <button onClick={onClose}><X className="w-5 h-5 text-gray-400 hover:text-gray-600"/></button>
+                    <button onClick={onClose}><X className="w-5 h-5 text-muted-foreground hover:text-foreground transition-colors"/></button>
                 </div>
                 
                 <div className="p-6 space-y-4">
@@ -317,7 +317,7 @@ function EditPlayerModal({ isOpen, onClose, player, clubId, season }: { isOpen: 
                         </div>
                         <div>
                             <Label>Vị trí</Label>
-                            <select className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm" value={formData.vitrithidau} onChange={(e) => setFormData({...formData, vitrithidau: e.target.value})}>
+                            <select className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2" value={formData.vitrithidau} onChange={(e) => setFormData({...formData, vitrithidau: e.target.value})}>
                                 <option value="GK">Thủ môn (GK)</option><option value="DF">Hậu vệ (DF)</option><option value="MF">Tiền vệ (MF)</option><option value="FW">Tiền đạo (FW)</option>
                             </select>
                         </div>
@@ -328,7 +328,7 @@ function EditPlayerModal({ isOpen, onClose, player, clubId, season }: { isOpen: 
                     </div>
                 </div>
 
-                <div className="px-6 py-4 border-t bg-gray-50 flex justify-end gap-2">
+                <div className="px-6 py-4 border-t bg-muted/50 flex justify-end gap-2">
                     <Button variant="outline" onClick={onClose}>Hủy bỏ</Button>
                     <Button 
                         className="bg-orange-600 hover:bg-orange-700 text-white" 
@@ -363,16 +363,16 @@ function OverviewTab({ myClub, season, stadiumName }: { myClub: any, season: str
                 <StatCard title="Điểm số" value={myRank?.diem || 0} icon={CheckCircle} color="text-green-600" />
                 <StatCard title="Sân nhà" value={stadiumName} icon={MapPin} color="text-blue-600" />
             </div>
-             <div className="bg-white rounded-xl shadow-sm border border-gray-100 overflow-hidden">
-                <div className="px-6 py-4 border-b border-gray-100 bg-gray-50/50 flex justify-between items-center">
-                    <h3 className="font-bold text-gray-800 flex items-center gap-2"><User className="w-5 h-5 text-gray-500"/> Hồ sơ đăng ký</h3>
-                    <span className="text-xs font-mono bg-gray-200 text-gray-600 px-2 py-1 rounded">Mùa: {season}</span>
+             <div className="bg-white dark:bg-card rounded-xl shadow-sm border border-border overflow-hidden">
+                <div className="px-6 py-4 border-b border-border bg-muted/50 flex justify-between items-center">
+                    <h3 className="font-bold text-foreground flex items-center gap-2"><User className="w-5 h-5 text-muted-foreground"/> Hồ sơ đăng ký</h3>
+                    <span className="text-xs font-mono bg-muted text-muted-foreground px-2 py-1 rounded">Mùa: {season}</span>
                 </div>
                 <div className="p-6 grid grid-cols-1 md:grid-cols-2 gap-y-6 gap-x-12">
-                    <div><label className="text-xs text-gray-400 font-bold uppercase tracking-wider block mb-1">Tên Câu Lạc Bộ</label><div className="text-lg font-bold text-gray-900">{myClub.tenclb}</div></div>
-                    <div><label className="text-xs text-gray-400 font-bold uppercase tracking-wider block mb-1">Mã Hệ Thống</label><div className="font-mono text-gray-700 bg-gray-100 inline-block px-2 py-0.5 rounded">{myClub.maclb}</div></div>
-                    <div><label className="text-xs text-gray-400 font-bold uppercase tracking-wider block mb-1">Sân Vận Động</label><div className="font-medium text-gray-900">{stadiumName}</div></div>
-                    <div><label className="text-xs text-gray-400 font-bold uppercase tracking-wider block mb-1">Địa chỉ</label><div className="text-gray-700">{myClub.san_nha?.diachi || "Chưa cập nhật"}</div></div>
+                    <div><label className="text-xs text-muted-foreground font-bold uppercase tracking-wider block mb-1">Tên Câu Lạc Bộ</label><div className="text-lg font-bold text-foreground">{myClub.tenclb}</div></div>
+                    <div><label className="text-xs text-muted-foreground font-bold uppercase tracking-wider block mb-1">Mã Hệ Thống</label><div className="font-mono text-muted-foreground bg-muted inline-block px-2 py-0.5 rounded">{myClub.maclb}</div></div>
+                    <div><label className="text-xs text-muted-foreground font-bold uppercase tracking-wider block mb-1">Sân Vận Động</label><div className="font-medium text-foreground">{stadiumName}</div></div>
+                    <div><label className="text-xs text-muted-foreground font-bold uppercase tracking-wider block mb-1">Địa chỉ</label><div className="text-foreground/80">{myClub.san_nha?.diachi || "Chưa cập nhật"}</div></div>
                 </div>
             </div>
         </div>
@@ -409,13 +409,13 @@ function SquadTab({ clubId, season }: { clubId: string, season: string }) {
     };
 
     return (
-        <div className="bg-white p-6 rounded-lg shadow-sm border border-gray-100">
+        <div className="bg-white dark:bg-card p-6 rounded-lg shadow-sm border border-border">
             <div className="flex flex-col md:flex-row justify-between items-start md:items-center mb-6 gap-4">
                 <div>
-                    <h3 className="font-bold text-lg text-gray-800 flex items-center gap-2">
+                    <h3 className="font-bold text-lg text-foreground flex items-center gap-2">
                         <Users className="w-5 h-5"/> Danh sách cầu thủ ({list.length})
                     </h3>
-                    <div className="text-xs text-gray-500 mt-1 flex gap-3">
+                    <div className="text-xs text-muted-foreground mt-1 flex gap-3">
                         <span>Ngoại binh: <b>{stats.foreign}</b></span>
                         <span>•</span>
                         <span>Tuổi TB: <b>{stats.avgAge}</b></span>
@@ -441,14 +441,14 @@ function SquadTab({ clubId, season }: { clubId: string, season: string }) {
             {isLoading ? (
                 <div className="text-center py-10">Đang tải danh sách...</div>
             ) : list.length === 0 ? (
-                <div className="text-center py-12 bg-gray-50 rounded border border-dashed border-gray-300">
-                    <p className="text-gray-500 font-medium">Chưa có cầu thủ nào được đăng ký cho mùa giải {season}.</p>
+                <div className="text-center py-12 bg-muted/30 rounded border border-dashed border-border">
+                    <p className="text-muted-foreground font-medium">Chưa có cầu thủ nào được đăng ký cho mùa giải {season}.</p>
                     {season !== '2025-2026' && (<p className="text-xs text-blue-500 mt-2">*Mẹo: Dữ liệu mẫu trong hệ thống chủ yếu nằm ở mùa giải <b>2025-2026</b>.</p>)}
                 </div>
             ) : (
                 <div className="overflow-x-auto border rounded-lg">
                     <table className="w-full text-sm text-left">
-                        <thead className="bg-gray-100 text-gray-600 text-xs uppercase font-bold">
+                        <thead className="bg-muted text-muted-foreground text-xs uppercase font-bold">
                             <tr>
                                 <th className="px-4 py-3 text-center w-14">Số áo</th>
                                 <th className="px-4 py-3">Họ và tên</th>
@@ -460,37 +460,37 @@ function SquadTab({ clubId, season }: { clubId: string, season: string }) {
                                 <th className="px-4 py-3 text-right">Thao tác</th>
                             </tr>
                         </thead>
-                        <tbody className="divide-y divide-gray-100">
+                        <tbody className="divide-y divide-border">
                             {list.map((p: any) => {
                                 const birthYear = p.ngaysinh ? new Date(p.ngaysinh).getFullYear() : "-";
                                 const isForeign = p.quoctich !== 'Vietnam';
                                 return (
-                                    <tr key={p.macauthu} className="hover:bg-blue-50/50 transition-colors">
-                                        <td className="px-4 py-3 text-center font-bold text-blue-800">{p.soaothidau}</td>
+                                    <tr key={p.macauthu} className="hover:bg-blue-50/50 dark:hover:bg-blue-900/10 transition-colors">
+                                        <td className="px-4 py-3 text-center font-bold text-blue-800 dark:text-blue-300">{p.soaothidau}</td>
                                         <td className="px-4 py-3">
-                                            <div className="font-semibold text-gray-900">{p.tencauthu}</div>
-                                            {p.noisinh && <div className="text-xs text-gray-400">{p.noisinh}</div>}
+                                            <div className="font-semibold text-foreground">{p.tencauthu}</div>
+                                            {p.noisinh && <div className="text-xs text-muted-foreground">{p.noisinh}</div>}
                                         </td>
                                         <td className="px-4 py-3">
                                             <span className={`inline-block px-2 py-0.5 rounded text-xs font-bold w-10 text-center
-                                                ${p.vitrithidau === 'GK' ? 'bg-yellow-100 text-yellow-700' : ''}
-                                                ${p.vitrithidau === 'DF' ? 'bg-blue-100 text-blue-700' : ''}
-                                                ${p.vitrithidau === 'MF' ? 'bg-green-100 text-green-700' : ''}
-                                                ${p.vitrithidau === 'FW' ? 'bg-red-100 text-red-700' : ''}
+                                                ${p.vitrithidau === 'GK' ? 'bg-yellow-100 dark:bg-yellow-900/30 text-yellow-700 dark:text-yellow-400' : ''}
+                                                ${p.vitrithidau === 'DF' ? 'bg-blue-100 dark:bg-blue-900/30 text-blue-700 dark:text-blue-400' : ''}
+                                                ${p.vitrithidau === 'MF' ? 'bg-green-100 dark:bg-green-900/30 text-green-700 dark:text-green-400' : ''}
+                                                ${p.vitrithidau === 'FW' ? 'bg-red-100 dark:bg-red-900/30 text-red-700 dark:text-red-400' : ''}
                                             `}>{p.vitrithidau}</span>
                                         </td>
                                         <td className="px-4 py-3">
-                                            {isForeign ? (<span className="text-purple-600 font-semibold flex items-center gap-1">{p.quoctich}</span>) : (<span className="text-gray-600">Việt Nam</span>)}
+                                            {isForeign ? (<span className="text-purple-600 dark:text-purple-400 font-semibold flex items-center gap-1">{p.quoctich}</span>) : (<span className="text-muted-foreground">Việt Nam</span>)}
                                         </td>
-                                        <td className="px-4 py-3 text-center text-gray-600">{birthYear}</td>
-                                        <td className="px-4 py-3 text-center text-gray-600">{p.chieucao ? `${p.chieucao}` : "-"}</td>
-                                        <td className="px-4 py-3 text-center text-gray-600">{p.cannang ? `${p.cannang}` : "-"}</td>
+                                        <td className="px-4 py-3 text-center text-muted-foreground">{birthYear}</td>
+                                        <td className="px-4 py-3 text-center text-muted-foreground">{p.chieucao ? `${p.chieucao}` : "-"}</td>
+                                        <td className="px-4 py-3 text-center text-muted-foreground">{p.cannang ? `${p.cannang}` : "-"}</td>
                                         
                                         <td className="px-4 py-3 text-right">
                                             <Button 
                                                 variant="ghost" 
                                                 size="icon" 
-                                                className="h-8 w-8 text-gray-500 hover:text-blue-600 hover:bg-blue-50"
+                                                className="h-8 w-8 text-muted-foreground hover:text-blue-600 dark:hover:text-blue-400 hover:bg-blue-50 dark:hover:bg-blue-900/20"
                                                 onClick={() => handleEditClick(p)} // Gọi hàm mở modal
                                                 title="Chỉnh sửa thông tin"
                                             >
@@ -518,38 +518,38 @@ function MatchesTab({ clubId, season }: { clubId: string, season: string }) {
     const sortedList = [...list].sort((a: any, b: any) => a.vong - b.vong);
 
     return (
-        <div className="bg-white rounded-xl shadow-sm border border-gray-100 overflow-hidden">
-            <div className="px-6 py-4 border-b border-gray-100 bg-gray-50/50 flex justify-between items-center">
-                <h3 className="font-bold text-gray-800">Lịch thi đấu & Kết quả</h3>
-                <div className="text-xs text-gray-500 italic">Mùa giải {season}</div>
+        <div className="bg-white dark:bg-card rounded-xl shadow-sm border border-border overflow-hidden">
+            <div className="px-6 py-4 border-b border-border bg-muted/50 flex justify-between items-center">
+                <h3 className="font-bold text-foreground">Lịch thi đấu & Kết quả</h3>
+                <div className="text-xs text-muted-foreground italic">Mùa giải {season}</div>
             </div>
 
             {isLoading ? (
-                <div className="p-10 text-center text-gray-500">Đang tải lịch thi đấu...</div>
+                <div className="p-10 text-center text-muted-foreground">Đang tải lịch thi đấu...</div>
             ) : list.length === 0 ? (
                 <div className="p-16 text-center">
-                    <div className="w-16 h-16 bg-gray-100 rounded-full flex items-center justify-center mx-auto mb-4 text-gray-400"><CalendarDays className="w-8 h-8"/></div>
-                    <h4 className="text-lg font-bold text-gray-700">Chưa có lịch thi đấu</h4>
-                    <p className="text-gray-500 max-w-xs mx-auto mt-2">Không tìm thấy trận đấu nào cho mùa giải {season}. Hãy thử chuyển sang mùa giải <b>2024-2025</b>.</p>
+                    <div className="w-16 h-16 bg-muted rounded-full flex items-center justify-center mx-auto mb-4 text-muted-foreground"><CalendarDays className="w-8 h-8"/></div>
+                    <h4 className="text-lg font-bold text-foreground">Chưa có lịch thi đấu</h4>
+                    <p className="text-muted-foreground max-w-xs mx-auto mt-2">Không tìm thấy trận đấu nào cho mùa giải {season}. Hãy thử chuyển sang mùa giải <b>2024-2025</b>.</p>
                 </div>
             ) : (
-                <div className="divide-y divide-gray-100">
+                <div className="divide-y divide-border">
                     {sortedList.map((m: any) => {
                         const isHome = m.maclb_nha === clubId;
                         const matchDate = m.thoigianthidau ? new Date(m.thoigianthidau).toLocaleDateString("vi-VN") : "Chưa xếp lịch";
                         return (
-                            <div key={m.matran} className="flex flex-col md:flex-row items-center justify-between p-4 hover:bg-gray-50 transition-colors gap-4">
+                            <div key={m.matran} className="flex flex-col md:flex-row items-center justify-between p-4 hover:bg-muted/50 transition-colors gap-4">
                                 <div className="flex items-center gap-3 w-full md:w-auto">
-                                    <div className="bg-blue-50 text-blue-700 px-3 py-1 rounded text-xs font-bold uppercase min-w-[80px] text-center">Vòng {m.vong}</div>
-                                    <span className="text-sm text-gray-500">{matchDate}</span>
+                                    <div className="bg-blue-50 dark:bg-blue-900/30 text-blue-700 dark:text-blue-300 px-3 py-1 rounded text-xs font-bold uppercase min-w-[80px] text-center">Vòng {m.vong}</div>
+                                    <span className="text-sm text-muted-foreground">{matchDate}</span>
                                 </div>
                                 <div className="flex-1 flex items-center justify-center gap-4 w-full">
-                                    <span className={`text-right flex-1 font-bold ${isHome ? "text-blue-700" : "text-gray-800"}`}>{m.doi_nha?.tenclb || m.maclb_nha}</span>
-                                    <div className="bg-gray-900 text-white px-4 py-1.5 rounded-lg font-mono font-bold text-lg shadow-sm min-w-[80px] text-center">{m.tiso || "vs"}</div>
-                                    <span className={`text-left flex-1 font-bold ${!isHome ? "text-blue-700" : "text-gray-800"}`}>{m.doi_khach?.tenclb || m.maclb_khach}</span>
+                                    <span className={`text-right flex-1 font-bold ${isHome ? "text-blue-700 dark:text-blue-400" : "text-foreground"}`}>{m.doi_nha?.tenclb || m.maclb_nha}</span>
+                                    <div className="bg-gray-900 dark:bg-gray-800 text-white px-4 py-1.5 rounded-lg font-mono font-bold text-lg shadow-sm min-w-[80px] text-center">{m.tiso || "vs"}</div>
+                                    <span className={`text-left flex-1 font-bold ${!isHome ? "text-blue-700 dark:text-blue-400" : "text-foreground"}`}>{m.doi_khach?.tenclb || m.maclb_khach}</span>
                                 </div>
                                 <div className="w-full md:w-auto text-center md:text-right">
-                                    <span className={`text-xs px-2 py-1 rounded border ${isHome ? 'bg-green-50 border-green-200 text-green-700' : 'bg-orange-50 border-orange-200 text-orange-700'}`}>{isHome ? 'Sân nhà' : 'Sân khách'}</span>
+                                    <span className={`text-xs px-2 py-1 rounded border ${isHome ? 'bg-green-50 dark:bg-green-900/30 border-green-200 dark:border-green-800 text-green-700 dark:text-green-300' : 'bg-orange-50 dark:bg-orange-900/30 border-orange-200 dark:border-orange-800 text-orange-700 dark:text-orange-300'}`}>{isHome ? 'Sân nhà' : 'Sân khách'}</span>
                                 </div>
                             </div>
                         )
@@ -562,9 +562,9 @@ function MatchesTab({ clubId, season }: { clubId: string, season: string }) {
 
 function StatCard({ title, value, icon: Icon, color }: any) {
     return (
-      <div className="bg-white p-5 rounded-xl shadow-sm border border-gray-100 flex items-center justify-between hover:shadow-md transition-shadow">
-          <div><div className={`text-2xl font-bold ${color} truncate max-w-[180px]`} title={value}>{value}</div><div className="text-xs font-bold uppercase text-gray-400 mt-1 tracking-wider">{title}</div></div>
-          <div className={`p-3 rounded-full bg-gray-50 ${color.replace('text-', 'text-opacity-20 ')}`}><Icon className="w-6 h-6" /></div>
+      <div className="bg-white dark:bg-card p-5 rounded-xl shadow-sm border border-border flex items-center justify-between hover:shadow-md transition-shadow">
+          <div><div className={`text-2xl font-bold ${color} truncate max-w-[180px]`} title={value}>{value}</div><div className="text-xs font-bold uppercase text-muted-foreground mt-1 tracking-wider">{title}</div></div>
+          <div className={`p-3 rounded-full ${color.replace('text-', 'bg-')} bg-opacity-10 dark:bg-opacity-20`}><Icon className={`w-6 h-6 ${color}`} /></div>
       </div>
     )
 }

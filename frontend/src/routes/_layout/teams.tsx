@@ -4,7 +4,8 @@ import { useQuery } from "@tanstack/react-query"
 import { ClubsService, StadiumsService, SeasonManagementService } from "@/client"
 import { TeamList } from "@/components/Teams/TeamList"
 import { TeamDetail } from "@/components/Teams/TeamDetail"
-import { Loader2, Filter, Shield, AlertTriangle } from "lucide-react"
+import { StadiumDetail } from "@/components/Teams/StadiumDetail"
+import { Loader2, Filter, Shield, AlertTriangle, Users, MapPin } from "lucide-react"
 import {
   Select,
   SelectContent,
@@ -12,6 +13,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select"
+import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs"
 
 export const Route = createFileRoute('/_layout/teams')({
   component: TeamsPage,
@@ -21,6 +23,7 @@ function TeamsPage() {
   // Mặc định chọn 2025-2026
   const [selectedSeason, setSelectedSeason] = useState<string>("2025-2026")
   const [selectedTeamId, setSelectedTeamId] = useState<string | null>(null)
+  const [viewMode, setViewMode] = useState<"teams" | "stadiums">("teams")
 
   // 1. Lấy danh sách Mùa giải (Gộp API + Hardcode)
   const { data: seasonsData } = useQuery({
@@ -86,45 +89,57 @@ function TeamsPage() {
       return [];
   }, [stadiums, stadiumsBackup, selectedSeason]);
 
-  // 4. Tạo Map ánh xạ (Mã -> Tên)
+  // 4. Tạo Map ánh xạ (Mã -> Tên & Sức chứa)
   const stadiumMap = useMemo(() => {
-    const map: Record<string, string> = {};
+    const map: Record<string, any> = {};
     finalStadiumsData.forEach((s: any) => {
       const id = s.masanvandong || s.MaSanVanDong; 
-      const name = s.tensanvandong || s.TenSanVanDong || s.tensan; // Ưu tiên tên đầy đủ
-      if (id) map[id] = name;
+      const name = s.tensanvandong || s.TenSanVanDong || s.tensan;
+      const capacity = s.succhua || s.SucChua || s.suc_chua; // Thêm trường sức chứa
+      const address = s.diachisvd || s.DiaChiSVD || s.dia_chi_san; // Thêm địa chỉ
+      const fifa = s.danhgiafifa || s.DanhGiaFIFA || s.tieu_chuan; // Thêm đánh giá FIFA
+      if (id) {
+          map[id] = { name, capacity, address, fifa };
+      }
     });
     return map;
   }, [finalStadiumsData]);
 
   // Ghép tên sân vào đội bóng
   const clubsWithStadiumName = useMemo(() => {
-      return finalClubsData.map((club: any) => ({
-        ...club,
-        ten_san_hien_thi: stadiumMap[club.masanvandong] || stadiumMap[club.MaSanVanDong] || club.masanvandong || "Chưa cập nhật sân"
-      }));
+      return finalClubsData.map((club: any) => {
+        const stadiumInfo = stadiumMap[club.masanvandong] || stadiumMap[club.MaSanVanDong];
+        return {
+            ...club,
+            ten_san_hien_thi: stadiumInfo?.name || club.masanvandong || "Chưa cập nhật sân",
+            suc_chua_san: stadiumInfo?.capacity || club.suc_chua_san, // Ưu tiên lấy từ bảng Sân
+            dia_chi_san: stadiumInfo?.address || club.dia_chi_san, // Ưu tiên lấy từ bảng Sân
+            danh_gia_fifa: stadiumInfo?.fifa || club.danh_gia_fifa, // Ưu tiên lấy từ bảng Sân
+            danhgiafifa: stadiumInfo?.fifa || club.danhgiafifa // Fallback
+        }
+      });
   }, [finalClubsData, stadiumMap]);
 
   return (
-    <div className="flex flex-col h-[calc(100vh-4rem)] p-6 gap-6 bg-gray-50">
+    <div className="flex flex-col h-[calc(100vh-4rem)] p-6 gap-6 bg-gray-50 dark:bg-background">
       
       {/* HEADER & FILTER */}
       <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
           <div>
-              <h1 className="text-2xl font-bold text-red-800 flex items-center gap-2">
+              <h1 className="text-2xl font-bold text-red-800 dark:text-red-400 flex items-center gap-2">
                   <Shield className="w-8 h-8"/> Các Đội Bóng Tham Dự
               </h1>
-              <p className="text-gray-500 text-sm mt-1">Danh sách câu lạc bộ tranh tài tại V-League 1</p>
+              <p className="text-muted-foreground text-sm mt-1">Danh sách câu lạc bộ tranh tài tại V-League 1</p>
           </div>
 
-          <div className="flex items-center gap-3 bg-white p-2 rounded-lg border shadow-sm">
-            <Filter className="w-4 h-4 text-gray-500 ml-2" />
-            <span className="text-sm font-semibold text-gray-700">Mùa giải:</span>
+          <div className="flex items-center gap-3 bg-white dark:bg-card p-2 rounded-lg border shadow-sm">
+            <Filter className="w-4 h-4 text-muted-foreground ml-2" />
+            <span className="text-sm font-semibold text-foreground">Mùa giải:</span>
             <Select value={selectedSeason} onValueChange={(val) => {
                 setSelectedSeason(val);
                 setSelectedTeamId(null); 
             }}>
-                <SelectTrigger className="w-[160px] h-9 border-none bg-gray-100 focus:ring-0 font-bold text-red-700">
+                <SelectTrigger className="w-[160px] h-9 border-none bg-gray-100 dark:bg-muted focus:ring-0 font-bold text-red-700 dark:text-red-400">
                 <SelectValue placeholder="Chọn mùa giải" />
                 </SelectTrigger>
                 <SelectContent>
@@ -141,19 +156,19 @@ function TeamsPage() {
       {/* CONTENT */}
       <div className="flex flex-1 gap-6 overflow-hidden">
         {/* CỘT TRÁI: DANH SÁCH ĐỘI */}
-        <div className="w-1/3 min-w-[320px] max-w-[400px] flex flex-col bg-white rounded-xl border shadow-sm overflow-hidden">
-            <div className="p-4 border-b bg-gray-50 font-semibold text-gray-700 flex justify-between items-center">
+        <div className="w-1/3 min-w-[320px] max-w-[400px] flex flex-col bg-white dark:bg-card rounded-xl border shadow-sm overflow-hidden">
+            <div className="p-4 border-b bg-gray-50 dark:bg-muted font-semibold text-foreground flex justify-between items-center">
                 <span>Danh sách ({clubsWithStadiumName.length})</span>
                 {/* Chỉ báo fallback data */}
                 {selectedSeason === '2025-2026' && finalClubsData === (clubsBackup as any)?.data && (
-                    <span className="text-[10px] bg-yellow-100 text-yellow-800 px-2 py-0.5 rounded-full flex items-center gap-1" title="Dữ liệu được lấy từ mùa trước do chưa cập nhật">
+                    <span className="text-[10px] bg-yellow-100 text-yellow-800 dark:bg-yellow-900 dark:text-yellow-100 px-2 py-0.5 rounded-full flex items-center gap-1" title="Dữ liệu được lấy từ mùa trước do chưa cập nhật">
                         <AlertTriangle className="w-3 h-3"/> Fallback
                     </span>
                 )}
             </div>
             <div className="flex-1 overflow-y-auto p-2">
                 {clubsWithStadiumName.length === 0 ? (
-                    <div className="flex flex-col items-center justify-center h-40 gap-2 text-gray-500">
+                    <div className="flex flex-col items-center justify-center h-40 gap-2 text-muted-foreground">
                        {/* Nếu đang loading cả chính và backup */}
                        <Loader2 className="animate-spin w-6 h-6" /> Đang tải...
                     </div>
@@ -168,15 +183,15 @@ function TeamsPage() {
         </div>
 
         {/* CỘT PHẢI: CHI TIẾT ĐỘI */}
-        <div className="flex-1 bg-white rounded-xl border shadow-sm overflow-hidden flex flex-col">
-          {selectedTeamId ? (
-            <TeamDetail 
-              teamId={selectedTeamId} 
-              stadiumMap={stadiumMap}
-              muagiai={selectedSeason} 
-            />
-          ) : (
-            <div className="flex flex-col h-full items-center justify-center text-gray-400 bg-gray-50/50">
+         <div className="flex-1 bg-white dark:bg-card rounded-xl border shadow-sm overflow-hidden flex flex-col">
+           {selectedTeamId ? (
+             <TeamDetail 
+               teamId={selectedTeamId} 
+               club={clubsWithStadiumName.find((c: any) => c.maclb === selectedTeamId)}
+               muagiai={selectedSeason} 
+             />
+           ) : (
+            <div className="flex flex-col h-full items-center justify-center text-muted-foreground bg-gray-50/50 dark:bg-muted/50">
               <Shield className="w-16 h-16 mb-4 opacity-20" />
               <p className="text-lg font-medium">Chọn một đội bóng để xem thông tin chi tiết</p>
               <p className="text-sm">Đội hình, Lịch thi đấu, Thống kê...</p>

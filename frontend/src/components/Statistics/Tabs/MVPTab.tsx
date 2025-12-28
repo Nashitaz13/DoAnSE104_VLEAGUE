@@ -3,7 +3,7 @@ import { Trophy } from "lucide-react"
 
 export function MVPTab() {
   return (
-    <Card className="border-dashed">
+    <Card className="border-dashed bg-card dark:bg-card">
         <CardContent className="flex flex-col items-center justify-center py-16 text-center text-muted-foreground">
             <Trophy className="w-12 h-12 mb-4 text-muted-foreground/50" />
             <h3 className="text-lg font-semibold">Cầu thủ xuất sắc nhất trận</h3>

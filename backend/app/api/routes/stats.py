@@ -2,7 +2,7 @@ from typing import Any
 
 from fastapi import APIRouter, HTTPException, Query
 
-from app.api.deps import CurrentUserVLeague, SessionDep
+from app.api.deps import SessionDep
 from app import crud
 from app.models import PlayerStatsResponse, MatchStatsResponse, AwardsResponse, DisciplineResponse
 
@@ -13,13 +13,12 @@ router = APIRouter()
 def get_player_stats(
     *,
     session: SessionDep,
-    current_user: CurrentUserVLeague,
     muagiai: str = Query(..., description="Season ID (e.g., '2024-2025')")
 ) -> Any:
     """
     Get player statistics for a season.
     
-    **Authentication required** - Any authenticated user can view stats.
+    Public endpoint - no authentication required.
     
     **Algorithm:**
     - Computes from match events (`sukientrandau`)
@@ -61,13 +60,12 @@ def get_player_stats(
 def get_match_stats(
     *,
     session: SessionDep,
-    current_user: CurrentUserVLeague,
     matran: str
 ) -> Any:
     """
     Get match statistics.
     
-    **Authentication required** - Any authenticated user can view stats.
+    Public endpoint - no authentication required.
     
     **Note:** Since `thong_ke_tran_dau` table is not implemented,
     returns limited statistics from match events only (cards).
@@ -107,14 +105,13 @@ def get_match_stats(
 def get_awards(
     *,
     session: SessionDep,
-    current_user: CurrentUserVLeague,
     muagiai: str = Query(..., description="Season ID (e.g., '2024-2025')"),
     limit: int = Query(10, ge=1, le=200, description="Max number to return (ties may exceed limit)")
 ) -> Any:
     """
     Get awards for top scorers and top assist providers.
     
-    **Authentication required** - Any authenticated user can view awards.
+    Public endpoint - no authentication required.
     
     **Algorithm:**
     - Top scorers: Count `loaisukien = "BanThang"` per player
@@ -158,14 +155,13 @@ def get_awards(
 def get_discipline(
     *,
     session: SessionDep,
-    current_user: CurrentUserVLeague,
     muagiai: str = Query(..., description="Season ID (e.g., '2024-2025')"),
     limit: int = Query(50, ge=1, le=200, description="Max number to return (ties may exceed limit)")
 ) -> Any:
     """
     Get discipline statistics (yellow/red cards).
     
-    **Authentication required** - Any authenticated user can view discipline stats.
+    Public endpoint - no authentication required.
     
     **Algorithm:**
     - Yellow cards: Count `loaisukien = "TheVang"`
