@@ -1,6 +1,6 @@
 import { useQuery } from "@tanstack/react-query"
 import { RostersService } from "@/client"
-import { Users, CheckCircle } from "lucide-react"
+import { Users, CheckCircle, Flag, MapPin, User, CalendarDays } from "lucide-react"
 
 const calculateAge = (dateString: string) => {
   if (!dateString) return "-";
@@ -18,7 +18,7 @@ interface TeamDetailProps {
 
 export function TeamDetail({ teamId, stadiumMap, muagiai }: TeamDetailProps) {
   
-  // 1. Gọi API lấy danh sách cầu thủ cho mùa giải ĐANG CHỌN
+  // 1. Gọi API lấy danh sách cầu thủ cho mùa giải ĐANG CHỌN (BM3.2 - 3.3)
   const { data: roster, isLoading } = useQuery({
     queryKey: ['roster', teamId, muagiai],
     queryFn: () => RostersService.getRoster({ maclb: teamId, muagiai: muagiai }),
@@ -57,10 +57,19 @@ export function TeamDetail({ teamId, stadiumMap, muagiai }: TeamDetailProps) {
         </td>
         <td className="py-3 px-4">
             <div className="font-semibold text-gray-900">{p.tencauthu}</div>
-            {p.noisinh && <div className="text-xs text-gray-400">{p.noisinh}</div>}
+            {p.noisinh && <div className="text-xs text-gray-400 flex items-center gap-1 mt-0.5"><MapPin className="w-3 h-3"/> {p.noisinh}</div>}
         </td>
-        <td className="py-3 px-4 text-center hidden md:table-cell font-medium text-gray-700">{p.quoctich}</td>
-        <td className="py-3 px-4 text-center hidden md:table-cell text-gray-600">{calculateAge(p.ngaysinh)}</td>
+        <td className="py-3 px-4 text-center hidden md:table-cell font-medium text-gray-700">
+             {p.quoctich !== 'Vietnam' ? (
+                 <span className="text-purple-600 font-bold flex items-center justify-center gap-1"><Flag className="w-3 h-3"/> {p.quoctich}</span>
+             ) : (
+                 <span className="text-gray-500">Việt Nam</span>
+             )}
+        </td>
+        <td className="py-3 px-4 text-center hidden md:table-cell text-gray-600">
+            {p.ngaysinh ? new Date(p.ngaysinh).toLocaleDateString("vi-VN") : "-"}
+            <span className="block text-xs text-gray-400">({calculateAge(p.ngaysinh)} tuổi)</span>
+        </td>
         <td className="py-3 px-4 text-center text-gray-600 hidden lg:table-cell font-mono">
             {p.chieucao ? `${p.chieucao}` : "-"}
         </td>
@@ -76,7 +85,7 @@ export function TeamDetail({ teamId, stadiumMap, muagiai }: TeamDetailProps) {
     <div className="flex flex-col h-full overflow-hidden">
       <div className="bg-red-50 p-6 border-b border-red-100 shrink-0">
          <h2 className="text-xl font-bold text-red-800 mb-1 flex items-center gap-2">
-            <Users className="w-5 h-5"/> Danh sách cầu thủ đăng ký
+            <Users className="w-5 h-5"/> Danh sách cầu thủ đăng ký (BM3.3)
          </h2>
          <p className="text-sm text-gray-600 flex items-center gap-2">
             Mùa giải: <span className="font-bold">{muagiai}</span> • 
@@ -115,7 +124,7 @@ export function TeamDetail({ teamId, stadiumMap, muagiai }: TeamDetailProps) {
                                     <th className="py-2 px-4 text-center w-14">Số</th>
                                     <th className="py-2 px-4">Họ tên / Nơi sinh</th>
                                     <th className="py-2 px-4 text-center hidden md:table-cell">Quốc tịch</th>
-                                    <th className="py-2 px-4 text-center hidden md:table-cell">Tuổi</th>
+                                    <th className="py-2 px-4 text-center hidden md:table-cell">Ngày sinh (Tuổi)</th>
                                     <th className="py-2 px-4 text-center hidden lg:table-cell" title="Chiều cao">Cao (cm)</th>
                                     <th className="py-2 px-4 text-center hidden lg:table-cell" title="Cân nặng">Nặng (kg)</th>
                                 </tr>

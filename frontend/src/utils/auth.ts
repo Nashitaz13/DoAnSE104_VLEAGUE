@@ -1,42 +1,30 @@
-// 1. Lấy thông tin user hiện tại
 export const getCurrentUser = () => {
-  const userStr = localStorage.getItem("currentUser")
-  if (!userStr) return null
-  try {
-    return JSON.parse(userStr)
-  } catch {
+    const userStr = localStorage.getItem("currentUser")
+    if (userStr) return JSON.parse(userStr)
     return null
-  }
 }
 
-// 2. Hàm Đăng nhập (Lưu vào localStorage)
-export const loginUser = (username: string, role: string) => {
-  const user = { username, role, full_name: username } // Tạo user giả lập
-  localStorage.setItem("currentUser", JSON.stringify(user))
-}
-
-// 3. Hàm Đăng xuất
-export const logoutUser = () => {
-  localStorage.removeItem("currentUser")
-  window.location.href = "/login"
-}
-
-// 4. Các hàm kiểm tra quyền (Dùng trực tiếp)
 export const isLoggedIn = () => {
-  return !!localStorage.getItem("access_token");
+    return !!localStorage.getItem("access_token")
+}
+
+export const logoutUser = () => {
+    localStorage.removeItem("access_token")
+    localStorage.removeItem("currentUser")
+    window.location.href = "/login"
 }
 
 export const isBTC = () => {
-  const user = getCurrentUser()
-  return user?.role === "BTC" || user?.role === "admin"
+    const user = getCurrentUser()
+    return user?.role === "admin"
 }
 
 export const isQuanLyDoi = () => {
-  const user = getCurrentUser()
-  return user?.role === "QuanLyDoi" || user?.role === "manager"
+    const user = getCurrentUser()
+    return user?.role === "manager"
 }
 
 export const isQuanChuc = () => {
-  const user = getCurrentUser();
-  return user?.role === "TrongTai" || user?.role === "official"
-};
+    const user = getCurrentUser()
+    return user?.role === "official"
+}

@@ -112,9 +112,9 @@ function TeamsPage() {
       <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
           <div>
               <h1 className="text-2xl font-bold text-red-800 flex items-center gap-2">
-                  <Shield className="w-8 h-8"/> Các Đội Bóng Tham Dự
+                  <Shield className="w-8 h-8"/> Hồ sơ CLB & Cầu thủ (BM3.1 - 3.3)
               </h1>
-              <p className="text-gray-500 text-sm mt-1">Danh sách câu lạc bộ tranh tài tại V-League 1</p>
+              <p className="text-gray-500 text-sm mt-1">Tra cứu thông tin chi tiết các đội bóng tham dự</p>
           </div>
 
           <div className="flex items-center gap-3 bg-white p-2 rounded-lg border shadow-sm">
@@ -178,8 +178,8 @@ function TeamsPage() {
           ) : (
             <div className="flex flex-col h-full items-center justify-center text-gray-400 bg-gray-50/50">
               <Shield className="w-16 h-16 mb-4 opacity-20" />
-              <p className="text-lg font-medium">Chọn một đội bóng để xem thông tin chi tiết</p>
-              <p className="text-sm">Đội hình, Lịch thi đấu, Thống kê...</p>
+              <p className="text-lg font-medium">Chọn một đội bóng để xem hồ sơ chi tiết (BM3.1)</p>
+              <p className="text-sm">Và danh sách cầu thủ (BM3.2 - 3.3)</p>
             </div>
           )}
         </div>

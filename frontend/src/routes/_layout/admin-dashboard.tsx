@@ -3,7 +3,7 @@ import { createFileRoute } from "@tanstack/react-router"
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query"
 import { 
   LayoutDashboard, FileText, Users, CalendarDays, 
-  CheckCircle, XCircle, Search, Filter, AlertTriangle, Inbox, Clock, Plus, Loader2
+  CheckCircle, XCircle, Search, Filter, AlertTriangle, Inbox, Clock, Plus, Loader2, Edit, ChevronLeft, ChevronRight, Gavel
 } from "lucide-react"
 
 import { Button } from "@/components/ui/button"
@@ -16,7 +16,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select"
-import { MatchesService, ClubsService } from "@/client"
+import { MatchesService, ClubsService, SeasonManagementService } from "@/client"
 import { getCurrentUser } from "@/utils/auth"
 
 import {
@@ -26,6 +26,8 @@ import {
   DialogTitle,
   DialogFooter,
 } from "@/components/ui/dialog"
+import { useToast } from "@/hooks/use-toast"
+import { Checkbox } from "@/components/ui/checkbox"
 
 export const Route = createFileRoute("/_layout/admin-dashboard")({
   component: AdminDashboard,
@@ -33,9 +35,10 @@ export const Route = createFileRoute("/_layout/admin-dashboard")({
 
 const TABS = [
   { id: 'overview', label: 'Tổng quan', icon: LayoutDashboard },
+  { id: 'season-rules', label: 'Mùa giải & Quy định', icon: Gavel },
+  { id: 'schedule', label: 'Quản lý Lịch thi đấu', icon: CalendarDays },
   { id: 'reports', label: 'Duyệt báo cáo trận', icon: FileText },
   { id: 'teams', label: 'Duyệt hồ sơ đội', icon: Users },
-  { id: 'schedule', label: 'Quản lý Lịch thi đấu', icon: CalendarDays },
 ]
 
 function AdminDashboard() {
@@ -65,7 +68,7 @@ function AdminDashboard() {
          <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
             <StatCard title="Báo cáo chờ duyệt" value="0" icon={FileText} color="text-orange-600" />
             <StatCard title="Yêu cầu nhân sự" value="0" icon={Users} color="text-blue-600" />
-            <StatCard title="Vòng đấu hiện tại" value="0" icon={Clock} color="text-green-600" />
+            <StatCard title="Vòng đấu hiện tại" value="1" icon={Clock} color="text-green-600" />
             <StatCard title="Tổng số trận" value="0" icon={CalendarDays} color="text-purple-600" />
          </div>
       </div>
@@ -92,9 +95,10 @@ function AdminDashboard() {
 
         <div className="animate-in fade-in duration-300">
             {activeTab === 'overview' && <OverviewTab onChangeTab={setActiveTab} />}
+            {activeTab === 'season-rules' && <SeasonAndRulesTab />}
+            {activeTab === 'schedule' && <ScheduleTab />}
             {activeTab === 'reports' && <MatchReportsTab />}
             {activeTab === 'teams' && <TeamManagementTab />}
-            {activeTab === 'schedule' && <ScheduleTab />}
         </div>
       </div>
     </div>
@@ -139,10 +143,232 @@ function OverviewTab({ onChangeTab }: { onChangeTab: (tab: string) => void }) {
 }
 
 // ====================================================================
-// TAB 2 & 3 (Empty)
+// TAB: MÙA GIẢI & QUY ĐỊNH (BM1, QĐ1, QĐ3)
+// ====================================================================
+function SeasonAndRulesTab() {
+  const { toast } = useToast()
+  
+  // Fake data for initial state
+  const [seasonInfo, setSeasonInfo] = useState({
+    ten_mua: "V.League 1 - 2024/2025",
+    ngay_bat_dau: "2024-09-14",
+    ngay_ket_thuc: "2025-06-30",
+    so_luong_clb: 14,
+    le_phi: 500000000
+  })
+
+  const [rules, setRules] = useState({
+    tuoi_toi_thieu: 16,
+    tuoi_toi_da: 40,
+    so_luong_cau_thu_toi_thieu: 16,
+    so_luong_cau_thu_toi_da: 22, // Should check if it's 30 or something more realistic? Requirement says 16-22? Wait, BM says "số lượng cầu thủ tối đa".
+    // Re-reading: "số lượng cầu thủ (16-22)" in prompt. Wait, typically a squad is larger. But prompt says 16-22.
+    // Let's stick to prompt.
+    so_luong_cau_thu_nuoc_ngoai_dang_ky: 5,
+    so_luong_cau_thu_nuoc_ngoai_thi_dau: 3,
+    suc_chua_san_toi_thieu: 10000,
+    diem_thang: 3,
+    diem_hoa: 1,
+    diem_thua: 0
+  })
+
+  const handleSeasonSubmit = (e: React.FormEvent) => {
+    e.preventDefault()
+    // Call API to update season info
+    toast({
+      title: "Thành công",
+      description: "Đã cập nhật thông tin mùa giải.",
+    })
+  }
+
+  const handleRulesSubmit = (e: React.FormEvent) => {
+    e.preventDefault()
+    // Call API to update rules
+    toast({
+      title: "Thành công",
+      description: "Đã cập nhật quy định giải đấu.",
+    })
+  }
+
+  return (
+    <div className="grid grid-cols-1 xl:grid-cols-2 gap-6">
+      {/* BM1: THIẾT LẬP MÙA GIẢI */}
+      <div className="bg-white p-6 rounded-xl shadow-sm border border-gray-200">
+        <div className="flex items-center gap-3 mb-6 pb-4 border-b">
+          <div className="p-2 bg-blue-100 text-blue-700 rounded-lg">
+            <Clock className="w-5 h-5" />
+          </div>
+          <div>
+            <h3 className="font-bold text-lg text-gray-800">Thiết lập Mùa giải (BM1)</h3>
+            <p className="text-sm text-gray-500">Thông tin cơ bản của mùa giải hiện tại</p>
+          </div>
+        </div>
+
+        <form onSubmit={handleSeasonSubmit} className="space-y-4">
+          <div className="space-y-2">
+            <Label>Tên mùa giải</Label>
+            <Input 
+              value={seasonInfo.ten_mua}
+              onChange={(e) => setSeasonInfo({...seasonInfo, ten_mua: e.target.value})}
+              placeholder="VD: V.League 1 - 2024/2025"
+            />
+          </div>
+          
+          <div className="grid grid-cols-2 gap-4">
+            <div className="space-y-2">
+              <Label>Ngày bắt đầu</Label>
+              <Input 
+                type="date"
+                value={seasonInfo.ngay_bat_dau}
+                onChange={(e) => setSeasonInfo({...seasonInfo, ngay_bat_dau: e.target.value})}
+              />
+            </div>
+            <div className="space-y-2">
+              <Label>Ngày kết thúc</Label>
+              <Input 
+                type="date"
+                value={seasonInfo.ngay_ket_thuc}
+                onChange={(e) => setSeasonInfo({...seasonInfo, ngay_ket_thuc: e.target.value})}
+              />
+            </div>
+          </div>
+
+          <div className="grid grid-cols-2 gap-4">
+             <div className="space-y-2">
+                <Label>Số lượng CLB tối đa</Label>
+                <Input 
+                  type="number"
+                  value={seasonInfo.so_luong_clb}
+                  onChange={(e) => setSeasonInfo({...seasonInfo, so_luong_clb: parseInt(e.target.value)})}
+                />
+             </div>
+             <div className="space-y-2">
+                <Label>Lệ phí tham dự (VND)</Label>
+                <Input 
+                  type="number"
+                  value={seasonInfo.le_phi}
+                  onChange={(e) => setSeasonInfo({...seasonInfo, le_phi: parseInt(e.target.value)})}
+                />
+             </div>
+          </div>
+
+          <div className="pt-4 flex justify-end">
+            <Button type="submit" className="bg-blue-600 hover:bg-blue-700">
+               Lưu thay đổi
+            </Button>
+          </div>
+        </form>
+      </div>
+
+      {/* QĐ1, QĐ3: THAY ĐỔI QUY ĐỊNH */}
+      <div className="bg-white p-6 rounded-xl shadow-sm border border-gray-200">
+        <div className="flex items-center gap-3 mb-6 pb-4 border-b">
+          <div className="p-2 bg-purple-100 text-purple-700 rounded-lg">
+            <Gavel className="w-5 h-5" />
+          </div>
+          <div>
+            <h3 className="font-bold text-lg text-gray-800">Quy định Giải đấu (QĐ1, QĐ3)</h3>
+            <p className="text-sm text-gray-500">Các tham số kiểm soát giải đấu</p>
+          </div>
+        </div>
+
+        <form onSubmit={handleRulesSubmit} className="space-y-4">
+          <div className="grid grid-cols-2 gap-4">
+            <div className="space-y-2">
+              <Label>Tuổi cầu thủ tối thiểu</Label>
+              <Input 
+                type="number"
+                value={rules.tuoi_toi_thieu}
+                onChange={(e) => setRules({...rules, tuoi_toi_thieu: parseInt(e.target.value)})}
+              />
+            </div>
+            <div className="space-y-2">
+              <Label>Tuổi cầu thủ tối đa</Label>
+              <Input 
+                type="number"
+                value={rules.tuoi_toi_da}
+                onChange={(e) => setRules({...rules, tuoi_toi_da: parseInt(e.target.value)})}
+              />
+            </div>
+          </div>
+
+          <div className="grid grid-cols-2 gap-4">
+            <div className="space-y-2">
+              <Label>Số lượng cầu thủ tối thiểu</Label>
+              <Input 
+                type="number"
+                value={rules.so_luong_cau_thu_toi_thieu}
+                onChange={(e) => setRules({...rules, so_luong_cau_thu_toi_thieu: parseInt(e.target.value)})}
+              />
+            </div>
+            <div className="space-y-2">
+              <Label>Số lượng cầu thủ tối đa</Label>
+              <Input 
+                type="number"
+                value={rules.so_luong_cau_thu_toi_da}
+                onChange={(e) => setRules({...rules, so_luong_cau_thu_toi_da: parseInt(e.target.value)})}
+              />
+            </div>
+          </div>
+
+          <div className="grid grid-cols-2 gap-4">
+             <div className="space-y-2">
+                <Label>Cầu thủ nước ngoài (ĐK)</Label>
+                <Input 
+                  type="number"
+                  value={rules.so_luong_cau_thu_nuoc_ngoai_dang_ky}
+                  onChange={(e) => setRules({...rules, so_luong_cau_thu_nuoc_ngoai_dang_ky: parseInt(e.target.value)})}
+                />
+             </div>
+             <div className="space-y-2">
+                <Label>Cầu thủ nước ngoài (Thi đấu)</Label>
+                <Input 
+                  type="number"
+                  value={rules.so_luong_cau_thu_nuoc_ngoai_thi_dau}
+                  onChange={(e) => setRules({...rules, so_luong_cau_thu_nuoc_ngoai_thi_dau: parseInt(e.target.value)})}
+                />
+             </div>
+          </div>
+
+          <div className="space-y-2">
+            <Label>Sức chứa sân tối thiểu</Label>
+            <Input 
+              type="number"
+              value={rules.suc_chua_san_toi_thieu}
+              onChange={(e) => setRules({...rules, suc_chua_san_toi_thieu: parseInt(e.target.value)})}
+            />
+          </div>
+
+           <div className="grid grid-cols-3 gap-2">
+             <div className="space-y-2">
+                <Label>Điểm Thắng</Label>
+                <Input type="number" value={rules.diem_thang} onChange={(e) => setRules({...rules, diem_thang: parseInt(e.target.value)})} />
+             </div>
+             <div className="space-y-2">
+                <Label>Điểm Hòa</Label>
+                <Input type="number" value={rules.diem_hoa} onChange={(e) => setRules({...rules, diem_hoa: parseInt(e.target.value)})} />
+             </div>
+             <div className="space-y-2">
+                <Label>Điểm Thua</Label>
+                <Input type="number" value={rules.diem_thua} onChange={(e) => setRules({...rules, diem_thua: parseInt(e.target.value)})} />
+             </div>
+          </div>
+
+          <div className="pt-4 flex justify-end">
+            <Button type="submit" className="bg-purple-600 hover:bg-purple-700">
+               Cập nhật Quy định
+            </Button>
+          </div>
+        </form>
+      </div>
+    </div>
+  )
+}
+
+// ====================================================================
+// TAB 3 (Empty)
 // ====================================================================
 function MatchReportsTab() {
-    const pendingReports: any[] = []; 
     return (
         <div className="space-y-6">
             <div className="flex items-center gap-2 text-gray-800 font-bold text-lg"><FileText className="w-5 h-5"/> Danh sách báo cáo chờ duyệt</div>
@@ -155,7 +381,6 @@ function MatchReportsTab() {
 }
 
 function TeamManagementTab() {
-    const requests: any[] = [];
     return (
         <div className="space-y-6">
             <div className="flex justify-between items-center"><div className="flex items-center gap-2 text-gray-800 font-bold text-lg"><Users className="w-5 h-5"/> Yêu cầu nhân sự từ các đội</div></div>

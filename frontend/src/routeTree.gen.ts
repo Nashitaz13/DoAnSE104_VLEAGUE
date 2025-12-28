@@ -11,6 +11,7 @@
 import { Route as rootRouteImport } from './routes/__root'
 import { Route as SignupRouteImport } from './routes/signup'
 import { Route as ResetPasswordRouteImport } from './routes/reset-password'
+import { Route as RegisterRouteImport } from './routes/register'
 import { Route as RecoverPasswordRouteImport } from './routes/recover-password'
 import { Route as LoginRouteImport } from './routes/login'
 import { Route as LayoutRouteImport } from './routes/_layout'
@@ -19,6 +20,7 @@ import { Route as LayoutTeamsRouteImport } from './routes/_layout/teams'
 import { Route as LayoutTeamManagerRouteImport } from './routes/_layout/team-manager'
 import { Route as LayoutStatsRouteImport } from './routes/_layout/stats'
 import { Route as LayoutSettingsRouteImport } from './routes/_layout/settings'
+import { Route as LayoutOfficialDashboardRouteImport } from './routes/_layout/official-dashboard'
 import { Route as LayoutLeagueTableRouteImport } from './routes/_layout/league-table'
 import { Route as LayoutItemsRouteImport } from './routes/_layout/items'
 import { Route as LayoutFixturesRouteImport } from './routes/_layout/fixtures'
@@ -33,6 +35,11 @@ const SignupRoute = SignupRouteImport.update({
 const ResetPasswordRoute = ResetPasswordRouteImport.update({
   id: '/reset-password',
   path: '/reset-password',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const RegisterRoute = RegisterRouteImport.update({
+  id: '/register',
+  path: '/register',
   getParentRoute: () => rootRouteImport,
 } as any)
 const RecoverPasswordRoute = RecoverPasswordRouteImport.update({
@@ -74,6 +81,11 @@ const LayoutSettingsRoute = LayoutSettingsRouteImport.update({
   path: '/settings',
   getParentRoute: () => LayoutRoute,
 } as any)
+const LayoutOfficialDashboardRoute = LayoutOfficialDashboardRouteImport.update({
+  id: '/official-dashboard',
+  path: '/official-dashboard',
+  getParentRoute: () => LayoutRoute,
+} as any)
 const LayoutLeagueTableRoute = LayoutLeagueTableRouteImport.update({
   id: '/league-table',
   path: '/league-table',
@@ -103,6 +115,7 @@ const LayoutAdminRoute = LayoutAdminRouteImport.update({
 export interface FileRoutesByFullPath {
   '/login': typeof LoginRoute
   '/recover-password': typeof RecoverPasswordRoute
+  '/register': typeof RegisterRoute
   '/reset-password': typeof ResetPasswordRoute
   '/signup': typeof SignupRoute
   '/admin': typeof LayoutAdminRoute
@@ -110,6 +123,7 @@ export interface FileRoutesByFullPath {
   '/fixtures': typeof LayoutFixturesRoute
   '/items': typeof LayoutItemsRoute
   '/league-table': typeof LayoutLeagueTableRoute
+  '/official-dashboard': typeof LayoutOfficialDashboardRoute
   '/settings': typeof LayoutSettingsRoute
   '/stats': typeof LayoutStatsRoute
   '/team-manager': typeof LayoutTeamManagerRoute
@@ -119,6 +133,7 @@ export interface FileRoutesByFullPath {
 export interface FileRoutesByTo {
   '/login': typeof LoginRoute
   '/recover-password': typeof RecoverPasswordRoute
+  '/register': typeof RegisterRoute
   '/reset-password': typeof ResetPasswordRoute
   '/signup': typeof SignupRoute
   '/admin': typeof LayoutAdminRoute
@@ -126,6 +141,7 @@ export interface FileRoutesByTo {
   '/fixtures': typeof LayoutFixturesRoute
   '/items': typeof LayoutItemsRoute
   '/league-table': typeof LayoutLeagueTableRoute
+  '/official-dashboard': typeof LayoutOfficialDashboardRoute
   '/settings': typeof LayoutSettingsRoute
   '/stats': typeof LayoutStatsRoute
   '/team-manager': typeof LayoutTeamManagerRoute
@@ -137,6 +153,7 @@ export interface FileRoutesById {
   '/_layout': typeof LayoutRouteWithChildren
   '/login': typeof LoginRoute
   '/recover-password': typeof RecoverPasswordRoute
+  '/register': typeof RegisterRoute
   '/reset-password': typeof ResetPasswordRoute
   '/signup': typeof SignupRoute
   '/_layout/admin': typeof LayoutAdminRoute
@@ -144,6 +161,7 @@ export interface FileRoutesById {
   '/_layout/fixtures': typeof LayoutFixturesRoute
   '/_layout/items': typeof LayoutItemsRoute
   '/_layout/league-table': typeof LayoutLeagueTableRoute
+  '/_layout/official-dashboard': typeof LayoutOfficialDashboardRoute
   '/_layout/settings': typeof LayoutSettingsRoute
   '/_layout/stats': typeof LayoutStatsRoute
   '/_layout/team-manager': typeof LayoutTeamManagerRoute
@@ -155,6 +173,7 @@ export interface FileRouteTypes {
   fullPaths:
     | '/login'
     | '/recover-password'
+    | '/register'
     | '/reset-password'
     | '/signup'
     | '/admin'
@@ -162,6 +181,7 @@ export interface FileRouteTypes {
     | '/fixtures'
     | '/items'
     | '/league-table'
+    | '/official-dashboard'
     | '/settings'
     | '/stats'
     | '/team-manager'
@@ -171,6 +191,7 @@ export interface FileRouteTypes {
   to:
     | '/login'
     | '/recover-password'
+    | '/register'
     | '/reset-password'
     | '/signup'
     | '/admin'
@@ -178,6 +199,7 @@ export interface FileRouteTypes {
     | '/fixtures'
     | '/items'
     | '/league-table'
+    | '/official-dashboard'
     | '/settings'
     | '/stats'
     | '/team-manager'
@@ -188,6 +210,7 @@ export interface FileRouteTypes {
     | '/_layout'
     | '/login'
     | '/recover-password'
+    | '/register'
     | '/reset-password'
     | '/signup'
     | '/_layout/admin'
@@ -195,6 +218,7 @@ export interface FileRouteTypes {
     | '/_layout/fixtures'
     | '/_layout/items'
     | '/_layout/league-table'
+    | '/_layout/official-dashboard'
     | '/_layout/settings'
     | '/_layout/stats'
     | '/_layout/team-manager'
@@ -206,6 +230,7 @@ export interface RootRouteChildren {
   LayoutRoute: typeof LayoutRouteWithChildren
   LoginRoute: typeof LoginRoute
   RecoverPasswordRoute: typeof RecoverPasswordRoute
+  RegisterRoute: typeof RegisterRoute
   ResetPasswordRoute: typeof ResetPasswordRoute
   SignupRoute: typeof SignupRoute
 }
@@ -224,6 +249,13 @@ declare module '@tanstack/react-router' {
       path: '/reset-password'
       fullPath: '/reset-password'
       preLoaderRoute: typeof ResetPasswordRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/register': {
+      id: '/register'
+      path: '/register'
+      fullPath: '/register'
+      preLoaderRoute: typeof RegisterRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/recover-password': {
@@ -282,6 +314,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof LayoutSettingsRouteImport
       parentRoute: typeof LayoutRoute
     }
+    '/_layout/official-dashboard': {
+      id: '/_layout/official-dashboard'
+      path: '/official-dashboard'
+      fullPath: '/official-dashboard'
+      preLoaderRoute: typeof LayoutOfficialDashboardRouteImport
+      parentRoute: typeof LayoutRoute
+    }
     '/_layout/league-table': {
       id: '/_layout/league-table'
       path: '/league-table'
@@ -326,6 +365,7 @@ interface LayoutRouteChildren {
   LayoutFixturesRoute: typeof LayoutFixturesRoute
   LayoutItemsRoute: typeof LayoutItemsRoute
   LayoutLeagueTableRoute: typeof LayoutLeagueTableRoute
+  LayoutOfficialDashboardRoute: typeof LayoutOfficialDashboardRoute
   LayoutSettingsRoute: typeof LayoutSettingsRoute
   LayoutStatsRoute: typeof LayoutStatsRoute
   LayoutTeamManagerRoute: typeof LayoutTeamManagerRoute
@@ -339,6 +379,7 @@ const LayoutRouteChildren: LayoutRouteChildren = {
   LayoutFixturesRoute: LayoutFixturesRoute,
   LayoutItemsRoute: LayoutItemsRoute,
   LayoutLeagueTableRoute: LayoutLeagueTableRoute,
+  LayoutOfficialDashboardRoute: LayoutOfficialDashboardRoute,
   LayoutSettingsRoute: LayoutSettingsRoute,
   LayoutStatsRoute: LayoutStatsRoute,
   LayoutTeamManagerRoute: LayoutTeamManagerRoute,
@@ -353,6 +394,7 @@ const rootRouteChildren: RootRouteChildren = {
   LayoutRoute: LayoutRouteWithChildren,
   LoginRoute: LoginRoute,
   RecoverPasswordRoute: RecoverPasswordRoute,
+  RegisterRoute: RegisterRoute,
   ResetPasswordRoute: ResetPasswordRoute,
   SignupRoute: SignupRoute,
 }

@@ -5,6 +5,35 @@ import { OpenAPI } from './core/OpenAPI';
 import { request as __request } from './core/request';
 import type { ItemsReadItemsData, ItemsReadItemsResponse, ItemsCreateItemData, ItemsCreateItemResponse, ItemsReadItemData, ItemsReadItemResponse, ItemsUpdateItemData, ItemsUpdateItemResponse, ItemsDeleteItemData, ItemsDeleteItemResponse, LoginLoginAccessTokenData, LoginLoginAccessTokenResponse, LoginTestTokenResponse, LoginRecoverPasswordData, LoginRecoverPasswordResponse, LoginResetPasswordData, LoginResetPasswordResponse, LoginRecoverPasswordHtmlContentData, LoginRecoverPasswordHtmlContentResponse, PrivateCreateUserData, PrivateCreateUserResponse, UsersReadUsersData, UsersReadUsersResponse, UsersCreateUserData, UsersCreateUserResponse, UsersReadUserMeResponse, UsersDeleteUserMeResponse, UsersUpdateUserMeData, UsersUpdateUserMeResponse, UsersUpdatePasswordMeData, UsersUpdatePasswordMeResponse, UsersRegisterUserData, UsersRegisterUserResponse, UsersReadUserByIdData, UsersReadUserByIdResponse, UsersUpdateUserData, UsersUpdateUserResponse, UsersDeleteUserData, UsersDeleteUserResponse, UtilsTestEmailData, UtilsTestEmailResponse, UtilsHealthCheckResponse } from './types.gen';
 
+export class AuthService {
+    /**
+     * Login Access Token
+     * OAuth2 compatible token login, get an access token for future requests
+     */
+    public static login(data: LoginLoginAccessTokenData): CancelablePromise<LoginLoginAccessTokenResponse> {
+        return __request(OpenAPI, {
+            method: 'POST',
+            url: '/api/login/access-token',
+            formData: data.formData, // Fix: Changed from requestBody to formData based on typical OAuth2 flow
+            mediaType: 'application/x-www-form-urlencoded',
+            errors: {
+                422: 'Validation Error'
+            }
+        });
+    }
+
+     /**
+     * Get Current User Info
+     * Helper to get user info
+     */
+     public static getCurrentUserInfo(): CancelablePromise<any> {
+        return __request(OpenAPI, {
+            method: 'GET',
+            url: '/api/users/me'
+        });
+    }
+}
+
 export class ItemsService {
     /**
      * Read Items
@@ -463,6 +492,78 @@ export class UtilsService {
         return __request(OpenAPI, {
             method: 'GET',
             url: '/api/utils/health-check/'
+        });
+    }
+}
+
+// =============================================================================
+// NEW SERVICES FOR V.LEAGUE (MANUALLY ADDED)
+// =============================================================================
+
+export class ClubsService {
+    public static getClubs(data: any = {}): CancelablePromise<any> {
+        return __request(OpenAPI, {
+            method: 'GET',
+            url: '/api/clubs/',
+            query: data
+        });
+    }
+}
+
+export class MatchesService {
+    public static readMatches(data: any = {}): CancelablePromise<any> {
+        return __request(OpenAPI, {
+            method: 'GET',
+            url: '/api/matches/',
+            query: data
+        });
+    }
+    public static createMatch(data: any): CancelablePromise<any> {
+        return __request(OpenAPI, {
+            method: 'POST',
+            url: '/api/matches/',
+            body: data.requestBody,
+            mediaType: 'application/json'
+        });
+    }
+}
+
+export class StandingsService {
+    public static getStandings(data: any = {}): CancelablePromise<any> {
+        return __request(OpenAPI, {
+            method: 'GET',
+            url: '/api/standings/',
+            query: data
+        });
+    }
+}
+
+export class RostersService {
+    public static getRoster(data: any = {}): CancelablePromise<any> {
+        return __request(OpenAPI, {
+            method: 'GET',
+            url: '/api/rosters/',
+            query: data
+        });
+    }
+}
+
+export class StadiumsService {
+    public static getStadiums(data: any = {}): CancelablePromise<any> {
+        return __request(OpenAPI, {
+            method: 'GET',
+            url: '/api/stadiums/',
+            query: data
+        });
+    }
+}
+
+export class SeasonManagementService {
+    public static getSeasons(data: any = {}): CancelablePromise<any> {
+        return __request(OpenAPI, {
+            method: 'GET',
+            url: '/api/seasons/',
+            query: data
         });
     }
 }

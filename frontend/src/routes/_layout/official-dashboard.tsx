@@ -4,7 +4,8 @@ import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query"
 import { 
   LayoutDashboard, CalendarDays, FileText, 
   CheckCircle, AlertCircle, Clock, Flag, 
-  Plus, Trash2, Save, User, MapPin
+  Plus, Trash2, Save, User, MapPin,
+  ClipboardList, Activity
 } from "lucide-react"
 
 import { Button } from "@/components/ui/button"
@@ -320,18 +321,24 @@ function ReportFormTab({ matchId, matches, onCancel }: any) {
     const queryClient = useQueryClient();
     const match = matches.find((m: any) => m.matran === matchId);
 
+    // BM5.1 - 5.3: Reporting Form Data
     const [score, setScore] = useState({ home: 0, away: 0 });
-    const [events, setEvents] = useState<any[]>([]); // Bàn thắng, thẻ phạt
+    const [events, setEvents] = useState<any[]>([]); // Bàn thắng, thẻ phạt, thay người
+    const [stats, setStats] = useState({ 
+        homePossession: 50, awayPossession: 50,
+        homeShots: 0, awayShots: 0,
+        homeCorners: 0, awayCorners: 0
+    });
     const [mvp, setMvp] = useState("");
     const [notes, setNotes] = useState("");
 
     const mutation = useMutation({
         mutationFn: async () => {
-            console.log("Submitting report:", { matchId, score, events, mvp, notes });
+            console.log("Submitting report (BM5.1, 5.2, 5.3):", { matchId, score, events, stats, mvp, notes });
             return new Promise(resolve => setTimeout(resolve, 1000));
         },
         onSuccess: () => {
-            alert("Nộp báo cáo thành công!");
+            alert("Nộp báo cáo trận đấu thành công!");
             onCancel();
         }
     });
@@ -351,16 +358,20 @@ function ReportFormTab({ matchId, matches, onCancel }: any) {
         <div className="bg-white rounded-xl shadow-sm border border-gray-100 overflow-hidden">
             <div className="px-6 py-4 border-b bg-purple-50 flex justify-between items-center">
                 <h3 className="font-bold text-lg text-purple-900 flex items-center gap-2">
-                    <FileText className="w-5 h-5"/> Báo cáo trận đấu: {match.doi_nha?.tenclb} vs {match.doi_khach?.tenclb}
+                    <FileText className="w-5 h-5"/> Báo cáo trận đấu (BM5.1 - 5.3)
                 </h3>
-                <span className="text-sm text-purple-600 font-medium">Vòng {match.vong}</span>
+                <span className="text-sm text-purple-600 font-medium bg-purple-100 px-3 py-1 rounded-full">
+                    {match.doi_nha?.tenclb} vs {match.doi_khach?.tenclb} (Vòng {match.vong})
+                </span>
             </div>
 
             <div className="p-6 space-y-8">
                 
                 {/* 1. TỈ SỐ TRẬN ĐẤU */}
                 <div>
-                    <h4 className="font-bold text-gray-800 mb-4 text-sm uppercase tracking-wider">Tỷ số trận đấu</h4>
+                    <h4 className="font-bold text-gray-800 mb-4 text-sm uppercase tracking-wider flex items-center gap-2">
+                        <Activity className="w-4 h-4"/> Kết quả thi đấu
+                    </h4>
                     <div className="flex items-center justify-between gap-8 p-6 bg-gray-50 rounded-xl border">
                         <div className="flex-1 text-center">
                             <label className="block font-bold text-xl mb-2 text-gray-700">{match.doi_nha?.tenclb}</label>
@@ -386,68 +397,119 @@ function ReportFormTab({ matchId, matches, onCancel }: any) {
                     </div>
                 </div>
 
-                {/* 2. SỰ KIỆN (DEMO UI) */}
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                    <div>
-                        <div className="flex justify-between items-center mb-3">
-                            <h4 className="font-bold text-gray-800 text-sm uppercase">Danh sách ghi bàn</h4>
-                            <Button size="sm" variant="outline" className="h-7 text-xs"><Plus className="w-3 h-3 mr-1"/> Thêm bàn thắng</Button>
-                        </div>
-                        <div className="bg-gray-50 rounded-lg p-4 border border-dashed text-center text-sm text-gray-400 min-h-[100px] flex items-center justify-center">
-                            Chưa có dữ liệu bàn thắng (Demo)
-                        </div>
-                    </div>
-                    <div>
-                        <div className="flex justify-between items-center mb-3">
-                            <h4 className="font-bold text-gray-800 text-sm uppercase">Thẻ phạt</h4>
-                            <Button size="sm" variant="outline" className="h-7 text-xs"><Plus className="w-3 h-3 mr-1"/> Thêm thẻ</Button>
-                        </div>
-                        <div className="bg-gray-50 rounded-lg p-4 border border-dashed text-center text-sm text-gray-400 min-h-[100px] flex items-center justify-center">
-                            Chưa có dữ liệu thẻ phạt (Demo)
-                        </div>
-                    </div>
-                </div>
-
-                {/* 3. THÔNG TIN KHÁC */}
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                    <div>
-                        <Label className="mb-2 block">Cầu thủ xuất sắc nhất trận (MVP)</Label>
-                        <Input 
-                            placeholder="Nhập tên cầu thủ..." 
-                            value={mvp} 
-                            onChange={(e) => setMvp(e.target.value)}
-                        />
-                    </div>
-                    <div>
-                        <Label className="mb-2 block">Đội</Label>
-                        <Select>
-                            <SelectTrigger>
-                                <SelectValue placeholder="Chọn đội" />
-                            </SelectTrigger>
-                            <SelectContent>
-                                <SelectItem value="home">{match.doi_nha?.tenclb}</SelectItem>
-                                <SelectItem value="away">{match.doi_khach?.tenclb}</SelectItem>
-                            </SelectContent>
-                        </Select>
-                    </div>
-                </div>
-
+                {/* 2. THỐNG KÊ CHUYÊN MÔN (BM5.3) */}
                 <div>
-                    <Label className="mb-2 block">Ghi chú thêm (Sự cố, khán giả...)</Label>
-                    <Textarea 
-                        placeholder="Mô tả chi tiết các sự kiện đặc biệt..." 
-                        className="min-h-[100px]"
-                        value={notes}
-                        onChange={(e) => setNotes(e.target.value)}
-                    />
+                    <h4 className="font-bold text-gray-800 mb-4 text-sm uppercase tracking-wider flex items-center gap-2">
+                        <ClipboardList className="w-4 h-4"/> Thông số chuyên môn (BM5.3)
+                    </h4>
+                    <div className="grid grid-cols-1 md:grid-cols-3 gap-6 bg-white border p-4 rounded-lg">
+                        
+                        {/* Kiểm soát bóng */}
+                        <div className="space-y-2">
+                            <Label className="text-xs font-bold text-gray-500 uppercase">Kiểm soát bóng (%)</Label>
+                            <div className="flex items-center gap-2">
+                                <Input 
+                                    type="number" className="text-center" placeholder="Nhà"
+                                    value={stats.homePossession}
+                                    onChange={(e) => setStats({...stats, homePossession: parseInt(e.target.value), awayPossession: 100 - parseInt(e.target.value)})} 
+                                />
+                                <span className="text-gray-400 text-xs">vs</span>
+                                <Input 
+                                    type="number" className="text-center" placeholder="Khách" readOnly
+                                    value={stats.awayPossession}
+                                />
+                            </div>
+                        </div>
+
+                        {/* Số cú sút */}
+                        <div className="space-y-2">
+                            <Label className="text-xs font-bold text-gray-500 uppercase">Số cú sút</Label>
+                             <div className="flex items-center gap-2">
+                                <Input 
+                                    type="number" className="text-center"
+                                    value={stats.homeShots}
+                                    onChange={(e) => setStats({...stats, homeShots: parseInt(e.target.value)})}
+                                />
+                                <span className="text-gray-400 text-xs">vs</span>
+                                <Input 
+                                    type="number" className="text-center"
+                                    value={stats.awayShots}
+                                    onChange={(e) => setStats({...stats, awayShots: parseInt(e.target.value)})}
+                                />
+                            </div>
+                        </div>
+
+                        {/* Phạt góc */}
+                        <div className="space-y-2">
+                            <Label className="text-xs font-bold text-gray-500 uppercase">Phạt góc</Label>
+                             <div className="flex items-center gap-2">
+                                <Input 
+                                    type="number" className="text-center"
+                                    value={stats.homeCorners}
+                                    onChange={(e) => setStats({...stats, homeCorners: parseInt(e.target.value)})}
+                                />
+                                <span className="text-gray-400 text-xs">vs</span>
+                                <Input 
+                                    type="number" className="text-center"
+                                    value={stats.awayCorners}
+                                    onChange={(e) => setStats({...stats, awayCorners: parseInt(e.target.value)})}
+                                />
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                {/* 3. DIỄN BIẾN TRẬN ĐẤU (Bàn thắng, thẻ phạt) */}
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                    <div>
+                        <div className="flex justify-between items-center mb-3">
+                            <h4 className="font-bold text-gray-800 text-sm uppercase">Ghi bàn & Thẻ phạt</h4>
+                            <Button size="sm" variant="outline" className="h-7 text-xs"><Plus className="w-3 h-3 mr-1"/> Thêm sự kiện</Button>
+                        </div>
+                        <div className="bg-gray-50 rounded-lg p-4 border border-dashed text-center text-sm text-gray-400 min-h-[100px] flex items-center justify-center">
+                            <p>Chức năng đang cập nhật (Sử dụng form giấy BM5.2)</p>
+                        </div>
+                    </div>
+                    
+                    {/* MVP & NOTES */}
+                    <div className="space-y-4">
+                        <div>
+                            <Label className="mb-2 block font-bold text-sm">Cầu thủ xuất sắc nhất trận (MVP)</Label>
+                            <div className="flex gap-2">
+                                <Input 
+                                    placeholder="Nhập tên cầu thủ..." 
+                                    value={mvp} 
+                                    onChange={(e) => setMvp(e.target.value)}
+                                />
+                                <Select>
+                                    <SelectTrigger className="w-[120px]">
+                                        <SelectValue placeholder="Đội" />
+                                    </SelectTrigger>
+                                    <SelectContent>
+                                        <SelectItem value="home">{match.doi_nha?.tenclb}</SelectItem>
+                                        <SelectItem value="away">{match.doi_khach?.tenclb}</SelectItem>
+                                    </SelectContent>
+                                </Select>
+                            </div>
+                        </div>
+                        <div>
+                            <Label className="mb-2 block font-bold text-sm">Ghi chú giám sát (Khán giả, an ninh...)</Label>
+                            <Textarea 
+                                placeholder="Mô tả chi tiết..." 
+                                className="min-h-[80px]"
+                                value={notes}
+                                onChange={(e) => setNotes(e.target.value)}
+                            />
+                        </div>
+                    </div>
                 </div>
 
             </div>
 
-            <div className="p-6 bg-gray-50 border-t flex justify-end gap-3">
-                <Button variant="outline" onClick={onCancel}>Hủy</Button>
-                <Button className="bg-black hover:bg-gray-800 text-white min-w-[150px]" onClick={() => mutation.mutate()}>
-                    <Save className="w-4 h-4 mr-2"/> Nộp báo cáo
+            <div className="p-6 bg-gray-50 border-t flex justify-end gap-3 sticky bottom-0 z-10">
+                <Button variant="outline" onClick={onCancel}>Hủy bỏ</Button>
+                <Button className="bg-purple-600 hover:bg-purple-700 text-white min-w-[180px]" onClick={() => mutation.mutate()}>
+                    <Save className="w-4 h-4 mr-2"/> Gửi báo cáo BTC
                 </Button>
             </div>
         </div>

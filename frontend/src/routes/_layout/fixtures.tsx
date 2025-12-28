@@ -79,18 +79,25 @@ function FixturesPage() {
       const headers = token ? { Authorization: `Bearer ${token}` } : undefined
       try {
         const res = await axios.get(
-          `${OpenAPI.BASE}/api/v1/matches?skip=0&limit=100&muagiai=2024-2025`,
+          `${OpenAPI.BASE}/api/matches?skip=0&limit=100&muagiai=2024-2025`, // Fixed path
           { headers },
         )
-        return res.data as Array<{
+        // Normalize response whether it is array or {data: array, count: number}
+        const data = res.data;
+        const matchesArray = Array.isArray(data) ? data : (data.data || []);
+        
+        return matchesArray as Array<{
           matran: string
           muagiai: string
           vong: number
           thoigianthidau: string
-          maclbnha: string
-          maclbkhach: string
+          maclb_nha: string // Changed to match API
+          maclb_khach: string // Changed to match API
           masanvandong: string | null
           tiso: string | null
+          doi_nha: any // Added
+          doi_khach: any // Added
+          san_nha: any // Added
         }>
       } catch (err) {
         console.error("Error fetching matches:", err)
@@ -106,10 +113,11 @@ function FixturesPage() {
       const token = localStorage.getItem("access_token") || ""
       const headers = token ? { Authorization: `Bearer ${token}` } : undefined
       const res = await axios.get(
-        `${OpenAPI.BASE}/api/v1/clubs?muagiai=2024-2025`,
+        `${OpenAPI.BASE}/api/clubs?muagiai=2024-2025`, // Fixed path
         { headers },
       )
-      return res.data as Array<{
+      const data = res.data;
+      return (Array.isArray(data) ? data : data.data || []) as Array<{
         maclb: string
         tenclb: string
         masanvandong: string
@@ -123,10 +131,11 @@ function FixturesPage() {
     queryFn: async () => {
       const token = localStorage.getItem("access_token") || ""
       const headers = token ? { Authorization: `Bearer ${token}` } : undefined
-      const res = await axios.get(`${OpenAPI.BASE}/api/v1/stadiums`, {
+      const res = await axios.get(`${OpenAPI.BASE}/api/stadiums`, { // Fixed path
         headers,
       })
-      return res.data as Array<{
+      const data = res.data;
+      return (Array.isArray(data) ? data : data.data || []) as Array<{
         masanvandong: string
         tensanvandong: string
       }>
@@ -145,7 +154,13 @@ function FixturesPage() {
   }, [matches])
 
   // Helper to get club name
-  const getClubName = (maclb: string) => {
+  const getClubName = (maclb: string, match?: any, type: 'home' | 'away' = 'home') => {
+    // Try from match object (JOINED) first
+    if (match) {
+        if (type === 'home' && match.doi_nha) return match.doi_nha.tenclb;
+        if (type === 'away' && match.doi_khach) return match.doi_khach.tenclb;
+    }
+
     const team = teamsData?.find((t) => t.maclb === maclb)
     return team ? team.tenclb : maclb
   }
@@ -160,8 +175,10 @@ function FixturesPage() {
   }
 
   // Helper to get stadium name
-  const getStadiumName = (masanvandong: string | null) => {
+  const getStadiumName = (masanvandong: string | null, match?: any) => {
     if (!masanvandong) return "Đang cập nhật"
+    if (match && match.san_nha) return match.san_nha.tensan || match.san_nha.tensanvandong;
+
     const stadium = stadiums?.find((s) => s.masanvandong === masanvandong)
     return stadium ? stadium.tensanvandong : masanvandong
   }
@@ -172,8 +189,8 @@ function FixturesPage() {
     const dateMatch = selectedDate === "all" || matchDateStr === selectedDate
     const teamMatch =
       selectedTeam === "all" ||
-      match.maclbnha === selectedTeam ||
-      match.maclbkhach === selectedTeam
+      match.maclb_nha === selectedTeam ||
+      match.maclb_khach === selectedTeam
 
     const status = getMatchStatus(match)
     const statusMatch = selectedStatus === "all" || status === selectedStatus
@@ -250,7 +267,7 @@ function FixturesPage() {
           <div className="flex items-center justify-between flex-wrap gap-4">
             <div>
               <h1 className="text-4xl font-bold mb-2">
-                Lịch thi đấu & Kết quả
+                Lịch thi đấu & Kết quả (BM4)
               </h1>
               <p className="text-red-100">
                 V-League 1 2024-2025 - Thể thức vòng tròn 2 lượt
@@ -402,13 +419,13 @@ function FixturesPage() {
                           {/* Home Team */}
                           <div className="flex items-center justify-start w-1/3 md:order-1 gap-3 md:gap-4">
                             <ImageWithFallback
-                              src={`/images/clubs/${match.maclbnha}.png`}
-                              alt={getClubName(match.maclbnha)}
+                              src={`/images/clubs/${match.maclb_nha}.png`}
+                              alt={getClubName(match.maclb_nha, match, 'home')}
                               className="w-10 h-10 md:w-14 md:h-14 object-contain"
                             />
                             <div className="flex flex-col items-start text-left">
                               <span className="font-bold text-sm md:text-lg leading-tight">
-                                {getClubName(match.maclbnha)}
+                                {getClubName(match.maclb_nha, match, 'home')}
                               </span>
                               <span className="text-xs text-muted-foreground mt-0.5">
                                 Chủ nhà
@@ -437,15 +454,15 @@ function FixturesPage() {
                           <div className="flex items-center justify-end w-1/3 md:order-3 gap-3 md:gap-4">
                             <div className="flex flex-col items-end text-right">
                               <span className="font-bold text-sm md:text-lg leading-tight">
-                                {getClubName(match.maclbkhach)}
+                                {getClubName(match.maclb_khach, match, 'away')}
                               </span>
                               <span className="text-xs text-muted-foreground mt-0.5">
                                 Khách
                               </span>
                             </div>
                             <ImageWithFallback
-                              src={`/images/clubs/${match.maclbkhach}.png`}
-                              alt={getClubName(match.maclbkhach)}
+                              src={`/images/clubs/${match.maclb_khach}.png`}
+                              alt={getClubName(match.maclb_khach, match, 'away')}
                               className="w-10 h-10 md:w-14 md:h-14 object-contain"
                             />
                           </div>
@@ -455,7 +472,7 @@ function FixturesPage() {
                         <div className="bg-slate-50 dark:bg-slate-900 py-3 px-6 flex justify-center items-center gap-6 text-sm text-muted-foreground border-t">
                           <div className="flex items-center gap-2">
                             <MapPin className="w-4 h-4" />
-                            <span>{getStadiumName(match.masanvandong)}</span>
+                            <span>{getStadiumName(match.masanvandong, match)}</span>
                           </div>
                           <div className="flex items-center gap-2">
                             <Clock className="w-4 h-4" />

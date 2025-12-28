@@ -3,7 +3,7 @@ import { createFileRoute } from "@tanstack/react-router"
 import { useQuery } from "@tanstack/react-query"
 import { 
   Trophy, Filter, Minus, TrendingUp, TrendingDown, 
-  Shield, AlertCircle, Loader2
+  Shield, AlertCircle, Loader2, Download
 } from "lucide-react"
 
 import {
@@ -13,6 +13,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select"
+import { Button } from "@/components/ui/button"
 
 import { StandingsService, SeasonManagementService } from "@/client"
 
@@ -46,12 +47,13 @@ function LeagueTablePage() {
     queryFn: () => StandingsService.getStandings({ muagiai: selectedSeason })
   })
 
-  // Xử lý dữ liệu BXH
+  // Xử lý dữ liệu BXH (BM6)
   const rankings = useMemo(() => {
       let list = Array.isArray(standingsData) 
         ? standingsData 
         : (standingsData as any)?.standings || (standingsData as any)?.data || [];
       
+      // Quy tắc xếp hạng: Điểm -> Hiệu số -> Đối đầu (Simplified here) -> Bốc thăm (Simplified)
       return [...list].sort((a: any, b: any) => {
           const diemA = a.diem ?? 0;
           const diemB = b.diem ?? 0;
@@ -66,6 +68,11 @@ function LeagueTablePage() {
       });
   }, [standingsData]);
 
+  // Handle Export (Placeholder)
+  const handleExport = (type: 'pdf' | 'excel') => {
+      alert(`Đang xuất dữ liệu bảng xếp hạng ra file ${type.toUpperCase()}...`);
+  }
+
   return (
     <div className="flex flex-col min-h-[calc(100vh-4rem)] bg-gray-50 font-sans pb-10">
       
@@ -74,7 +81,7 @@ function LeagueTablePage() {
         <div className="max-w-7xl mx-auto flex flex-col items-center text-center space-y-4">
             <Trophy className="w-16 h-16 text-yellow-300 drop-shadow-md" />
             <div>
-                <h1 className="text-4xl font-bold uppercase tracking-wide">Bảng Xếp Hạng</h1>
+                <h1 className="text-4xl font-bold uppercase tracking-wide">Bảng Xếp Hạng (BM6)</h1>
                 <p className="text-orange-100 mt-2 text-lg">V-League 1 • Mùa giải {selectedSeason}</p>
             </div>
         </div>
@@ -94,19 +101,25 @@ function LeagueTablePage() {
                 </div>
             </div>
 
-            <div className="flex items-center gap-3 bg-gray-50 p-1.5 rounded-lg border">
-                <Filter className="w-4 h-4 text-gray-500 ml-2" />
-                <span className="text-sm font-semibold text-gray-700">Mùa giải:</span>
-                <Select value={selectedSeason} onValueChange={setSelectedSeason}>
-                    <SelectTrigger className="w-[140px] h-8 border-none bg-white shadow-sm font-bold text-red-700">
-                        <SelectValue placeholder="Chọn mùa" />
-                    </SelectTrigger>
-                    <SelectContent>
-                        {seasonList.map((s: any) => (
-                            <SelectItem key={s.muagiai} value={s.muagiai}>{s.muagiai}</SelectItem>
-                        ))}
-                    </SelectContent>
-                </Select>
+            <div className="flex items-center gap-3">
+                <div className="flex items-center gap-3 bg-gray-50 p-1.5 rounded-lg border">
+                    <Filter className="w-4 h-4 text-gray-500 ml-2" />
+                    <span className="text-sm font-semibold text-gray-700">Mùa giải:</span>
+                    <Select value={selectedSeason} onValueChange={setSelectedSeason}>
+                        <SelectTrigger className="w-[140px] h-8 border-none bg-white shadow-sm font-bold text-red-700">
+                            <SelectValue placeholder="Chọn mùa" />
+                        </SelectTrigger>
+                        <SelectContent>
+                            {seasonList.map((s: any) => (
+                                <SelectItem key={s.muagiai} value={s.muagiai}>{s.muagiai}</SelectItem>
+                            ))}
+                        </SelectContent>
+                    </Select>
+                </div>
+                
+                <Button variant="outline" size="sm" onClick={() => handleExport('pdf')} className="text-red-700 border-red-200 bg-red-50 hover:bg-red-100">
+                    <Download className="w-4 h-4 mr-2" /> PDF
+                </Button>
             </div>
         </div>
 
