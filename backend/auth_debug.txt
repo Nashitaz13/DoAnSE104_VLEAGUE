@@ -1,0 +1,9 @@
+2025-12-29 00:58:38,075 - app.crud - WARNING - Password verification failed for 'admin'.
+2025-12-29 01:01:53,363 - app.crud - INFO - Authenticating user: 'hanoi'
+2025-12-29 01:01:59,616 - app.crud - INFO - User 'hanoi' authenticated successfully.
+2025-12-29 01:02:50,413 - app.crud - INFO - Authenticating user: 'admin'
+2025-12-29 01:02:52,166 - app.crud - INFO - User 'admin' authenticated successfully.
+2025-12-29 01:06:15,832 - app.crud - INFO - Authenticating user: 'hanoi'
+2025-12-29 01:06:16,776 - app.crud - INFO - User 'hanoi' authenticated successfully.
+2025-12-29 01:06:49,942 - app.crud - INFO - Authenticating user: 'hanoi'
+2025-12-29 01:06:50,930 - app.crud - INFO - User 'hanoi' authenticated successfully.
