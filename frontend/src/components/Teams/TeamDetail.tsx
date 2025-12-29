@@ -25,29 +25,18 @@ export function TeamDetail({ teamId, stadiumMap, muagiai }: TeamDetailProps) {
     const { data: clubInfo } = useQuery({
         queryKey: ['club', teamId, muagiai],
         queryFn: () => ClubsService.getClub({ club_id: teamId, muagiai }),
+        staleTime: 5 * 60 * 1000, // Cache 5 phút
     })
 
     // 2. Gọi API lấy danh sách cầu thủ cho mùa giải ĐANG CHỌN (BM3.2 - 3.3)
     const { data: roster, isLoading } = useQuery({
         queryKey: ['roster', teamId, muagiai],
         queryFn: () => RostersService.getRoster({ maclb: teamId, muagiai: muagiai }),
-        staleTime: 5 * 60 * 1000,
+        staleTime: 5 * 60 * 1000, // Cache 5 phút
     })
 
-    // 3. Gọi API lấy danh sách cầu thủ mùa 2025-2026 (DATA GỐC) để dự phòng
-    const { data: rosterBackup } = useQuery({
-        queryKey: ['roster', teamId, '2025-2026'],
-        queryFn: () => RostersService.getRoster({ maclb: teamId, muagiai: '2025-2026' }),
-        enabled: muagiai !== '2025-2026' // Chỉ gọi khi không phải mùa này
-    })
-
-    // LOGIC FALLBACK: Nếu mùa hiện tại ít hơn 5 cầu thủ, dùng data backup (mùa 25-26)
-    let players = Array.isArray(roster) ? roster : (roster as any)?.data || [];
-    const backupPlayers = Array.isArray(rosterBackup) ? rosterBackup : (rosterBackup as any)?.data || [];
-
-    if (players.length < 5 && backupPlayers.length > 0) {
-        players = backupPlayers; // Trám dữ liệu thật vào
-    }
+    // Parse data đơn giản
+    const players = Array.isArray(roster) ? roster : (roster as any)?.data || [];
 
     // Nhóm theo vị trí
     const groupedPlayers = {

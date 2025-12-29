@@ -4,7 +4,7 @@ import { useQuery } from "@tanstack/react-query"
 import { ClubsService, StadiumsService, SeasonManagementService } from "@/client"
 import { TeamList } from "@/components/Teams/TeamList"
 import { TeamDetail } from "@/components/Teams/TeamDetail"
-import { Loader2, Filter, Shield, AlertTriangle } from "lucide-react"
+import { Loader2, Filter, Shield } from "lucide-react"
 import {
   Select,
   SelectContent,
@@ -18,14 +18,18 @@ export const Route = createFileRoute('/_layout/teams')({
 })
 
 function TeamsPage() {
-  // Mặc định chọn 2025-2026
-  const [selectedSeason, setSelectedSeason] = useState<string>("2025-2026")
+  // Sync với localStorage
+  const [selectedSeason, setSelectedSeason] = useState<string>(() => {
+    return localStorage.getItem("selectedSeason") || "2025-2026";
+  });
   const [selectedTeamId, setSelectedTeamId] = useState<string | null>(null)
 
-  // 1. Lấy danh sách Mùa giải (Gộp API + Hardcode)
+  // 1. Lấy danh sách Mùa giải
   const { data: seasonsData } = useQuery({
     queryKey: ["seasons"],
     queryFn: () => SeasonManagementService.getSeasons({ limit: 100 }),
+    staleTime: 5 * 60 * 1000, // Cache 5 phút
+    refetchOnWindowFocus: false,
   })
 
   const seasonList = useMemo(() => {
@@ -37,61 +41,45 @@ function TeamsPage() {
     return mergedList.sort((a: any, b: any) => b.muagiai.localeCompare(a.muagiai));
   }, [seasonsData]);
 
-  // --- PHẦN XỬ LÝ ĐỘI BÓNG (CLUBS) ---
+  // Sync localStorage khi user chọn season
+  useEffect(() => {
+    if (selectedSeason) {
+      localStorage.setItem("selectedSeason", selectedSeason);
+    }
+  }, [selectedSeason]);
+
+  // 2. Query clubs
   const { data: clubs } = useQuery({
     queryKey: ["clubs", selectedSeason],
     queryFn: () => ClubsService.getClubs({ limit: 100, muagiai: selectedSeason }),
-  })
-
-  const { data: clubsBackup } = useQuery({
-    queryKey: ["clubs", "2024-2025"],
-    queryFn: () => ClubsService.getClubs({ limit: 100, muagiai: "2024-2025" }),
-    enabled: selectedSeason === "2025-2026" && (!clubs || (clubs as any).data?.length === 0)
+    staleTime: 5 * 60 * 1000, // Cache 5 phút
+    refetchOnWindowFocus: false,
   })
 
   const finalClubsData = useMemo(() => {
       const mainList = Array.isArray(clubs) ? clubs : (clubs as any)?.data || [];
-      const backupList = Array.isArray(clubsBackup) ? clubsBackup : (clubsBackup as any)?.data || [];
-      if (mainList.length > 0) return mainList;
-      if (selectedSeason === "2025-2026" && backupList.length > 0) return backupList;
-      return [];
-  }, [clubs, clubsBackup, selectedSeason]);
+      return mainList;
+  }, [clubs]);
 
-  // --- PHẦN XỬ LÝ SÂN VẬN ĐỘNG (STADIUMS) - THÊM FALLBACK TẠI ĐÂY ---
-  
-  // 1. Gọi API lấy sân của mùa giải hiện tại
+  // 3. Query stadiums
   const { data: stadiums } = useQuery({
     queryKey: ["stadiums", selectedSeason],
     queryFn: () => StadiumsService.getStadiums({ limit: 100, muagiai: selectedSeason }),
+    staleTime: 5 * 60 * 1000, // Cache 5 phút
+    refetchOnWindowFocus: false,
   })
 
-  // 2. Gọi API lấy sân dự phòng (Mùa 2024-2025) nếu mùa 2025-2026 bị rỗng
-  const { data: stadiumsBackup } = useQuery({
-    queryKey: ["stadiums", "2024-2025"],
-    queryFn: () => StadiumsService.getStadiums({ limit: 100, muagiai: "2024-2025" }),
-    enabled: selectedSeason === "2025-2026" && (!stadiums || (stadiums as any).data?.length === 0)
-  })
-
-  // 3. Chọn danh sách sân để dùng
   const finalStadiumsData = useMemo(() => {
       const mainList = Array.isArray(stadiums) ? stadiums : (stadiums as any)?.data || [];
-      const backupList = Array.isArray(stadiumsBackup) ? stadiumsBackup : (stadiumsBackup as any)?.data || [];
-      
-      // Nếu API chính có dữ liệu -> Dùng ngay
-      if (mainList.length > 0) return mainList;
-      
-      // Nếu API chính rỗng (lỗi mùa 25-26) -> Dùng backup 24-25 để map tên
-      if (selectedSeason === "2025-2026" && backupList.length > 0) return backupList;
+      return mainList;
+  }, [stadiums]);
 
-      return [];
-  }, [stadiums, stadiumsBackup, selectedSeason]);
-
-  // 4. Tạo Map ánh xạ (Mã -> Tên)
+  // 4. Tạo Map ánh xạ (Mã -> Tên) theo backend field
   const stadiumMap = useMemo(() => {
     const map: Record<string, string> = {};
     finalStadiumsData.forEach((s: any) => {
-      const id = s.masanvandong || s.MaSanVanDong; 
-      const name = s.tensanvandong || s.TenSanVanDong || s.tensan; // Ưu tiên tên đầy đủ
+      const id = s.masanvandong; // Backend field chính xác
+      const name = s.tensanvandong || s.ten_san || id; // Ưu tiên tensanvandong
       if (id) map[id] = name;
     });
     return map;
@@ -101,7 +89,7 @@ function TeamsPage() {
   const clubsWithStadiumName = useMemo(() => {
       return finalClubsData.map((club: any) => ({
         ...club,
-        ten_san_hien_thi: stadiumMap[club.masanvandong] || stadiumMap[club.MaSanVanDong] || club.masanvandong || "Chưa cập nhật sân"
+        ten_san_hien_thi: stadiumMap[club.masanvandong] || club.masanvandong || "Chưa cập nhật sân"
       }));
   }, [finalClubsData, stadiumMap]);
 
@@ -144,12 +132,6 @@ function TeamsPage() {
         <div className="w-1/3 min-w-[320px] max-w-[400px] flex flex-col bg-white rounded-xl border shadow-sm overflow-hidden">
             <div className="p-4 border-b bg-gray-50 font-semibold text-gray-700 flex justify-between items-center">
                 <span>Danh sách ({clubsWithStadiumName.length})</span>
-                {/* Chỉ báo fallback data */}
-                {selectedSeason === '2025-2026' && finalClubsData === (clubsBackup as any)?.data && (
-                    <span className="text-[10px] bg-yellow-100 text-yellow-800 px-2 py-0.5 rounded-full flex items-center gap-1" title="Dữ liệu được lấy từ mùa trước do chưa cập nhật">
-                        <AlertTriangle className="w-3 h-3"/> Fallback
-                    </span>
-                )}
             </div>
             <div className="flex-1 overflow-y-auto p-2">
                 {clubsWithStadiumName.length === 0 ? (
