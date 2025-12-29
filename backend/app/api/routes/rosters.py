@@ -95,22 +95,33 @@ def get_roster(
             detail=f"Club {maclb} not found for season {muagiai}"
         )
     
-    # Get roster entries
-    roster_entries = crud.get_roster(session=session, maclb=maclb, muagiai=muagiai)
+    # PERF: Avoid N+1 - JOIN ChiTietDoiBong with CauThu in single query
+    from sqlmodel import select
+    from app.models import ChiTietDoiBong, CauThu
     
-    # Build detailed roster with player info
-    roster_details = []
-    for entry in roster_entries:
-        player = crud.get_player_by_id(session=session, macauthu=entry.macauthu)
-        if player:
-            roster_details.append(RosterPlayerDetail(
-                macauthu=player.macauthu,
-                tencauthu=player.tencauthu,
-                quoctich=player.quoctich,
-                vitrithidau=player.vitrithidau,
-                soaothidau=entry.soaothidau,
-                ngaysinh=player.ngaysinh
-            ))
+    roster_stmt = (
+        select(ChiTietDoiBong, CauThu)
+        .join(CauThu, ChiTietDoiBong.macauthu == CauThu.macauthu)
+        .where(
+            ChiTietDoiBong.maclb == maclb,
+            ChiTietDoiBong.muagiai == muagiai
+        )
+    )
+    
+    results = session.exec(roster_stmt).all()
+    
+    # Build detailed roster from JOIN results
+    roster_details = [
+        RosterPlayerDetail(
+            macauthu=roster.macauthu,
+            tencauthu=player.tencauthu,
+            quoctich=player.quoctich,
+            vitrithidau=player.vitrithidau,
+            soaothidau=roster.soaothidau,
+            ngaysinh=player.ngaysinh
+        )
+        for roster, player in results
+    ]
     
     return roster_details
 

@@ -688,8 +688,17 @@ def validate_roster_size(
     Returns dict with validation result and stats
     This is typically used for finalization checks, not hard enforcement
     """
-    current_roster = get_roster(session=session, maclb=maclb, muagiai=muagiai)
-    current_count = len(current_roster)
+    # PERF: Use COUNT(*) instead of len(all()) to avoid fetching data
+    from sqlalchemy import func
+    count_stmt = (
+        select(func.count())
+        .select_from(ChiTietDoiBong)
+        .where(
+            ChiTietDoiBong.maclb == maclb,
+            ChiTietDoiBong.muagiai == muagiai
+        )
+    )
+    current_count = session.exec(count_stmt).one()
     
     violations = []
     warnings = []
@@ -726,17 +735,19 @@ def validate_goalkeeper_count(
     
     Returns dict with validation result
     """
-    # Avoid N+1: count goalkeepers with a single JOIN query
-    goalkeepers_stmt = (
-        select(CauThu.macauthu)
-        .join(ChiTietDoiBong, ChiTietDoiBong.macauthu == CauThu.macauthu)
+    # PERF: Use COUNT(*) with JOIN to avoid fetching data
+    from sqlalchemy import func
+    goalkeepers_count_stmt = (
+        select(func.count())
+        .select_from(ChiTietDoiBong)
+        .join(CauThu, ChiTietDoiBong.macauthu == CauThu.macauthu)
         .where(
             ChiTietDoiBong.maclb == maclb,
             ChiTietDoiBong.muagiai == muagiai,
             CauThu.vitrithidau == ViTriThiDau.THU_MON,
         )
     )
-    goalkeeper_count = len(session.exec(goalkeepers_stmt).all())
+    goalkeeper_count = session.exec(goalkeepers_count_stmt).one()
     
     violations = []
     
@@ -827,8 +838,10 @@ def get_match_by_id(*, session: Session, matran: str) -> Optional["LichThiDau"]:
 def get_match_detail(*, session: Session, matran: str) -> Optional["LichThiDauDetail"]:
     """
     Get match details with lineup, events, and referees embedded
+    
+    PERF: Uses _get_lineup_detail_rows() to avoid N+1 queries
     """
-    from app.models import LichThiDau, LichThiDauDetail
+    from app.models import LichThiDau, LichThiDauDetail, DoiHinhXuatPhatPublic
     
     match = session.get(LichThiDau, matran)
     if not match:
@@ -840,16 +853,29 @@ def get_match_detail(*, session: Session, matran: str) -> Optional["LichThiDauDe
     # Get events
     match_detail.events = get_match_events(session=session, matran=matran)
     
-    # Get lineup (home and away)
-    lineup_all = get_match_lineup(session=session, matran=matran)
-    match_detail.lineup_home = [
-        entry for entry in lineup_all 
-        if get_player_club(session, entry.macauthu, match.muagiai) == match.maclbnha
-    ]
-    match_detail.lineup_away = [
-        entry for entry in lineup_all 
-        if get_player_club(session, entry.macauthu, match.muagiai) == match.maclbkhach
-    ]
+    # PERF: Get lineup details in 1 query (avoid N+1)
+    lineup_rows = _get_lineup_detail_rows(session=session, matran=matran)
+    
+    # Separate by team
+    lineup_home = []
+    lineup_away = []
+    
+    for entry, player, soaothidau, maclb in lineup_rows:
+        lineup_item = DoiHinhXuatPhatPublic(
+            matran=entry.matran,
+            macauthu=entry.macauthu,
+            vitri=entry.vitri,
+            duocxuatphat=entry.duocxuatphat,
+            ladoitruong=entry.ladoitruong
+        )
+        
+        if maclb == match.maclbnha:
+            lineup_home.append(lineup_item)
+        elif maclb == match.maclbkhach:
+            lineup_away.append(lineup_item)
+    
+    match_detail.lineup_home = lineup_home
+    match_detail.lineup_away = lineup_away
     
     # Get referees
     match_detail.referees = get_match_referees(session=session, matran=matran)
@@ -988,6 +1014,64 @@ def validate_match_creation(
     # 7. Validate round number > 0
     if match_in.vong <= 0:
         raise ValueError("Round number must be greater than 0")
+
+
+# =============================================
+# LINEUP HELPER - AVOID N+1
+# =============================================
+
+def _get_lineup_detail_rows(
+    *,
+    session: Session,
+    matran: str,
+    maclb_filter: Optional[str] = None
+) -> list[tuple]:
+    """
+    PERF: Helper to get lineup details with all data in 1-2 queries (avoid N+1)
+    
+    Returns list of tuples: (DoiHinhXuatPhat, CauThu, soaothidau, maclb)
+    
+    Args:
+        matran: Match ID
+        maclb_filter: Optional club filter (home or away)
+    
+    Strategy:
+        1. Get match to know muagiai and teams
+        2. JOIN DoiHinhXuatPhat -> CauThu -> ChiTietDoiBong in single query
+        3. Filter by maclb if specified
+    """
+    from app.models import DoiHinhXuatPhat, CauThu, ChiTietDoiBong, LichThiDau
+    
+    # Get match context
+    match = session.get(LichThiDau, matran)
+    if not match:
+        return []
+    
+    # PERF: Single JOIN query to get all lineup data
+    # JOIN ChiTietDoiBong to get soaothidau + maclb
+    # Use LEFT JOIN because some players might not have roster (edge case)
+    stmt = (
+        select(
+            DoiHinhXuatPhat,
+            CauThu,
+            ChiTietDoiBong.soaothidau,
+            ChiTietDoiBong.maclb
+        )
+        .join(CauThu, DoiHinhXuatPhat.macauthu == CauThu.macauthu)
+        .outerjoin(
+            ChiTietDoiBong,
+            (ChiTietDoiBong.macauthu == DoiHinhXuatPhat.macauthu) &
+            (ChiTietDoiBong.muagiai == match.muagiai)
+        )
+        .where(DoiHinhXuatPhat.matran == matran)
+    )
+    
+    # Filter by club if specified
+    if maclb_filter:
+        stmt = stmt.where(ChiTietDoiBong.maclb == maclb_filter)
+    
+    results = session.exec(stmt).all()
+    return results
 
 
 # =============================================
@@ -1207,47 +1291,30 @@ def get_match_lineup_detailed(
 ) -> "LineupResponse":
     """
     Get lineup with starting XI, substitutes, and captains detailed
+    
+    PERF: Uses _get_lineup_detail_rows() to avoid N+1 queries
     """
-    from app.models import LineupResponse, LineupPlayerDetail, CauThu
+    from app.models import LineupResponse, LineupPlayerDetail
     
     # Get match
     match = get_match_by_id(session=session, matran=matran)
     if not match:
         return LineupResponse()
     
-    # Get all lineup entries
-    lineup_entries = get_match_lineup(session=session, matran=matran)
+    # PERF: Get all lineup data in 1 query (avoid N+1)
+    lineup_rows = _get_lineup_detail_rows(
+        session=session,
+        matran=matran,
+        maclb_filter=maclb
+    )
     
-    # Build detailed lineup with player info
+    # Build detailed lineup from JOIN results
     starting_xi = []
     substitutes = []
     captain_home = None
     captain_away = None
     
-    for entry in lineup_entries:
-        # Get player details
-        player = session.get(CauThu, entry.macauthu)
-        if not player:
-            continue
-        
-        # Determine which club this player belongs to
-        player_club = get_player_club(session, entry.macauthu, match.muagiai)
-        
-        # Filter by maclb if specified
-        if maclb and player_club != maclb:
-            continue
-        
-        # Get shirt number from roster (ChiTietDoiBong)
-        shirt_no = None
-        if player_club:
-            roster = get_roster_player(
-                session=session,
-                macauthu=entry.macauthu,
-                maclb=player_club,
-                muagiai=match.muagiai,
-            )
-            shirt_no = roster.soaothidau if roster else None
-        
+    for entry, player, soaothidau, maclb_row in lineup_rows:
         # Build detailed entry
         detail = LineupPlayerDetail(
             macauthu=entry.macauthu,
@@ -1256,7 +1323,7 @@ def get_match_lineup_detailed(
             vitrithidau=player.vitrithidau,
             duocxuatphat=entry.duocxuatphat,
             ladoitruong=entry.ladoitruong,
-            soaothidau=shirt_no,
+            soaothidau=soaothidau,
         )
         
         # Categorize
@@ -1267,16 +1334,16 @@ def get_match_lineup_detailed(
         
         # Set captains
         if entry.ladoitruong:
-            if player_club == match.maclbnha:
+            if maclb_row == match.maclbnha:
                 captain_home = detail
-            elif player_club == match.maclbkhach:
+            elif maclb_row == match.maclbkhach:
                 captain_away = detail
     
     return LineupResponse(
         starting_xi=starting_xi,
         substitutes=substitutes,
         captain_home=captain_home,
-        captain_away=captain_away,
+        captain_away=captain_away
     )
 
 
@@ -1319,39 +1386,69 @@ def add_player_to_lineup(
 def update_lineup_player(
     *, session: Session, db_lineup: "DoiHinhXuatPhat", lineup_in: "DoiHinhXuatPhatUpdate"
 ) -> "DoiHinhXuatPhat":
-    """Update lineup entry"""
+    """
+    Update lineup entry
+    
+    PERF: Uses COUNT(*) with JOIN to avoid N+1 when checking captains
+    """
+    from sqlalchemy import func
+    from app.models import DoiHinhXuatPhat, ChiTietDoiBong
+    
     update_data = lineup_in.model_dump(exclude_unset=True)
     
-    # If setting captain, validate only 1 captain per team
+    # PERF: If setting captain, validate only 1 captain per team (COUNT with JOIN)
     if update_data.get('ladoitruong') is True:
         match = get_match_by_id(session=session, matran=db_lineup.matran)
         if match:
-            # Get player's club from roster
-            roster_home = get_roster_player(session=session, macauthu=db_lineup.macauthu, 
-                                           maclb=match.maclbnha, muagiai=match.muagiai)
-            roster_away = get_roster_player(session=session, macauthu=db_lineup.macauthu,
-                                           maclb=match.maclbkhach, muagiai=match.muagiai)
-            
-            player_club = match.maclbnha if roster_home else match.maclbkhach
-            
-            # Check for existing captain in same team
-            from app.models import DoiHinhXuatPhat
-            existing_captains = session.exec(
-                select(DoiHinhXuatPhat).where(
-                    DoiHinhXuatPhat.matran == db_lineup.matran,
-                    DoiHinhXuatPhat.ladoitruong == True,
-                    DoiHinhXuatPhat.macauthu != db_lineup.macauthu
+            # Get player's club from roster (single query)
+            player_club_stmt = (
+                select(ChiTietDoiBong.maclb)
+                .where(
+                    ChiTietDoiBong.macauthu == db_lineup.macauthu,
+                    ChiTietDoiBong.muagiai == match.muagiai,
+                    ChiTietDoiBong.maclb.in_([match.maclbnha, match.maclbkhach])
                 )
-            ).all()
+            )
+            player_club = session.exec(player_club_stmt).first()
             
-            # Filter captains by club
-            for captain in existing_captains:
-                cap_roster_home = get_roster_player(session=session, macauthu=captain.macauthu,
-                                                   maclb=match.maclbnha, muagiai=match.muagiai)
-                cap_club = match.maclbnha if cap_roster_home else match.maclbkhach
+            if player_club:
+                # Check for existing captain in same team (COUNT with JOIN, exclude current player)
+                captains_count_stmt = (
+                    select(func.count())
+                    .select_from(DoiHinhXuatPhat)
+                    .join(
+                        ChiTietDoiBong,
+                        (ChiTietDoiBong.macauthu == DoiHinhXuatPhat.macauthu) &
+                        (ChiTietDoiBong.muagiai == match.muagiai)
+                    )
+                    .where(
+                        DoiHinhXuatPhat.matran == db_lineup.matran,
+                        DoiHinhXuatPhat.ladoitruong == True,
+                        DoiHinhXuatPhat.macauthu != db_lineup.macauthu,
+                        ChiTietDoiBong.maclb == player_club
+                    )
+                )
+                existing_captains_count = session.exec(captains_count_stmt).one()
                 
-                if cap_club == player_club:
-                    raise ValueError(f"Team {player_club} already has a captain: {captain.macauthu}")
+                if existing_captains_count > 0:
+                    # Get captain name for better error message
+                    captain_stmt = (
+                        select(DoiHinhXuatPhat.macauthu)
+                        .join(
+                            ChiTietDoiBong,
+                            (ChiTietDoiBong.macauthu == DoiHinhXuatPhat.macauthu) &
+                            (ChiTietDoiBong.muagiai == match.muagiai)
+                        )
+                        .where(
+                            DoiHinhXuatPhat.matran == db_lineup.matran,
+                            DoiHinhXuatPhat.ladoitruong == True,
+                            DoiHinhXuatPhat.macauthu != db_lineup.macauthu,
+                            ChiTietDoiBong.maclb == player_club
+                        )
+                        .limit(1)
+                    )
+                    captain_id = session.exec(captain_stmt).first()
+                    raise ValueError(f"Team {player_club} already has a captain: {captain_id}")
     
     db_lineup.sqlmodel_update(update_data)
     session.add(db_lineup)
@@ -1373,7 +1470,14 @@ def remove_player_from_lineup(*, session: Session, matran: str, macauthu: str) -
 def validate_lineup_addition(
     *, session: Session, lineup_in: "DoiHinhXuatPhatCreate"
 ) -> None:
-    """Validate adding player to lineup"""
+    """
+    Validate adding player to lineup
+    
+    PERF: Uses COUNT(*) with JOIN to avoid N+1 queries
+    """
+    from sqlalchemy import func
+    from app.models import DoiHinhXuatPhat, ChiTietDoiBong
+    
     # 1. Match exists
     match = get_match_by_id(session=session, matran=lineup_in.matran)
     if not match:
@@ -1384,73 +1488,85 @@ def validate_lineup_addition(
     if not player:
         raise ValueError(f"Player {lineup_in.macauthu} not found")
     
-    # 3. Player in roster for one of the teams
-    roster_home = get_roster_player(
-        session=session,
-        macauthu=lineup_in.macauthu,
-        maclb=match.maclbnha,
-        muagiai=match.muagiai
+    # PERF: 3. Check player in roster for one of the teams (single query)
+    player_club_stmt = (
+        select(ChiTietDoiBong.maclb)
+        .where(
+            ChiTietDoiBong.macauthu == lineup_in.macauthu,
+            ChiTietDoiBong.muagiai == match.muagiai,
+            ChiTietDoiBong.maclb.in_([match.maclbnha, match.maclbkhach])
+        )
     )
-    roster_away = get_roster_player(
-        session=session,
-        macauthu=lineup_in.macauthu,
-        maclb=match.maclbkhach,
-        muagiai=match.muagiai
-    )
+    player_club = session.exec(player_club_stmt).first()
     
-    if not roster_home and not roster_away:
+    if not player_club:
         raise ValueError(
             f"Player {lineup_in.macauthu} not in roster for either "
             f"{match.maclbnha} or {match.maclbkhach} in season {match.muagiai}"
         )
-    
-    # Determine which team this player belongs to
-    player_club = match.maclbnha if roster_home else match.maclbkhach
     
     # 4. Check not already in lineup
     existing = get_lineup_entry(session=session, matran=lineup_in.matran, macauthu=lineup_in.macauthu)
     if existing:
         raise ValueError(f"Player {lineup_in.macauthu} already in lineup for match {lineup_in.matran}")
     
-    # 5. If starting XI, check max 11 per team
+    # PERF: 5. If starting XI, check max 11 per team (COUNT with JOIN, avoid loop)
     if lineup_in.duocxuatphat:
-        from app.models import DoiHinhXuatPhat
-        current_starters = session.exec(
-            select(DoiHinhXuatPhat).where(
-                DoiHinhXuatPhat.matran == lineup_in.matran,
-                DoiHinhXuatPhat.duocxuatphat == True
+        starters_count_stmt = (
+            select(func.count())
+            .select_from(DoiHinhXuatPhat)
+            .join(
+                ChiTietDoiBong,
+                (ChiTietDoiBong.macauthu == DoiHinhXuatPhat.macauthu) &
+                (ChiTietDoiBong.muagiai == match.muagiai)
             )
-        ).all()
-        
-        # Count starters from same team
-        team_starters = 0
-        for starter in current_starters:
-            starter_roster_home = get_roster_player(session=session, macauthu=starter.macauthu,
-                                                   maclb=match.maclbnha, muagiai=match.muagiai)
-            starter_club = match.maclbnha if starter_roster_home else match.maclbkhach
-            if starter_club == player_club:
-                team_starters += 1
+            .where(
+                DoiHinhXuatPhat.matran == lineup_in.matran,
+                DoiHinhXuatPhat.duocxuatphat == True,
+                ChiTietDoiBong.maclb == player_club
+            )
+        )
+        team_starters = session.exec(starters_count_stmt).one()
         
         if team_starters >= 11:
             raise ValueError(f"Team {player_club} already has 11 starting players")
     
-    # 6. If captain, check only 1 per team
+    # PERF: 6. If captain, check only 1 per team (COUNT with JOIN)
     if lineup_in.ladoitruong:
-        from app.models import DoiHinhXuatPhat
-        existing_captains = session.exec(
-            select(DoiHinhXuatPhat).where(
-                DoiHinhXuatPhat.matran == lineup_in.matran,
-                DoiHinhXuatPhat.ladoitruong == True
+        captains_count_stmt = (
+            select(func.count())
+            .select_from(DoiHinhXuatPhat)
+            .join(
+                ChiTietDoiBong,
+                (ChiTietDoiBong.macauthu == DoiHinhXuatPhat.macauthu) &
+                (ChiTietDoiBong.muagiai == match.muagiai)
             )
-        ).all()
+            .where(
+                DoiHinhXuatPhat.matran == lineup_in.matran,
+                DoiHinhXuatPhat.ladoitruong == True,
+                ChiTietDoiBong.maclb == player_club
+            )
+        )
+        existing_captains_count = session.exec(captains_count_stmt).one()
         
-        for captain in existing_captains:
-            cap_roster_home = get_roster_player(session=session, macauthu=captain.macauthu,
-                                               maclb=match.maclbnha, muagiai=match.muagiai)
-            cap_club = match.maclbnha if cap_roster_home else match.maclbkhach
-            
-            if cap_club == player_club:
-                raise ValueError(f"Team {player_club} already has a captain: {captain.macauthu}")
+        if existing_captains_count > 0:
+            # Get captain name for better error message
+            captain_stmt = (
+                select(DoiHinhXuatPhat.macauthu)
+                .join(
+                    ChiTietDoiBong,
+                    (ChiTietDoiBong.macauthu == DoiHinhXuatPhat.macauthu) &
+                    (ChiTietDoiBong.muagiai == match.muagiai)
+                )
+                .where(
+                    DoiHinhXuatPhat.matran == lineup_in.matran,
+                    DoiHinhXuatPhat.ladoitruong == True,
+                    ChiTietDoiBong.maclb == player_club
+                )
+                .limit(1)
+            )
+            captain_id = session.exec(captain_stmt).first()
+            raise ValueError(f"Team {player_club} already has a captain: {captain_id}")
 
 
 # =============================================
