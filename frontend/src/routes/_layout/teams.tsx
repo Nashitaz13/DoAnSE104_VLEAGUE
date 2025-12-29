@@ -1,7 +1,7 @@
-import { useState, useMemo, useEffect } from "react"
+import { useState, useMemo, useEffect, useRef } from "react"
 import { createFileRoute } from "@tanstack/react-router"
-import { useQuery } from "@tanstack/react-query"
-import { ClubsService, StadiumsService, SeasonManagementService } from "@/client"
+import { useQuery, useQueryClient } from "@tanstack/react-query"
+import { ClubsService, StadiumsService, SeasonManagementService, RostersService } from "@/client"
 import { TeamList } from "@/components/Teams/TeamList"
 import { TeamDetail } from "@/components/Teams/TeamDetail"
 import { Loader2, Filter, Shield } from "lucide-react"
@@ -18,6 +18,9 @@ export const Route = createFileRoute('/_layout/teams')({
 })
 
 function TeamsPage() {
+  const queryClient = useQueryClient();
+  const prefetchTimeoutRef = useRef<NodeJS.Timeout | null>(null);
+  
   // Sync với localStorage
   const [selectedSeason, setSelectedSeason] = useState<string>(() => {
     return localStorage.getItem("selectedSeason") || "2025-2026";
@@ -53,7 +56,10 @@ function TeamsPage() {
     queryKey: ["clubs", selectedSeason],
     queryFn: () => ClubsService.getClubs({ limit: 100, muagiai: selectedSeason }),
     staleTime: 5 * 60 * 1000, // Cache 5 phút
+    gcTime: 30 * 60 * 1000, // GC 30 phút
     refetchOnWindowFocus: false,
+    refetchOnMount: false,
+    retry: 1,
   })
 
   const finalClubsData = useMemo(() => {
@@ -66,7 +72,10 @@ function TeamsPage() {
     queryKey: ["stadiums", selectedSeason],
     queryFn: () => StadiumsService.getStadiums({ limit: 100, muagiai: selectedSeason }),
     staleTime: 5 * 60 * 1000, // Cache 5 phút
+    gcTime: 30 * 60 * 1000, // GC 30 phút
     refetchOnWindowFocus: false,
+    refetchOnMount: false,
+    retry: 1,
   })
 
   const finalStadiumsData = useMemo(() => {
@@ -86,6 +95,27 @@ function TeamsPage() {
   }, [finalStadiumsData]);
 
   // Ghép tên sân vào đội bóng
+
+  // Prefetch on hover (debounced)
+  const handleTeamHover = (teamId: string) => {
+    if (prefetchTimeoutRef.current) clearTimeout(prefetchTimeoutRef.current);
+    
+    prefetchTimeoutRef.current = setTimeout(() => {
+      // Prefetch roster
+      queryClient.prefetchQuery({
+        queryKey: ['roster', teamId, selectedSeason],
+        queryFn: () => RostersService.getRoster({ maclb: teamId, muagiai: selectedSeason }),
+        staleTime: 5 * 60 * 1000,
+      });
+      
+      // Prefetch club info
+      queryClient.prefetchQuery({
+        queryKey: ['club', teamId, selectedSeason],
+        queryFn: () => ClubsService.getClub({ club_id: teamId, muagiai: selectedSeason }),
+        staleTime: 5 * 60 * 1000,
+      });
+    }, 150); // Debounce 150ms
+  };
   const clubsWithStadiumName = useMemo(() => {
       return finalClubsData.map((club: any) => ({
         ...club,
