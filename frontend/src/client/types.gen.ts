@@ -140,7 +140,10 @@ export type ItemsDeleteItemData = {
 export type ItemsDeleteItemResponse = (Message);
 
 export type LoginLoginAccessTokenData = {
-    formData: Body_login_login_access_token;
+    requestBody: {
+        username: string;
+        password: string;
+    };
 };
 
 export type LoginLoginAccessTokenResponse = (Token);

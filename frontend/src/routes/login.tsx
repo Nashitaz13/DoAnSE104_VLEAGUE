@@ -107,6 +107,9 @@ function LoginPage() {
             const currentUser: any = await AuthService.getCurrentUserInfo();
             const realRole = inferRoleFromUser(currentUser);
             
+            // Allow login if roles mismatch but just warn, or force correct selection.
+            // Requirement 1: "Thiết kế giao diện đăng nhập bảo mật cho 4 nhóm người dùng"
+            // Let's be strict to ensure security awareness
             if (realRole !== uiRole) {
                  localStorage.removeItem("access_token");
                  localStorage.removeItem("currentUser");
@@ -168,20 +171,20 @@ function LoginPage() {
           <form className="space-y-6" onSubmit={handleSubmit(onSubmit)}>
             
             <div className="space-y-2">
-              <Label className="text-base font-semibold">Vai trò</Label>
+              <Label className="text-base font-semibold">Vai trò (Phân quyền)</Label>
               <Select value={uiRole} onValueChange={setUiRole}>
                 <SelectTrigger className="h-11">
                   <SelectValue placeholder="Chọn vai trò đăng nhập" />
                 </SelectTrigger>
                 <SelectContent>
                   <SelectItem value="admin" className="font-medium">
-                    <div className="flex items-center gap-2"><Shield className="w-4 h-4 text-red-600" /> Quản trị viên</div>
+                    <div className="flex items-center gap-2"><Shield className="w-4 h-4 text-red-600" /> Ban Tổ Chức (BTC)</div>
                   </SelectItem>
                   <SelectItem value="manager" className="font-medium">
-                    <div className="flex items-center gap-2"><UserCircle className="w-4 h-4 text-blue-600" /> Quản lý đội bóng</div>
+                    <div className="flex items-center gap-2"><UserCircle className="w-4 h-4 text-blue-600" /> Đội bóng / CLB</div>
                   </SelectItem>
                   <SelectItem value="official" className="font-medium">
-                    <div className="flex items-center gap-2"><Flag className="w-4 h-4 text-yellow-600" /> Quan chức trận đấu</div>
+                    <div className="flex items-center gap-2"><Flag className="w-4 h-4 text-yellow-600" /> Trọng tài / Giám sát</div>
                   </SelectItem>
                 </SelectContent>
               </Select>
@@ -225,7 +228,7 @@ function LoginPage() {
             {/* Admin Section */}
             <div>
                 <div className="flex items-center gap-2 mb-2 text-sm font-semibold text-gray-700 dark:text-gray-300">
-                    <Shield className="w-4 h-4 text-red-600" /> Quản trị viên
+                    <Shield className="w-4 h-4 text-red-600" /> Ban Tổ Chức
                 </div>
                 <div 
                     onClick={() => fillCredential("admin", "admin123", "admin")}
@@ -239,7 +242,7 @@ function LoginPage() {
             {/* Manager Section */}
             <div>
                 <div className="flex items-center gap-2 mb-2 text-sm font-semibold text-gray-700 dark:text-gray-300">
-                    <UserCircle className="w-4 h-4 text-blue-600" /> Đại diện đội bóng
+                    <UserCircle className="w-4 h-4 text-blue-600" /> Đội bóng
                 </div>
                 <div className="space-y-2">
                     <div 
@@ -269,7 +272,7 @@ function LoginPage() {
             {/* Official Section */}
             <div>
                 <div className="flex items-center gap-2 mb-2 text-sm font-semibold text-gray-700 dark:text-gray-300">
-                    <Flag className="w-4 h-4 text-yellow-600" /> Quan chức trận đấu
+                    <Flag className="w-4 h-4 text-yellow-600" /> Trọng tài / Giám sát
                 </div>
                 <div className="space-y-2">
                     <div 
@@ -284,13 +287,6 @@ function LoginPage() {
                         className="cursor-pointer hover:bg-yellow-50 hover:border-yellow-200 transition-colors bg-gray-50 dark:bg-neutral-900 p-3 rounded-lg border border-gray-200 dark:border-neutral-700 text-sm font-mono text-gray-600 dark:text-gray-400 flex justify-between items-center group"
                     >
                         <span>trongtai2 / trongtai123</span>
-                        <Copy className="w-3 h-3 opacity-0 group-hover:opacity-100 transition-opacity"/>
-                    </div>
-                    <div 
-                        onClick={() => fillCredential("giamsat1", "giấmt123", "official")}
-                        className="cursor-pointer hover:bg-yellow-50 hover:border-yellow-200 transition-colors bg-gray-50 dark:bg-neutral-900 p-3 rounded-lg border border-gray-200 dark:border-neutral-700 text-sm font-mono text-gray-600 dark:text-gray-400 flex justify-between items-center group"
-                    >
-                        <span>giamsat1 / giấmt123</span>
                         <Copy className="w-3 h-3 opacity-0 group-hover:opacity-100 transition-opacity"/>
                     </div>
                 </div>

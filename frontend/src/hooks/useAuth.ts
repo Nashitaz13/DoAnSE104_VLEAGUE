@@ -23,7 +23,7 @@ const useAuth = () => {
   const { data: user } = useQuery<UserPublic | null, Error>({
     queryKey: ["currentUser"],
     queryFn: async () => {
-      const res = await axios.get(`${OpenAPI.BASE}/api/v1/auth/me`, {
+      const res = await axios.get(`${OpenAPI.BASE}/api/auth/me`, {
         headers: {
           Authorization: `Bearer ${localStorage.getItem("access_token") || ""}`,
         },
@@ -35,7 +35,7 @@ const useAuth = () => {
 
   const signUpMutation = useMutation({
     mutationFn: async (data: UserRegister) => {
-      const res = await axios.post(`${OpenAPI.BASE}/api/v1/auth/signup`, data, {
+      const res = await axios.post(`${OpenAPI.BASE}/api/auth/signup`, data, {
         headers: { "Content-Type": "application/json" },
       })
       return res.data
@@ -50,7 +50,7 @@ const useAuth = () => {
   })
 
   const login = async (data: LoginPayload) => {
-    const res = await axios.post(`${OpenAPI.BASE}/api/v1/auth/login`, data, {
+    const res = await axios.post(`${OpenAPI.BASE}/api/auth/login`, data, {
       headers: { "Content-Type": "application/json" },
     })
     localStorage.setItem("access_token", res.data.token)

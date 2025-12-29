@@ -1,67 +1,113 @@
 import { useQuery } from "@tanstack/react-query"
+import { Users, Target, Activity, Loader2 } from "lucide-react"
 import { StatisticsService } from "@/client"
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
-import { Loader2, Medal, Zap } from "lucide-react"
+
+// Helper component for error/empty states
+function EmptyState({ message }: { message: string }) {
+    return (
+        <div className="text-center py-10 text-gray-400 bg-white rounded-xl border">
+            <Activity className="w-10 h-10 mx-auto mb-2 opacity-20" />
+            <p>{message}</p>
+        </div>
+    )
+}
 
 export function TopScorersTab({ muagiai }: { muagiai: string }) {
-  const { data: awards, isLoading } = useQuery({
-    queryKey: ["awards", muagiai],
-    queryFn: () => StatisticsService.getAwards({ muagiai, limit: 10 })
-  })
 
-  if (isLoading) return <div className="flex justify-center p-8"><Loader2 className="animate-spin" /></div>
+    const { data, isLoading } = useQuery({
+        queryKey: ['player-awards', muagiai],
+        queryFn: () => StatisticsService.getAwards({ muagiai, limit: 10 }),
+    })
 
-  const data = awards as any;
-  const scorers = data?.top_scorers || [];
-  const assists = data?.top_assists || [];
+    if (isLoading) {
+        return <div className="flex justify-center py-10"><Loader2 className="animate-spin text-red-600" /></div>
+    }
 
-  const renderList = (list: any[], valueKey: string, unit: string, icon: any) => (
-    <div className="space-y-3">
-      {list.length === 0 ? <p className="text-muted-foreground text-sm">Chưa có dữ liệu</p> : null}
-      {list.map((player, index) => (
-        <div key={index} className="flex items-center justify-between p-3 bg-muted/30 rounded-lg">
-          <div className="flex items-center gap-3">
-            <div className={`
-              w-8 h-8 flex items-center justify-center rounded-full font-bold text-sm
-              ${index === 0 ? "bg-yellow-100 text-yellow-700" : 
-                index === 1 ? "bg-slate-100 text-slate-700" : 
-                index === 2 ? "bg-orange-100 text-orange-700" : "bg-card border"}
-            `}>
-              {index + 1}
+    const awards = data || {};
+    const topScorers = Array.isArray(awards.top_scorers) ? awards.top_scorers : [];
+    const topAssists = Array.isArray(awards.top_assists) ? awards.top_assists : [];
+
+    return (
+        <div className="space-y-6 animate-in fade-in slide-in-from-bottom-4 duration-500">
+            <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+
+                {/* VUA PHÁ LƯỚI (BM7.1) */}
+                <div className="bg-white rounded-xl shadow-sm border overflow-hidden">
+                    <div className="bg-gradient-to-r from-yellow-500 to-orange-500 px-6 py-4 flex justify-between items-center text-white">
+                        <div className="flex items-center gap-2 font-bold">
+                            <Target className="w-5 h-5" />
+                            Vua Phá Lưới
+                        </div>
+                        <span className="text-xs bg-white/20 px-2 py-1 rounded">Mùa {muagiai}</span>
+                    </div>
+
+                    <div className="p-0">
+                        {topScorers.length === 0 ? <EmptyState message="Chưa có dữ liệu bàn thắng" /> : (
+                            <table className="w-full text-sm">
+                                <thead className="bg-gray-50 text-gray-500 font-medium">
+                                    <tr>
+                                        <th className="px-6 py-3 text-center w-12">#</th>
+                                        <th className="px-6 py-3 text-left">Cầu thủ</th>
+                                        <th className="px-6 py-3 text-left">CLB</th>
+                                        <th className="px-6 py-3 text-center font-bold text-gray-800">Bàn thắng</th>
+                                    </tr>
+                                </thead>
+                                <tbody className="divide-y">
+                                    {topScorers.map((p: any, idx: number) => (
+                                        <tr key={p.player_id + idx} className="hover:bg-gray-50">
+                                            <td className="px-6 py-4 text-center font-bold text-gray-400">
+                                                {idx === 0 ? <span className="text-yellow-500 text-xl">🥇</span> : idx + 1}
+                                            </td>
+                                            <td className="px-6 py-4 font-bold text-gray-800">{p.player_name}</td>
+                                            <td className="px-6 py-4 text-gray-600">{p.club_name}</td>
+                                            <td className="px-6 py-4 text-center font-bold text-orange-600 text-lg">{p.goals}</td>
+                                        </tr>
+                                    ))}
+                                </tbody>
+                            </table>
+                        )}
+                    </div>
+                </div>
+
+                {/* VUA KIẾN TẠO (BM7.2) */}
+                <div className="bg-white rounded-xl shadow-sm border overflow-hidden">
+                    <div className="bg-gradient-to-r from-blue-500 to-cyan-500 px-6 py-4 flex justify-between items-center text-white">
+                        <div className="flex items-center gap-2 font-bold">
+                            <Activity className="w-5 h-5" />
+                            Vua Kiến Tạo
+                        </div>
+                        <span className="text-xs bg-white/20 px-2 py-1 rounded">Mùa {muagiai}</span>
+                    </div>
+
+                    <div className="p-0">
+                        {topAssists.length === 0 ? <EmptyState message="Chưa có dữ liệu kiến tạo" /> : (
+                            <table className="w-full text-sm">
+                                <thead className="bg-gray-50 text-gray-500 font-medium">
+                                    <tr>
+                                        <th className="px-6 py-3 text-center w-12">#</th>
+                                        <th className="px-6 py-3 text-left">Cầu thủ</th>
+                                        <th className="px-6 py-3 text-left">CLB</th>
+                                        <th className="px-6 py-3 text-center font-bold text-gray-800">Kiến tạo</th>
+                                    </tr>
+                                </thead>
+                                <tbody className="divide-y">
+                                    {topAssists.map((p: any, idx: number) => (
+                                        <tr key={p.player_id + idx} className="hover:bg-gray-50">
+                                            <td className="px-6 py-4 text-center font-bold text-gray-400">
+                                                {idx === 0 ? <span className="text-blue-500 text-xl">🥇</span> : idx + 1}
+                                            </td>
+                                            <td className="px-6 py-4 font-bold text-gray-800">{p.player_name}</td>
+                                            <td className="px-6 py-4 text-gray-600">{p.club_name}</td>
+                                            <td className="px-6 py-4 text-center font-bold text-blue-600 text-lg">{p.assists}</td>
+                                        </tr>
+                                    ))}
+                                </tbody>
+                            </table>
+                        )}
+                    </div>
+                </div>
+
             </div>
-            <div>
-              <div className="font-bold text-sm">{player.tencauthu}</div>
-              <div className="text-xs text-muted-foreground">{player.clb || "CLB"}</div>
-            </div>
-          </div>
-          <div className="text-right">
-            <div className="font-bold text-primary text-lg">{player[valueKey]}</div>
-            <div className="text-xs text-muted-foreground">{unit}</div>
-          </div>
         </div>
-      ))}
-    </div>
-  )
-
-  return (
-    <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-      <Card>
-        <CardHeader className="pb-2">
-          <CardTitle className="flex items-center gap-2 text-base">
-            <Medal className="w-5 h-5 text-yellow-500" /> Bảng xếp hạng Vua phá lưới
-          </CardTitle>
-        </CardHeader>
-        <CardContent>{renderList(scorers, "ban_thang", "bàn thắng", <Medal />)}</CardContent>
-      </Card>
-
-      <Card>
-        <CardHeader className="pb-2">
-          <CardTitle className="flex items-center gap-2 text-base">
-            <Zap className="w-5 h-5 text-blue-500" /> Kiến tạo xuất sắc
-          </CardTitle>
-        </CardHeader>
-        <CardContent>{renderList(assists, "kien_tao", "kiến tạo", <Zap />)}</CardContent>
-      </Card>
-    </div>
-  )
+    )
 }
