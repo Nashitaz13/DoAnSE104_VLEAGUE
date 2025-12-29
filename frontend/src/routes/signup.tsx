@@ -85,7 +85,9 @@ function SignUp() {
       <div className="max-w-md mx-auto space-y-6">
         <div className="text-center py-6 bg-gradient-to-r from-red-600 to-orange-500 dark:from-red-900 dark:to-orange-800 rounded-2xl text-white shadow-lg transition-colors">
           <h1 className="text-3xl font-bold mb-2">Đăng ký tài khoản</h1>
-          <p className="text-red-100 dark:text-red-200">V-League 1 Management System</p>
+          <p className="text-red-100 dark:text-red-200">
+            V-League 1 Management System
+          </p>
         </div>
         <Card>
           <CardHeader>

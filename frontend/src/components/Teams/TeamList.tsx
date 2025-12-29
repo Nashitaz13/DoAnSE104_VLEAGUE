@@ -1,3 +1,4 @@
+import { MapPin } from "lucide-react"
 import { cn } from "@/lib/utils"
 
 interface TeamListProps {
@@ -8,23 +9,52 @@ interface TeamListProps {
 
 export function TeamList({ clubs, selectedId, onSelect }: TeamListProps) {
   return (
-    <div className="flex flex-col p-2 gap-2">
-      {clubs.map((club) => (
-        <div
-          key={club.maclb || club.id} 
-          onClick={() => onSelect(club.maclb)} 
-          className={cn(
-            "cursor-pointer rounded-md p-4 transition-colors hover:bg-accent border",
-            selectedId === club.maclb ? "bg-accent text-accent-foreground border-l-4 border-primary" : "bg-card"
-          )}
-        >
-          <div className="font-bold">{club.tenclb || club.ten_clb}</div>
-          <div className="text-sm text-muted-foreground flex items-center gap-1">
-             {/* SỬA: Hiển thị tên sân đã xử lý */}
-             📍 {club.ten_san_hien_thi}
-          </div>
-        </div>
-      ))}
+    <div className="flex flex-col gap-1">
+      {clubs.map((club) => {
+        const isSelected = selectedId === club.maclb
+        return (
+          <button
+            type="button"
+            key={club.maclb || club.id}
+            onClick={() => onSelect(club.maclb)}
+            className={cn(
+              "cursor-pointer rounded-lg p-3 transition-all border flex items-center justify-between group",
+              isSelected
+                ? "bg-red-50 dark:bg-red-900/20 border-red-200 dark:border-red-900/30 shadow-sm"
+                : "bg-white dark:bg-card hover:bg-gray-50 dark:hover:bg-muted/50 border-transparent hover:border-gray-200 dark:hover:border-neutral-700",
+            )}
+          >
+            <div className="flex-1 min-w-0">
+              <div
+                className={cn(
+                  "font-bold truncate text-sm transition-colors",
+                  isSelected
+                    ? "text-red-700 dark:text-red-400"
+                    : "text-gray-800 dark:text-foreground",
+                )}
+              >
+                {club.tenclb || club.ten_clb}
+              </div>
+              <div className="text-xs text-gray-500 dark:text-muted-foreground flex items-center gap-1 mt-1 truncate">
+                <MapPin className="w-3 h-3 text-gray-400 dark:text-gray-500 shrink-0" />
+                {club.ten_san_hien_thi}
+              </div>
+            </div>
+
+            {/* Logo placeholder if needed */}
+            <div
+              className={cn(
+                "w-8 h-8 rounded-full flex items-center justify-center font-bold text-[10px] shrink-0 transition-colors",
+                isSelected
+                  ? "bg-red-200 dark:bg-red-900/40 text-red-800 dark:text-red-300"
+                  : "bg-gray-100 dark:bg-muted text-gray-400 dark:text-gray-500 group-hover:bg-white dark:group-hover:bg-neutral-700 group-hover:text-gray-600 dark:group-hover:text-gray-300",
+              )}
+            >
+              {club.tenclb ? club.tenclb.substring(0, 2).toUpperCase() : "CL"}
+            </div>
+          </button>
+        )
+      })}
     </div>
   )
 }

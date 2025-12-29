@@ -3,7 +3,6 @@
 import type { CancelablePromise } from './core/CancelablePromise';
 import { OpenAPI } from './core/OpenAPI';
 import { request as __request } from './core/request';
-import type { Message } from './types.gen';
 import type { AuthLoginData, AuthLoginResponse, AuthSignupData, AuthSignupResponse, AuthLogoutResponse, AuthGetCurrentUserInfoResponse, ClubsGetClubsData, ClubsGetClubsResponse, ClubsCreateClubData, ClubsCreateClubResponse, ClubsGetClubData, ClubsGetClubResponse, ClubsUpdateClubData, ClubsUpdateClubResponse, ClubsDeleteClubData, ClubsDeleteClubResponse, MatchesReadMatchesData, MatchesReadMatchesResponse, MatchesCreateMatchData, MatchesCreateMatchResponse, MatchesReadMatchData, MatchesReadMatchResponse, MatchesUpdateMatchData, MatchesUpdateMatchResponse, MatchesDeleteMatchData, MatchesDeleteMatchResponse, MatchEventsReadMatchEventsData, MatchEventsReadMatchEventsResponse, MatchEventsCreateMatchEventData, MatchEventsCreateMatchEventResponse, MatchEventsUpdateMatchEventData, MatchEventsUpdateMatchEventResponse, MatchEventsDeleteMatchEventData, MatchEventsDeleteMatchEventResponse, MatchLineupReadMatchLineupData, MatchLineupReadMatchLineupResponse, MatchLineupAddPlayerToLineupData, MatchLineupAddPlayerToLineupResponse, MatchLineupUpdateLineupEntryData, MatchLineupUpdateLineupEntryResponse, MatchLineupRemovePlayerFromLineupData, MatchLineupRemovePlayerFromLineupResponse, MatchRefereesReadMatchRefereesData, MatchRefereesReadMatchRefereesResponse, MatchRefereesAssignRefereeToMatchData, MatchRefereesAssignRefereeToMatchResponse, MatchRefereesRemoveRefereeFromMatchData, MatchRefereesRemoveRefereeFromMatchResponse, PlayersGetPlayersData, PlayersGetPlayersResponse, PlayersCreatePlayerData, PlayersCreatePlayerResponse, PlayersGetPlayerData, PlayersGetPlayerResponse, PlayersUpdatePlayerData, PlayersUpdatePlayerResponse, PlayersDeletePlayerData, PlayersDeletePlayerResponse, RostersAddPlayerToRosterData, RostersAddPlayerToRosterResponse, RostersGetRosterData, RostersGetRosterResponse, RostersRemovePlayerFromRosterData, RostersRemovePlayerFromRosterResponse, RostersValidateRosterData, RostersValidateRosterResponse, ScheduleGetScheduleData, ScheduleGetScheduleResponse, ScheduleGenerateScheduleData, ScheduleGenerateScheduleResponse, ScheduleValidateScheduleData, ScheduleValidateScheduleResponse, SeasonManagementGetSeasonsData, SeasonManagementGetSeasonsResponse, SeasonManagementCreateSeasonData, SeasonManagementCreateSeasonResponse, SeasonManagementGetSeasonData, SeasonManagementGetSeasonResponse, SeasonManagementUpdateSeasonData, SeasonManagementUpdateSeasonResponse, SeasonManagementDeleteSeasonData, SeasonManagementDeleteSeasonResponse, SeasonManagementGetPlayerTypesData, SeasonManagementGetPlayerTypesResponse, SeasonManagementCreatePlayerTypeData, SeasonManagementCreatePlayerTypeResponse, SeasonManagementGetPlayerTypeData, SeasonManagementGetPlayerTypeResponse, SeasonManagementUpdatePlayerTypeData, SeasonManagementUpdatePlayerTypeResponse, SeasonManagementDeletePlayerTypeData, SeasonManagementDeletePlayerTypeResponse, StadiumsGetStadiumsData, StadiumsGetStadiumsResponse, StadiumsCreateStadiumData, StadiumsCreateStadiumResponse, StadiumsGetStadiumData, StadiumsGetStadiumResponse, StadiumsUpdateStadiumData, StadiumsUpdateStadiumResponse, StadiumsDeleteStadiumData, StadiumsDeleteStadiumResponse, StandingsGetStandingsData, StandingsGetStandingsResponse, StatisticsGetPlayerStatsData, StatisticsGetPlayerStatsResponse, StatisticsGetMatchStatsData, StatisticsGetMatchStatsResponse, StatisticsGetAwardsData, StatisticsGetAwardsResponse, StatisticsGetDisciplineData, StatisticsGetDisciplineResponse, UsersReadUsersData, UsersReadUsersResponse, UsersCreateUserData, UsersCreateUserResponse, UsersReadUserMeResponse, UsersDeleteUserMeResponse, UsersUpdateUserMeData, UsersUpdateUserMeResponse, UsersUpdatePasswordMeData, UsersUpdatePasswordMeResponse, UsersRegisterUserData, UsersRegisterUserResponse, UsersReadUserByIdData, UsersReadUserByIdResponse, UsersUpdateUserData, UsersUpdateUserResponse, UsersDeleteUserData, UsersDeleteUserResponse } from './types.gen';
 
 export class AuthService {
@@ -68,34 +67,6 @@ export class AuthService {
         return __request(OpenAPI, {
             method: 'POST',
             url: '/api/v1/auth/logout'
-        });
-    }
-
-    /**
-     * Recover Password
-     * @param data The data for the request.
-     * @returns Message Successful Response
-     */
-    public static recoverPassword(data: { email: string }): CancelablePromise<Message> {
-        return __request(OpenAPI, {
-            method: 'POST',
-            url: '/api/v1/auth/recover-password',
-            body: data,
-            mediaType: 'application/json',
-        });
-    }
-
-    /**
-     * Reset Password
-     * @param data The data for the request.
-     * @returns Message Successful Response
-     */
-    public static resetPassword(data: { requestBody: { token: string, new_password: string } }): CancelablePromise<Message> {
-        return __request(OpenAPI, {
-            method: 'POST',
-            url: '/api/v1/auth/reset-password',
-            body: data.requestBody,
-            mediaType: 'application/json',
         });
     }
     

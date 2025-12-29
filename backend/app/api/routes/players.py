@@ -11,7 +11,6 @@ router = APIRouter()
 @router.get("/", response_model=list[CauThuPublic])
 def get_players(
     session: SessionDep,
-    current_user: CurrentUserVLeague,  # Auth required
     keyword: Optional[str] = Query(None, description="Search by player name"),
     quoctich: Optional[str] = Query(None, description="Filter by nationality (e.g., 'VN')"),
     vitrithidau: Optional[str] = Query(None, description="Filter by position (GK, DF, MF, FW)"),
@@ -21,7 +20,7 @@ def get_players(
     """
     Get all players with optional filters
     
-    **Authentication required** - Any authenticated user can view players
+    Public endpoint - no authentication required
     
     **Query Parameters:**
     - keyword: Search in player name (case-insensitive)
@@ -42,13 +41,12 @@ def get_players(
 @router.get("/{player_id}", response_model=CauThuPublic)
 def get_player(
     session: SessionDep,
-    current_user: CurrentUserVLeague,  # Auth required
     player_id: str
 ) -> CauThuPublic:
     """
     Get player by ID
     
-    **Authentication required** - Any authenticated user can view player details
+    Public endpoint - no authentication required
     """
     player = crud.get_player_by_id(session=session, macauthu=player_id)
     if not player:

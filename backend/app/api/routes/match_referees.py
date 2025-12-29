@@ -17,11 +17,12 @@ router = APIRouter()
 @router.get("/{matran}/referees", response_model=list[ChiTietTrongTaiPublic])
 def read_match_referees(
     session: SessionDep,
-    current_user: CurrentUserVLeague,
     matran: str,
 ) -> Any:
     """
     Get referees for match.
+    
+    Public endpoint - no authentication required.
     """
     # Verify match exists
     match = crud.get_match_by_id(session=session, matran=matran)

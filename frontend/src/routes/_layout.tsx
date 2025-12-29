@@ -7,6 +7,7 @@ import {
 import {
   BarChart3,
   Calendar,
+  Flag, // [MỚI] Import icon lá cờ
   LogOut,
   Monitor,
   Moon,
@@ -15,9 +16,7 @@ import {
   Trophy,
   User,
   Users,
-  Flag, // [MỚI] Import icon lá cờ
 } from "lucide-react"
-import { Footer } from "@/components/Common/Footer"
 import { useTheme } from "@/components/theme-provider"
 import { Button } from "@/components/ui/button"
 import {
@@ -28,7 +27,13 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu"
 
-import { getCurrentUser, logoutUser, isBTC, isQuanLyDoi, isLoggedIn, isQuanChuc } from "@/utils/auth"
+import {
+  getCurrentUser,
+  isBTC,
+  isLoggedIn,
+  isQuanChuc,
+  isQuanLyDoi,
+} from "@/utils/auth"
 
 export const Route = createFileRoute("/_layout")({
   component: Layout,
@@ -42,10 +47,10 @@ export const Route = createFileRoute("/_layout")({
 })
 
 function Layout() {
-  const currentUser = getCurrentUser() 
-  const isAuth = isLoggedIn();
+  const currentUser = getCurrentUser()
+  const isAuth = isLoggedIn()
   const { theme, resolvedTheme, setTheme } = useTheme()
-  
+
   const handleLogout = () => {
     if (window.confirm("Bạn có chắc chắn muốn đăng xuất không?")) {
       localStorage.removeItem("access_token")
@@ -93,7 +98,10 @@ function Layout() {
                     size="sm"
                     className="text-white hover:bg-white/10 dark:hover:bg-white/10 [&.active]:bg-white [&.active]:text-red-700 [&.active]:shadow-sm"
                   >
-                    <RouterLink to={to} className="flex items-center font-medium">
+                    <RouterLink
+                      to={to}
+                      className="flex items-center font-medium"
+                    >
                       <Icon className="h-4 w-4 mr-2" />
                       {label}
                     </RouterLink>
@@ -108,15 +116,15 @@ function Layout() {
                     size="sm"
                     className="text-white hover:bg-white/10 dark:hover:bg-white/10 [&.active]:bg-white [&.active]:text-red-700"
                   >
-                  <RouterLink
-                    to="/admin-dashboard"
-                    className="
+                    <RouterLink
+                      to="/admin-dashboard"
+                      className="
                       flex items-center gap-2 px-3 py-1.5 rounded-full border border-white/20 transition-all font-medium text-sm
                       text-white hover:bg-white/10 
                       [&.active]:bg-white [&.active]:text-red-700 [&.active]:font-bold [&.active]:shadow-md
                     "
-                  >
-                  <Shield className="w-4 h-4" />
+                    >
+                      <Shield className="w-4 h-4" />
                       Quản trị
                     </RouterLink>
                   </Button>
@@ -209,9 +217,14 @@ function Layout() {
                 {isAuth ? (
                   <>
                     <div className="text-white dark:text-white text-sm">
-                      <span className="hidden lg:inline opacity-90">Xin chào, </span>
+                      <span className="hidden lg:inline opacity-90">
+                        Xin chào,{" "}
+                      </span>
                       <span className="font-medium">
-                        {currentUser?.tendangnhap || currentUser?.username || currentUser?.hoten || "User"}
+                        {currentUser?.tendangnhap ||
+                          currentUser?.username ||
+                          currentUser?.hoten ||
+                          "User"}
                       </span>
                     </div>
                     <Button
@@ -231,7 +244,10 @@ function Layout() {
                     size="sm"
                     className="text-white hover:bg-white/10"
                   >
-                    <RouterLink to="/login" className="flex items-center font-medium">
+                    <RouterLink
+                      to="/login"
+                      className="flex items-center font-medium"
+                    >
                       <User className="h-4 w-4 mr-2" />
                       Đăng nhập
                     </RouterLink>
@@ -267,7 +283,6 @@ function Layout() {
           <Outlet />
         </div>
       </main>
-      <Footer />
     </>
   )
 }

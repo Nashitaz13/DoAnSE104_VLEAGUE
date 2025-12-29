@@ -1,10 +1,8 @@
-
 import { useQuery } from "@tanstack/react-query"
-import axios from "axios"
 import { Loader2, Shield } from "lucide-react"
 import { useMemo } from "react"
 
-import { OpenAPI } from "@/client"
+import { MatchesService, RostersService } from "@/client"
 import { Badge } from "@/components/ui/badge"
 import {
   Dialog,
@@ -41,117 +39,80 @@ export function MatchDetailModal({
   homeTeamName = "Đội nhà",
   awayTeamName = "Đội khách",
 }: MatchDetailModalProps) {
-  // Fetch Home Lineup
   const {
-    data: homeLineup,
-    isLoading: isLoadingHomeLineup,
-    isError: isErrorHome,
-    error: errorHome,
+    data: matchDetail,
+    isLoading: isLoadingDetail,
+    isError: isErrorDetail,
+    error: errorDetail,
   } = useQuery({
-    queryKey: ["match-lineup", matchId, homeTeamId],
-    queryFn: async () => {
-      if (!matchId || !homeTeamId) return null
-      const token = localStorage.getItem("access_token") || ""
-      const headers = token ? { Authorization: `Bearer ${token}` } : undefined
-      try {
-        const res = await axios.get(
-          `${OpenAPI.BASE}/api/v1/matches/${matchId}/lineup?maclb=${homeTeamId}`,
-          { headers },
-        )
-        return res.data
-      } catch (err: any) {
-        if (err.response?.status === 403) {
-          throw new Error("Phiên đăng nhập hết hạn hoặc không có quyền truy cập.")
-        }
-        throw err
-      }
-    },
-    enabled: !!matchId && !!homeTeamId && isOpen,
-    retry: 1,
-  })
-
-  // Fetch Away Lineup
-  const {
-    data: awayLineup,
-    isLoading: isLoadingAwayLineup,
-    isError: isErrorAway,
-    error: errorAway,
-  } = useQuery({
-    queryKey: ["match-lineup", matchId, awayTeamId],
-    queryFn: async () => {
-      if (!matchId || !awayTeamId) return null
-      const token = localStorage.getItem("access_token") || ""
-      const headers = token ? { Authorization: `Bearer ${token}` } : undefined
-      try {
-        const res = await axios.get(
-          `${OpenAPI.BASE}/api/v1/matches/${matchId}/lineup?maclb=${awayTeamId}`,
-          { headers },
-        )
-        return res.data
-      } catch (err: any) {
-        if (err.response?.status === 403) {
-          throw new Error("Phiên đăng nhập hết hạn hoặc không có quyền truy cập.")
-        }
-        throw err
-      }
-    },
-    enabled: !!matchId && !!awayTeamId && isOpen,
-    retry: 1,
-  })
-
-  // Fetch Events
-  const {
-    data: events,
-    isLoading: isLoadingEvents,
-    isError: isErrorEvents,
-    error: errorEvents,
-  } = useQuery({
-    queryKey: ["match-events", matchId],
+    queryKey: ["match-detail", matchId],
     queryFn: async () => {
       if (!matchId) return null
-      const token = localStorage.getItem("access_token") || ""
-      const headers = token ? { Authorization: `Bearer ${token}` } : undefined
-      try {
-        const res = await axios.get(
-          `${OpenAPI.BASE}/api/v1/matches/${matchId}/events`,
-          { headers },
-        )
-        return res.data
-      } catch (err: any) {
-        if (err.response?.status === 403) {
-          throw new Error("Phiên đăng nhập hết hạn hoặc không có quyền truy cập.")
-        }
-        throw err
-      }
+      const res = await MatchesService.readMatch({ matran: matchId })
+      return res
     },
     enabled: !!matchId && isOpen,
     retry: 1,
   })
 
-  const isLoading =
-    isLoadingHomeLineup || isLoadingAwayLineup || isLoadingEvents
-  const isError = isErrorHome || isErrorAway || isErrorEvents
-  const errorMessage =
-    (errorHome as Error)?.message ||
-    (errorAway as Error)?.message ||
-    (errorEvents as Error)?.message ||
-    "Có lỗi xảy ra khi tải dữ liệu."
+  const { data: homeRoster } = useQuery({
+    queryKey: ["roster", homeTeamId, matchDetail?.muagiai],
+    queryFn: async () => {
+      const res = await RostersService.getRoster({
+        maclb: homeTeamId,
+        muagiai: matchDetail?.muagiai || "",
+      })
+      return Array.isArray(res) ? res : (res as any)?.data || []
+    },
+    enabled: !!homeTeamId && !!matchDetail?.muagiai && isOpen,
+  })
 
-  // Create a map of player ID -> Name for easy lookup in events
+  const { data: awayRoster } = useQuery({
+    queryKey: ["roster", awayTeamId, matchDetail?.muagiai],
+    queryFn: async () => {
+      const res = await RostersService.getRoster({
+        maclb: awayTeamId,
+        muagiai: matchDetail?.muagiai || "",
+      })
+      return Array.isArray(res) ? res : (res as any)?.data || []
+    },
+    enabled: !!awayTeamId && !!matchDetail?.muagiai && isOpen,
+  })
+
+  const isLoading = isLoadingDetail
+  const isError = isErrorDetail
+  const errorMessage =
+    (errorDetail as Error)?.message || "Có lỗi xảy ra khi tải dữ liệu."
+
   const playerMap = useMemo(() => {
     const map = new Map<string, string>()
-    const processPlayers = (lineup: any) => {
-      if (!lineup) return
-      lineup.starting_xi?.forEach((p: any) => map.set(p.macauthu, p.tencauthu))
-      lineup.substitutes?.forEach((p: any) => map.set(p.macauthu, p.tencauthu))
-    }
-    processPlayers(homeLineup)
-    processPlayers(awayLineup)
-    return map
-  }, [homeLineup, awayLineup])
+    const numberMap = new Map<string, number>()
+
+    ;(homeRoster || []).forEach((p: any) => {
+      map.set(
+        p.macauthu,
+        p.cauthu?.hoten || p.hoten || p.tencauthu || p.macauthu,
+      )
+      if (p.soaothidau) numberMap.set(p.macauthu, p.soaothidau)
+    })
+
+    ;(awayRoster || []).forEach((p: any) => {
+      map.set(
+        p.macauthu,
+        p.cauthu?.hoten || p.hoten || p.tencauthu || p.macauthu,
+      )
+      if (p.soaothidau) numberMap.set(p.macauthu, p.soaothidau)
+    })
+
+    return { nameMap: map, numberMap }
+  }, [homeRoster, awayRoster])
 
   const getPlayerName = (macauthu: string) => {
-    return playerMap.get(macauthu) || macauthu
+    return playerMap.nameMap.get(macauthu) || macauthu
+  }
+
+  const getPlayerNumber = (macauthu: string) => {
+    return playerMap.numberMap.get(macauthu)
   }
 
   const getTeamName = (maclb: string) => {
@@ -176,67 +137,84 @@ export function MatchDetailModal({
   }
 
   const groupPlayersByPosition = (players: any[]) => {
-    if (!players) return { GK: [], DF: [], MF: [], FW: [], Other: [] };
+    if (!players) return { GK: [], DF: [], MF: [], FW: [], Other: [] }
     return {
-      GK: players.filter((p: any) => (p.vitri || p.vitrithidau) === 'GK'),
-      DF: players.filter((p: any) => (p.vitri || p.vitrithidau) === 'DF'),
-      MF: players.filter((p: any) => (p.vitri || p.vitrithidau) === 'MF'),
-      FW: players.filter((p: any) => (p.vitri || p.vitrithidau) === 'FW'),
-      Other: players.filter((p: any) => !['GK', 'DF', 'MF', 'FW'].includes(p.vitri || p.vitrithidau))
-    };
-  };
+      GK: players.filter((p: any) => (p.vitri || p.vitrithidau) === "GK"),
+      DF: players.filter((p: any) => (p.vitri || p.vitrithidau) === "DF"),
+      MF: players.filter((p: any) => (p.vitri || p.vitrithidau) === "MF"),
+      FW: players.filter((p: any) => (p.vitri || p.vitrithidau) === "FW"),
+      Other: players.filter(
+        (p: any) =>
+          !["GK", "DF", "MF", "FW"].includes(p.vitri || p.vitrithidau),
+      ),
+    }
+  }
 
   const renderPlayerGroup = (title: string, players: any[]) => {
-    if (players.length === 0) return null;
+    if (players.length === 0) return null
     return (
       <div className="mb-4 last:mb-0">
         <div className="bg-gray-100 dark:bg-muted px-3 py-1.5 font-bold text-gray-700 dark:text-foreground flex items-center gap-2 text-sm border-y dark:border-border">
           {title}
           <span className="bg-white dark:bg-card text-xs px-1.5 py-0.5 rounded-full ml-auto border dark:border-border font-normal">
-             {players.length}
+            {players.length}
           </span>
         </div>
-        <Table>
+        <div className="relative w-full overflow-visible rounded-none">
+          <table className="w-full caption-bottom text-sm">
             <TableBody>
-              {players.map((p: any) => (
-                <TableRow key={p.macauthu} className="hover:bg-gray-50 dark:hover:bg-muted/50 border-b-0">
-                  <TableCell className="w-16 text-center py-2">
-                    <span className="inline-block w-7 h-7 leading-7 rounded-full bg-white border border-gray-200 text-gray-500 font-bold text-xs shadow-sm dark:bg-muted dark:border-border dark:text-muted-foreground">
-                      {p.soaothidau || "-"}
+              {players.map((p: any, _idx: number) => (
+                <TableRow
+                  key={p.macauthu}
+                  className={`relative overflow-visible hover:bg-neutral-200 dark:hover:bg-muted/40 rounded-none before:content-[''] before:absolute before:left-0 before:inset-y-0 before:w-1.5 before:rounded-none ${
+                    p.duocxuatphat
+                      ? "bg-green-100 dark:bg-green-900/30 before:bg-green-600"
+                      : "bg-gray-300 dark:bg-gray-600/30 before:bg-gray-600"
+                  }`}
+                >
+                  <TableCell className="w-16 text-center py-2 rounded-none">
+                    <span className="inline-block w-7 h-7 leading-7 rounded-full bg-neutral-100 border border-neutral-200 text-neutral-600 font-bold text-[10px] shadow-sm dark:bg-muted dark:border-border dark:text-muted-foreground px-1 overflow-hidden whitespace-nowrap">
+                      {getPlayerNumber(p.macauthu) || "-"}
                     </span>
                   </TableCell>
-                  <TableCell className="py-2">
+                  <TableCell className="py-2 rounded-none">
                     <div className="font-medium text-sm text-foreground/90">
                       {p.tencauthu}
+                      {p.ladoitruong && (
+                        <sup className="ml-1 inline-flex items-center justify-center bg-yellow-400 text-black text-[8px] w-3 h-3 rounded-full font-bold shadow-sm">
+                          C
+                        </sup>
+                      )}
                     </div>
                   </TableCell>
                 </TableRow>
               ))}
             </TableBody>
-        </Table>
+          </table>
+        </div>
       </div>
-    );
-  };
+    )
+  }
 
   const renderLineupSection = (players: any[], emptyMessage: string) => {
     if (!players || players.length === 0) {
-       return (
-        <div className="text-center text-muted-foreground text-sm py-8 italic border rounded-md bg-gray-50/50">
+      return (
+        <div className="text-center text-muted-foreground text-sm py-8 italic border bg-gray-50/50 dark:bg-muted/20">
           {emptyMessage}
         </div>
-       )
+      )
     }
 
-    const groups = groupPlayersByPosition(players);
-    
+    const groups = groupPlayersByPosition(players)
+
     return (
-       <div className="rounded-md border overflow-hidden bg-white dark:bg-card">
-          {renderPlayerGroup("Thủ Môn (GK)", groups.GK)}
-          {renderPlayerGroup("Hậu Vệ (DF)", groups.DF)}
-          {renderPlayerGroup("Tiền Vệ (MF)", groups.MF)}
-          {renderPlayerGroup("Tiền Đạo (FW)", groups.FW)}
-          {renderPlayerGroup("Khác", groups.Other)}
-       </div>
+      <div className="border rounded-none bg-white dark:bg-card overflow-hidden">
+        {renderPlayerGroup("Thủ Môn", groups.GK)}
+        {renderPlayerGroup("Hậu Vệ", groups.DF)}
+        {renderPlayerGroup("Tiền Vệ", groups.MF)}
+        {renderPlayerGroup("Tiền Đạo", groups.FW)}
+        {renderPlayerGroup("Khác", groups.Other)}
+      </div>
     )
   }
 
@@ -248,20 +226,22 @@ export function MatchDetailModal({
     if (!lineup) return null
 
     return (
-      <div className="border rounded-lg bg-white dark:bg-card shadow-sm h-full flex flex-col">
-        <div className={`p-4 border-b ${isHome ? "bg-red-50 dark:bg-red-900/10" : "bg-blue-50 dark:bg-blue-900/10"}`}>
+      <div className="border bg-white dark:bg-card shadow-sm h-full flex flex-col rounded-none">
+        <div
+          className={`p-4 border-b ${isHome ? "bg-red-50 dark:bg-red-900/10" : "bg-blue-50 dark:bg-blue-900/10"}`}
+        >
           <h3
             className={`font-bold text-xl ${isHome ? "text-red-700 dark:text-red-400" : "text-blue-700 dark:text-blue-400"}`}
           >
             {teamName}
           </h3>
         </div>
-        
+
         <div className="p-4 space-y-6">
           {/* Starting XI */}
           <div>
             <h4 className="font-semibold text-sm text-muted-foreground mb-3 flex items-center gap-2 uppercase tracking-wide">
-              <span className="w-2 h-2 rounded-full bg-green-500 shadow-[0_0_8px_rgba(34,197,94,0.6)]"></span>
+              <span className="w-2 h-2 rounded-full bg-green-500 shadow-[0_0_8px_rgba(34,197,94,0.6)]" />
               Đội hình chính
             </h4>
             {renderLineupSection(lineup.starting_xi, "Chưa cập nhật đội hình")}
@@ -270,10 +250,13 @@ export function MatchDetailModal({
           {/* Substitutes */}
           <div>
             <h4 className="font-semibold text-sm text-muted-foreground mb-3 flex items-center gap-2 uppercase tracking-wide">
-              <span className="w-2 h-2 rounded-full bg-gray-400 shadow-[0_0_8px_rgba(156,163,175,0.6)]"></span>
+              <span className="w-2 h-2 rounded-full bg-gray-400 shadow-[0_0_8px_rgba(156,163,175,0.6)]" />
               Dự bị
             </h4>
-            {renderLineupSection(lineup.substitutes, "Chưa cập nhật danh sách dự bị")}
+            {renderLineupSection(
+              lineup.substitutes,
+              "Chưa cập nhật danh sách dự bị",
+            )}
           </div>
         </div>
       </div>
@@ -298,6 +281,14 @@ export function MatchDetailModal({
               {awayTeamName}
             </span>
           </div>
+          {matchDetail && (
+            <div className="mt-2 text-center text-sm text-muted-foreground">
+              Khán giả:{" "}
+              {typeof (matchDetail as any).sokhangia === "number"
+                ? ((matchDetail as any).sokhangia as number).toLocaleString()
+                : (matchDetail as any).sokhangia || "---"}
+            </div>
+          )}
         </DialogHeader>
 
         {isLoading ? (
@@ -326,16 +317,76 @@ export function MatchDetailModal({
               </TabsList>
             </div>
 
-            <TabsContent value="lineup" className="flex-1 overflow-y-auto p-6 pt-4">
+            <TabsContent
+              value="lineup"
+              className="flex-1 overflow-y-auto p-6 pt-4"
+            >
               <div className="pr-4">
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                  {renderLineupTable(homeLineup, homeTeamName, true)}
-                  {renderLineupTable(awayLineup, awayTeamName, false)}
+                  {renderLineupTable(
+                    matchDetail
+                      ? {
+                          starting_xi: (matchDetail.lineup_home || [])
+                            .filter((e: any) => e.duocxuatphat)
+                            .map((e: any) => ({
+                              macauthu: e.macauthu,
+                              tencauthu: getPlayerName(e.macauthu),
+                              vitri: e.vitri,
+                              duocxuatphat: e.duocxuatphat,
+                              ladoitruong: e.ladoitruong,
+                              soaothidau: undefined,
+                            })),
+                          substitutes: (matchDetail.lineup_home || [])
+                            .filter((e: any) => !e.duocxuatphat)
+                            .map((e: any) => ({
+                              macauthu: e.macauthu,
+                              tencauthu: getPlayerName(e.macauthu),
+                              vitri: e.vitri,
+                              duocxuatphat: e.duocxuatphat,
+                              ladoitruong: e.ladoitruong,
+                              soaothidau: undefined,
+                            })),
+                        }
+                      : null,
+                    homeTeamName,
+                    true,
+                  )}
+                  {renderLineupTable(
+                    matchDetail
+                      ? {
+                          starting_xi: (matchDetail.lineup_away || [])
+                            .filter((e: any) => e.duocxuatphat)
+                            .map((e: any) => ({
+                              macauthu: e.macauthu,
+                              tencauthu: getPlayerName(e.macauthu),
+                              vitri: e.vitri,
+                              duocxuatphat: e.duocxuatphat,
+                              ladoitruong: e.ladoitruong,
+                              soaothidau: undefined,
+                            })),
+                          substitutes: (matchDetail.lineup_away || [])
+                            .filter((e: any) => !e.duocxuatphat)
+                            .map((e: any) => ({
+                              macauthu: e.macauthu,
+                              tencauthu: getPlayerName(e.macauthu),
+                              vitri: e.vitri,
+                              duocxuatphat: e.duocxuatphat,
+                              ladoitruong: e.ladoitruong,
+                              soaothidau: undefined,
+                            })),
+                        }
+                      : null,
+                    awayTeamName,
+                    false,
+                  )}
                 </div>
               </div>
             </TabsContent>
 
-            <TabsContent value="events" className="flex-1 overflow-y-auto p-6 pt-4">
+            <TabsContent
+              value="events"
+              className="flex-1 overflow-y-auto p-6 pt-4"
+            >
               <div className="pr-4">
                 <Table>
                   <TableHeader>
@@ -348,7 +399,7 @@ export function MatchDetailModal({
                     </TableRow>
                   </TableHeader>
                   <TableBody>
-                    {events?.length === 0 ? (
+                    {matchDetail?.events?.length === 0 ? (
                       <TableRow>
                         <TableCell
                           colSpan={5}
@@ -358,7 +409,7 @@ export function MatchDetailModal({
                         </TableCell>
                       </TableRow>
                     ) : (
-                      events?.map((event: any) => (
+                      matchDetail?.events?.map((event: any) => (
                         <TableRow key={event.masukien}>
                           <TableCell className="font-bold">
                             {event.phutthidau}'
@@ -395,4 +446,3 @@ export function MatchDetailModal({
     </Dialog>
   )
 }
-

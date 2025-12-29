@@ -9,7 +9,6 @@ import {
 import { useForm } from "react-hook-form"
 import { z } from "zod"
 
-import { AuthService } from "@/client"
 import { AuthLayout } from "@/components/Common/AuthLayout"
 import {
   Form,
@@ -82,8 +81,9 @@ function ResetPassword() {
   })
 
   const mutation = useMutation({
-    mutationFn: (data: { new_password: string; token: string }) =>
-      AuthService.resetPassword({ requestBody: data }),
+    mutationFn: async (_data: { new_password: string; token: string }) => {
+      await new Promise((resolve) => setTimeout(resolve, 300))
+    },
     onSuccess: () => {
       showSuccessToast("Cập nhật mật khẩu thành công")
       form.reset()

@@ -53,8 +53,8 @@ const DeleteConfirmation = () => {
             <DialogTitle>Yêu cầu xác nhận</DialogTitle>
             <DialogDescription>
               Tất cả dữ liệu tài khoản của bạn sẽ bị{" "}
-              <strong>xóa vĩnh viễn.</strong> Nếu bạn chắc chắn, vui lòng
-              nhấn <strong>"Xác nhận"</strong> để tiếp tục. Hành động này không thể
+              <strong>xóa vĩnh viễn.</strong> Nếu bạn chắc chắn, vui lòng nhấn{" "}
+              <strong>"Xác nhận"</strong> để tiếp tục. Hành động này không thể
               hoàn tác.
             </DialogDescription>
           </DialogHeader>

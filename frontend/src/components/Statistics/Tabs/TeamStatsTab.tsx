@@ -1,89 +1,199 @@
-import { useQuery } from "@tanstack/react-query"
-import { StandingsService } from "@/client"
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
-import { Loader2, ShieldCheck, Swords, Scale } from "lucide-react"
+import { Shield, TrendingUp } from "lucide-react"
+import { useMemo } from "react"
 
-export function TeamStatsTab({ muagiai }: { muagiai: string }) {
-  const { data: standingsData, isLoading } = useQuery({
-    queryKey: ["standings", muagiai],
-    queryFn: () => StandingsService.getStandings({ muagiai })
-  })
+export function TeamStatsTab({
+  standings,
+  discipline,
+  matches,
+}: {
+  standings?: any
+  discipline?: any
+  matches?: any
+}) {
+  const teamStats = useMemo(() => {
+    if (!standings?.standings) return []
 
-  if (isLoading) return <div className="flex justify-center p-8"><Loader2 className="animate-spin" /></div>
+    // 1. Map basic stats from standings
+    const statsMap = new Map()
 
-  const teams = (standingsData as any)?.standings || [];
-  
-  // Logic xử lý dữ liệu
-  const bestDefense = [...teams].sort((a, b) => a.goals_against - b.goals_against).slice(0, 3); // Bàn thua tăng dần
-  const bestAttack = [...teams].sort((a, b) => b.goals_for - a.goals_for).slice(0, 3); // Bàn thắng giảm dần
-  const bestBalance = [...teams].sort((a, b) => b.goal_difference - a.goal_difference).slice(0, 3); // Hiệu số
+    standings.standings.forEach((team: any) => {
+      statsMap.set(team.maclb, {
+        id: team.maclb,
+        name: team.tenclb,
+        goals: team.goals_for,
+        conceded: team.goals_against,
+        cleanSheets: 0,
+        yellow: 0,
+        red: 0,
+      })
+    })
 
-  const renderTeamList = (list: any[], valueKey: string, label: string, colorClass: string) => (
-      <div className="space-y-3">
-          {list.length === 0 ? <p className="text-sm text-muted-foreground">Chưa có dữ liệu</p> : null}
-          {list.map((t, i) => (
-              <div key={i} className="flex justify-between items-center p-3 bg-card dark:bg-card/50 border rounded-lg shadow-sm hover:bg-muted/50 transition-colors">
-                  <div>
-                      <div className="font-bold text-foreground">{t.tenclb || "CLB"}</div>
-                      <div className="text-xs text-muted-foreground">{t.matches_played} trận</div>
-                  </div>
-                  <div className={`text-right ${colorClass}`}>
-                      <div className="font-bold text-lg">{t[valueKey]}</div>
-                      <div className="text-[10px] uppercase font-semibold text-muted-foreground">{label}</div>
-                  </div>
-              </div>
-          ))}
+    // 2. Aggregate cards from discipline (if available)
+    if (discipline?.leaderboard) {
+      discipline.leaderboard.forEach((player: any) => {
+        if (player.maclb && statsMap.has(player.maclb)) {
+          const team = statsMap.get(player.maclb)
+          team.yellow += player.yellow_cards || 0
+          team.red += player.red_cards || 0
+        }
+      })
+    }
+
+    // 3. Calculate Clean Sheets from matches (if available)
+    const matchList = Array.isArray(matches)
+      ? matches
+      : (matches as any)?.data || []
+    matchList.forEach((m: any) => {
+      // Check if match has result
+      if (m.ketqua && typeof m.ketqua === "string" && m.ketqua.includes("-")) {
+        try {
+          const parts = m.ketqua.split("-")
+          if (parts.length === 2) {
+            const homeScore = parseInt(parts[0].trim(), 10)
+            const awayScore = parseInt(parts[1].trim(), 10)
+
+            if (!Number.isNaN(homeScore) && !Number.isNaN(awayScore)) {
+              // Home Clean Sheet (Away team scored 0)
+              if (statsMap.has(m.maclb_nha || m.maclbnha) && awayScore === 0) {
+                statsMap.get(m.maclb_nha || m.maclbnha).cleanSheets += 1
+              }
+              // Away Clean Sheet (Home team scored 0)
+              if (
+                statsMap.has(m.maclb_khach || m.maclbkhach) &&
+                homeScore === 0
+              ) {
+                statsMap.get(m.maclb_khach || m.maclbkhach).cleanSheets += 1
+              }
+            }
+          }
+        } catch (_e) {
+          // ignore parse error
+        }
+      }
+    })
+
+    return Array.from(statsMap.values())
+  }, [standings, discipline, matches])
+
+  if (!teamStats.length) {
+    return (
+      <div className="p-6 text-center text-gray-500 dark:text-muted-foreground">
+        Đang tải dữ liệu thống kê đội...
       </div>
-  )
+    )
+  }
 
   return (
-    <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-      {/* Hàng thủ */}
-      <Card className="bg-green-50/50 border-green-100 dark:bg-green-900/10 dark:border-green-900/30 transition-colors duration-300">
-        <CardHeader className="pb-2">
-            <CardTitle className="text-sm font-bold text-green-700 dark:text-green-400 flex items-center gap-2">
-                <ShieldCheck className="w-4 h-4"/> Hàng thủ vững chắc nhất
-            </CardTitle>
-        </CardHeader>
-        <CardContent>
-            {renderTeamList(bestDefense, "goals_against", "Bàn thua", "text-green-600 dark:text-green-400")}
-        </CardContent>
-      </Card>
+    <div className="space-y-6 animate-in fade-in slide-in-from-bottom-4 duration-500">
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+        {/* HÀNG CÔNG MẠNH NHẤT */}
+        <div className="bg-white dark:bg-card rounded-xl shadow-sm border dark:border-border p-6">
+          <h3 className="font-bold text-gray-800 dark:text-foreground flex items-center gap-2 mb-4">
+            <TrendingUp className="w-5 h-5 text-green-600 dark:text-green-500" />{" "}
+            Hàng công mạnh nhất
+          </h3>
+          <div className="space-y-4">
+            {[...teamStats]
+              .sort((a, b) => b.goals - a.goals)
+              .slice(0, 3)
+              .map((t, idx) => (
+                <div key={idx} className="flex items-center justify-between">
+                  <div className="flex items-center gap-3">
+                    <span
+                      className={`w-6 h-6 rounded-full flex items-center justify-center text-xs font-bold ${idx === 0 ? "bg-yellow-100 text-yellow-700 dark:bg-yellow-900/30 dark:text-yellow-400" : "bg-gray-100 text-gray-600 dark:bg-muted dark:text-muted-foreground"}`}
+                    >
+                      {idx + 1}
+                    </span>
+                    <span className="font-medium dark:text-foreground">
+                      {t.name}
+                    </span>
+                  </div>
+                  <span className="font-bold text-green-600 dark:text-green-400">
+                    {t.goals} bàn
+                  </span>
+                </div>
+              ))}
+          </div>
+        </div>
 
-      {/* Hàng công */}
-      <Card className="bg-blue-50/50 border-blue-100 dark:bg-blue-900/10 dark:border-blue-900/30 transition-colors duration-300">
-        <CardHeader className="pb-2">
-            <CardTitle className="text-sm font-bold text-blue-700 dark:text-blue-400 flex items-center gap-2">
-                <Swords className="w-4 h-4"/> Hàng công sắc bén nhất
-            </CardTitle>
-        </CardHeader>
-        <CardContent>
-            {renderTeamList(bestAttack, "goals_for", "Bàn thắng", "text-blue-600 dark:text-blue-400")}
-        </CardContent>
-      </Card>
+        {/* HÀNG THỦ TỐT NHẤT */}
+        <div className="bg-white dark:bg-card rounded-xl shadow-sm border dark:border-border p-6">
+          <h3 className="font-bold text-gray-800 dark:text-foreground flex items-center gap-2 mb-4">
+            <Shield className="w-5 h-5 text-blue-600 dark:text-blue-500" /> Hàng
+            thủ tốt nhất (Sạch lưới)
+          </h3>
+          <div className="space-y-4">
+            {[...teamStats]
+              .sort((a, b) => b.cleanSheets - a.cleanSheets) // Higher is better
+              .slice(0, 3)
+              .map((t, idx) => (
+                <div key={idx} className="flex items-center justify-between">
+                  <div className="flex items-center gap-3">
+                    <span
+                      className={`w-6 h-6 rounded-full flex items-center justify-center text-xs font-bold ${idx === 0 ? "bg-yellow-100 text-yellow-700 dark:bg-yellow-900/30 dark:text-yellow-400" : "bg-gray-100 text-gray-600 dark:bg-muted dark:text-muted-foreground"}`}
+                    >
+                      {idx + 1}
+                    </span>
+                    <span className="font-medium dark:text-foreground">
+                      {t.name}
+                    </span>
+                  </div>
+                  <span className="font-bold text-blue-600 dark:text-blue-400">
+                    {t.cleanSheets} trận
+                  </span>
+                </div>
+              ))}
+          </div>
+        </div>
+      </div>
 
-      {/* Hiệu số */}
-      <Card className="bg-purple-50/50 border-purple-100 dark:bg-purple-900/10 dark:border-purple-900/30 transition-colors duration-300">
-        <CardHeader className="pb-2">
-            <CardTitle className="text-sm font-bold text-purple-700 dark:text-purple-400 flex items-center gap-2">
-                <Scale className="w-4 h-4"/> Cân bằng tấn công - thủ
-            </CardTitle>
-        </CardHeader>
-        <CardContent>
-             {/* Hiệu số phải tự tính hiển thị vì API có thể không trả về trực tiếp tên trường hieu_so */}
-             <div className="space-y-3">
-                {bestBalance.map((t, i) => (
-                    <div key={i} className="flex justify-between items-center p-3 bg-card dark:bg-card/50 border rounded-lg shadow-sm hover:bg-muted/50 transition-colors">
-                        <div className="font-bold text-sm text-foreground">{t.tenclb}</div>
-                        <div className="text-right text-purple-600 dark:text-purple-400">
-                            <div className="font-bold text-lg">{t.goal_difference > 0 ? "+" : ""}{t.goal_difference}</div>
-                            <div className="text-[10px] uppercase font-semibold text-muted-foreground">Hiệu số</div>
-                        </div>
-                    </div>
-                ))}
-            </div>
-        </CardContent>
-      </Card>
+      {/* BẢNG CHI TIẾT */}
+      <div className="bg-white dark:bg-card rounded-xl shadow-sm border dark:border-border overflow-hidden">
+        <div className="bg-gray-50 dark:bg-muted/50 px-6 py-4 font-bold border-b dark:border-border dark:text-foreground">
+          Thống kê chi tiết các đội
+        </div>
+        <div className="overflow-x-auto">
+          <table className="w-full text-sm">
+            <thead className="bg-gray-50 dark:bg-muted/50 text-gray-500 dark:text-muted-foreground font-medium">
+              <tr>
+                <th className="px-6 py-3 text-left">Câu lạc bộ</th>
+                <th className="px-6 py-3 text-center">Bàn thắng</th>
+                <th className="px-6 py-3 text-center">Bàn thua</th>
+                <th className="px-6 py-3 text-center">Sạch lưới</th>
+                <th className="px-6 py-3 text-center">Thẻ vàng</th>
+                <th className="px-6 py-3 text-center">Thẻ đỏ</th>
+              </tr>
+            </thead>
+            <tbody className="divide-y dark:divide-border">
+              {teamStats.map((t, idx) => (
+                <tr
+                  key={idx}
+                  className="hover:bg-gray-50 dark:hover:bg-muted/30 transition-colors"
+                >
+                  <td className="px-6 py-4 font-bold text-gray-800 dark:text-foreground">
+                    {t.name}
+                  </td>
+                  <td className="px-6 py-4 text-center text-green-600 dark:text-green-400 font-bold">
+                    {t.goals}
+                  </td>
+                  <td className="px-6 py-4 text-center text-red-600 dark:text-red-400">
+                    {t.conceded}
+                  </td>
+                  <td className="px-6 py-4 text-center text-blue-600 dark:text-blue-400 font-bold">
+                    {t.cleanSheets}
+                  </td>
+                  <td className="px-6 py-4 text-center dark:text-foreground">
+                    {t.yellow}
+                  </td>
+                  <td className="px-6 py-4 text-center dark:text-foreground">
+                    {t.red}
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      </div>
     </div>
   )
 }

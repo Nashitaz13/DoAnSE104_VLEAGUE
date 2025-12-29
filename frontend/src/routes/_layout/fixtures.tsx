@@ -1,24 +1,13 @@
 import { useQuery } from "@tanstack/react-query"
 import { createFileRoute } from "@tanstack/react-router"
-import axios from "axios"
-import { format, parseISO } from "date-fns"
-import { vi } from "date-fns/locale"
-import {
-  Bell,
-  ChevronLeft,
-  ChevronRight,
-  Clock,
-  Eye,
-  Filter,
-  MapPin,
-} from "lucide-react"
+import { format } from "date-fns"
+import { CalendarDays, MapPin, Shield, Trophy } from "lucide-react"
 import { useMemo, useState } from "react"
 
-import { OpenAPI, SeasonManagementService } from "@/client"
-import { MatchDetailModal } from "@/components/Match/MatchDetailModal"
+import { MatchesService, SeasonManagementService } from "@/client"
+import { MatchDetailModal as ExternalMatchDetailModal } from "@/components/Match/MatchDetailModal"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
-import { Card, CardContent } from "@/components/ui/card"
 import {
   Select,
   SelectContent,
@@ -28,535 +17,317 @@ import {
 } from "@/components/ui/select"
 
 export const Route = createFileRoute("/_layout/fixtures")({
-  component: FixturesPage,
-  head: () => ({
-    meta: [
-      {
-        title: "Lịch thi đấu - V-League",
-      },
-    ],
-  }),
+  component: MatchCenterPage,
 })
 
-// Simple ImageWithFallback component since the original is missing
-const ImageWithFallback = ({
-  src,
-  alt,
-  className,
-  fallbackSrc = "https://placehold.co/64x64?text=Club",
-}: {
-  src: string
-  alt: string
-  className?: string
-  fallbackSrc?: string
-}) => {
-  const [imgSrc, setImgSrc] = useState(src)
+// --- COMPONENTS ---
+
+// 1. Match Card Component
+function MatchCard({ match, onClick }: { match: any; onClick: () => void }) {
+  const isFinished = !!match.tiso
+  const matchDate = new Date(match.thoigianthidau)
+  const isUpcoming = !isFinished && matchDate > new Date()
+
+  // Helper to fallback logo/name
+  const getLogo = (id: string) => `/images/clubs/${id}.png`
 
   return (
-    <img
-      src={imgSrc}
-      alt={alt}
-      className={className}
-      onError={() => setImgSrc(fallbackSrc)}
-    />
+    <button
+      type="button"
+      onClick={onClick}
+      className={`group relative bg-white dark:bg-card border border-gray-100 dark:border-neutral-800 rounded-xl shadow-sm hover:shadow-md transition-all cursor-pointer overflow-hidden
+      ${isFinished ? "hover:border-gray-300 dark:hover:border-neutral-700" : "hover:border-blue-300 dark:hover:border-blue-700"}`}
+    >
+      {/* Status Strip */}
+      <div
+        className={`h-1 w-full ${isFinished ? "bg-gray-200 dark:bg-neutral-700" : "bg-blue-500 dark:bg-blue-600"}`}
+      />
+
+      <div className="p-4 md:p-6 flex flex-col md:flex-row items-center justify-between gap-6">
+        {/* Home Team */}
+        <div className="flex-1 flex items-center justify-end gap-3 md:gap-4 w-full">
+          <span className="font-bold text-lg md:text-xl text-right truncate dark:text-foreground">
+            {match.ten_clb_nha || match.maclb_nha}
+          </span>
+          <img
+            src={getLogo(match.maclb_nha)}
+            alt="Home"
+            className="w-12 h-12 md:w-16 md:h-16 object-contain"
+            onError={(e) => {
+              e.currentTarget.src = "https://placehold.co/64x64?text=Club"
+            }}
+          />
+        </div>
+
+        {/* Score / Time Center */}
+        <div className="flex flex-col items-center justify-center min-w-[120px]">
+          {isFinished ? (
+            <div className="text-3xl md:text-4xl font-bold text-gray-900 dark:text-white tracking-wider drop-shadow-sm">
+              {match.tiso?.replace("-", " - ")}
+            </div>
+          ) : (
+            <div className="flex flex-col items-center">
+              <span className="text-2xl md:text-3xl font-bold text-blue-600 dark:text-blue-300">
+                {format(matchDate, "HH:mm")}
+              </span>
+              <span className="text-xs text-gray-500 dark:text-gray-400 uppercase font-medium mt-1">
+                {format(matchDate, "dd/MM")}
+              </span>
+            </div>
+          )}
+
+          <div className="mt-2 text-center">
+            {isFinished && (
+              <Badge
+                variant="secondary"
+                className="text-[10px] uppercase tracking-wide dark:bg-neutral-800 dark:text-neutral-200"
+              >
+                Kết thúc
+              </Badge>
+            )}
+            {isUpcoming && (
+              <Badge className="bg-blue-600 dark:bg-blue-700 hover:bg-blue-700 text-[10px] uppercase tracking-wide">
+                Sắp diễn ra
+              </Badge>
+            )}
+          </div>
+        </div>
+
+        {/* Away Team */}
+        <div className="flex-1 flex items-center justify-start gap-3 md:gap-4 w-full">
+          <img
+            src={getLogo(match.maclb_khach)}
+            alt="Away"
+            className="w-12 h-12 md:w-16 md:h-16 object-contain"
+            onError={(e) => {
+              e.currentTarget.src = "https://placehold.co/64x64?text=Club"
+            }}
+          />
+          <span className="font-bold text-lg md:text-xl text-left truncate">
+            {match.ten_clb_khach || match.maclb_khach}
+          </span>
+        </div>
+      </div>
+
+      {/* Footer Info */}
+      <div className="bg-gray-50 px-4 py-2 text-xs text-gray-500 flex justify-between items-center gap-4 border-t border-gray-100 group-hover:bg-gray-100 transition-colors">
+        <div className="flex items-center gap-4">
+          <span className="flex items-center gap-1">
+            <MapPin className="w-3 h-3" /> {match.ten_san || match.masanvandong}
+          </span>
+          <span className="flex items-center gap-1">
+            <CalendarDays className="w-3 h-3" /> Vòng {match.vong}
+          </span>
+        </div>
+        <Button
+          variant="outline"
+          size="sm"
+          className="text-blue-700 border-blue-200 hover:bg-blue-50"
+          onClick={(e) => {
+            e.stopPropagation()
+            onClick()
+          }}
+        >
+          Xem chi tiết
+        </Button>
+      </div>
+    </button>
   )
 }
 
-function FixturesPage() {
-  // Mặc định chọn 2024-2025
+// --- MAIN PAGE ---
+
+function MatchCenterPage() {
   const [selectedSeason, setSelectedSeason] = useState<string>("2024-2025")
-  const [selectedDate, setSelectedDate] = useState<string>("all")
-  const [selectedTeam, setSelectedTeam] = useState<string>("all")
-  const [selectedStatus, setSelectedStatus] = useState<string>("all")
-  const [showFilters, setShowFilters] = useState<boolean>(false)
+  const [selectedRound, setSelectedRound] = useState<string>("all")
 
-  const [isDetailModalOpen, setIsDetailModalOpen] = useState(false)
-  const [selectedMatchForDetail, setSelectedMatchForDetail] = useState<{
-    id: string
-    homeId: string
-    awayId: string
-    homeName: string
-    awayName: string
-  } | null>(null)
+  // Modal State
+  const [selectedMatch, setSelectedMatch] = useState<any>(null)
+  const [isModalOpen, setIsModalOpen] = useState(false)
 
-  // 1. Lấy danh sách Mùa giải
+  // 1. Fetch Seasons
   const { data: seasonsData } = useQuery({
     queryKey: ["seasons"],
-    queryFn: () => SeasonManagementService.getSeasons({ limit: 100 }),
+    queryFn: () => SeasonManagementService.getSeasons({ limit: 10 }),
   })
 
-  const seasonList = useMemo(() => {
-    const listFromApi = Array.isArray(seasonsData) ? seasonsData : (seasonsData as any)?.data || [];
-    const requiredSeasons = ["2025-2026", "2024-2025", "2023-2024"];
-    const seasonSet = new Set(listFromApi.map((s: any) => s.muagiai));
-    requiredSeasons.forEach(s => seasonSet.add(s));
-    return Array.from(seasonSet)
-        .map(s => ({ muagiai: s }))
-        .sort((a: any, b: any) => b.muagiai.localeCompare(a.muagiai));
-  }, [seasonsData]);
+  const seasonOptions = useMemo(() => {
+    const list = Array.isArray(seasonsData)
+      ? seasonsData
+      : (seasonsData as any)?.data || []
+    return list
+      .map((s: any) => s.muagiai)
+      .sort()
+      .reverse()
+  }, [seasonsData])
 
-  // Fetch matches
-  const {
-    data: matchesData,
-    isLoading,
-    isError,
-    error,
-  } = useQuery({
+  // 2. Fetch Matches
+  const { data: matchesData, isLoading } = useQuery({
     queryKey: ["matches", selectedSeason],
-    queryFn: async () => {
-      const token = localStorage.getItem("access_token") || ""
-      const headers = token ? { Authorization: `Bearer ${token}` } : undefined
-      try {
-        const res = await axios.get(
-          `${OpenAPI.BASE}/api/v1/matches?skip=0&limit=100&muagiai=${selectedSeason}`,
-          { headers },
-        )
-        return res.data as Array<{
-          matran: string
-          muagiai: string
-          vong: number
-          thoigianthidau: string
-          maclbnha: string
-          maclbkhach: string
-          masanvandong: string | null
-          tiso: string | null
-        }>
-      } catch (err) {
-        console.error("Error fetching matches:", err)
-        throw err
-      }
-    },
+    queryFn: () =>
+      MatchesService.readMatches({ muagiai: selectedSeason, limit: 100 }),
   })
 
-  // Fetch teams for filter
-  const { data: teamsData } = useQuery({
-    queryKey: ["clubs", selectedSeason],
-    queryFn: async () => {
-      const token = localStorage.getItem("access_token") || ""
-      const headers = token ? { Authorization: `Bearer ${token}` } : undefined
-      const res = await axios.get(
-        `${OpenAPI.BASE}/api/v1/clubs?muagiai=${selectedSeason}`,
-        { headers },
-      )
-      return res.data as Array<{
-        maclb: string
-        tenclb: string
-        masanvandong: string
-      }>
-    },
-  })
+  // 3. Process Logic
+  const processedMatches = useMemo(() => {
+    let list = Array.isArray(matchesData)
+      ? matchesData
+      : (matchesData as any)?.data || []
 
-  // Fetch stadiums
-  const { data: stadiums } = useQuery({
-    queryKey: ["stadiums"],
-    queryFn: async () => {
-      const token = localStorage.getItem("access_token") || ""
-      const headers = token ? { Authorization: `Bearer ${token}` } : undefined
-      const res = await axios.get(`${OpenAPI.BASE}/api/v1/stadiums`, {
-        headers,
-      })
-      return res.data as Array<{
-        masanvandong: string
-        tensanvandong: string
-      }>
-    },
-  })
+    // Fix Mapping (Backend -> Frontend)
+    list = list.map((m: any) => ({
+      ...m,
+      maclb_nha: m.maclb_nha || m.maclbnha,
+      maclb_khach: m.maclb_khach || m.maclbkhach,
+    }))
 
-  const matches = matchesData || []
-
-  // Get unique dates from matches
-  const availableDates = useMemo(() => {
-    if (!matches) return []
-    const dates = new Set(
-      matches.map((m) => format(new Date(m.thoigianthidau), "yyyy-MM-dd")),
-    )
-    return Array.from(dates).sort()
-  }, [matches])
-
-  // Helper to get club name
-  const getClubName = (maclb: string) => {
-    const team = teamsData?.find((t) => t.maclb === maclb)
-    return team ? team.tenclb : maclb
-  }
-
-  // Helper to get match status
-  const getMatchStatus = (match: any) => {
-    if (match.tiso) return "Kết thúc"
-    const matchTime = new Date(match.thoigianthidau)
-    const now = new Date()
-    if (matchTime < now) return "Kết thúc" // Should have score if finished, but fallback
-    return "Sắp diễn ra"
-  }
-
-  // Helper to get stadium name
-  const getStadiumName = (masanvandong: string | null) => {
-    if (!masanvandong) return "Đang cập nhật"
-    const stadium = stadiums?.find((s) => s.masanvandong === masanvandong)
-    return stadium ? stadium.tensanvandong : masanvandong
-  }
-
-  const handleViewDetail = (match: any) => {
-    setSelectedMatchForDetail({
-      id: match.matran,
-      homeId: match.maclbnha,
-      awayId: match.maclbkhach,
-      homeName: getClubName(match.maclbnha),
-      awayName: getClubName(match.maclbkhach),
-    })
-    setIsDetailModalOpen(true)
-  }
-
-  // Filter matches
-  const filteredMatches = matches.filter((match) => {
-    const matchDateStr = format(new Date(match.thoigianthidau), "yyyy-MM-dd")
-    const dateMatch = selectedDate === "all" || matchDateStr === selectedDate
-    const teamMatch =
-      selectedTeam === "all" ||
-      match.maclbnha === selectedTeam ||
-      match.maclbkhach === selectedTeam
-
-    const status = getMatchStatus(match)
-    const statusMatch = selectedStatus === "all" || status === selectedStatus
-
-    return dateMatch && teamMatch && statusMatch
-  })
-
-  // Group by date
-  const groupedMatches = filteredMatches.reduce(
-    (acc, match) => {
-      const dateStr = format(new Date(match.thoigianthidau), "yyyy-MM-dd")
-      if (!acc[dateStr]) {
-        acc[dateStr] = []
-      }
-      acc[dateStr].push(match)
-      return acc
-    },
-    {} as Record<string, typeof matches>,
-  )
-
-  // Sort dates
-  const sortedDates = Object.keys(groupedMatches).sort()
-
-  const getStatusBadge = (status: string) => {
-    switch (status) {
-      case "Kết thúc":
-        return (
-          <Badge className="bg-green-100 text-green-800 border-green-200 dark:bg-green-900 dark:text-green-100 dark:border-green-800">
-            Kết thúc
-          </Badge>
-        )
-      case "Sắp diễn ra":
-        return (
-          <Badge
-            variant="outline"
-            className="border-blue-500 text-blue-700 bg-blue-50 dark:bg-blue-900/20 dark:text-blue-400 rounded-full px-4 py-1"
-          >
-            Sắp diễn ra
-          </Badge>
-        )
-      default:
-        return <Badge variant="outline">{status}</Badge>
+    // Filter by Round
+    if (selectedRound !== "all") {
+      list = list.filter((m: any) => String(m.vong) === selectedRound)
     }
-  }
 
-  if (isLoading) {
-    return (
-      <div className="flex justify-center items-center min-h-[400px]">
-        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-red-600" />
-        <span className="ml-2 text-muted-foreground">Đang tải dữ liệu...</span>
-      </div>
+    // Sort: Latest round first? Or earliest?
+    // User probably wants to see upcoming.
+    // Let's sort by Date.
+    return list.sort(
+      (a: any, b: any) =>
+        new Date(a.thoigianthidau).getTime() -
+        new Date(b.thoigianthidau).getTime(),
     )
-  }
+  }, [matchesData, selectedRound])
 
-  if (isError) {
-    return (
-      <div className="flex flex-col justify-center items-center min-h-[400px] text-red-600 gap-2">
-        <p>Có lỗi xảy ra khi tải dữ liệu.</p>
-        <p className="text-sm text-muted-foreground">
-          {error instanceof Error ? error.message : "Lỗi không xác định"}
-        </p>
-        <Button variant="outline" onClick={() => window.location.reload()}>
-          Thử lại
-        </Button>
-      </div>
-    )
+  // Group by Round for "All" view
+  const matchesByRound = useMemo(() => {
+    const groups: Record<string, any[]> = {}
+    processedMatches.forEach((m: any) => {
+      const r = `Vòng ${m.vong}`
+      if (!groups[r]) groups[r] = []
+      groups[r].push(m)
+    })
+    return groups
+  }, [processedMatches])
+
+  const handleMatchClick = (match: any) => {
+    setSelectedMatch(match)
+    setIsModalOpen(true)
   }
 
   return (
-    <div className="min-h-screen bg-gray-50 dark:bg-background pb-12 transition-colors duration-300">
-      {/* Header Section */}
-      <section className="bg-gradient-to-r from-red-800 to-red-900 dark:from-neutral-900 dark:to-neutral-800 text-white py-8 rounded-md mb-6 shadow-lg">
-        <div className="container mx-auto px-6">
-          <div className="flex items-center justify-between flex-wrap gap-4">
-            <div>
-              <h1 className="text-4xl font-bold mb-2">
-                Lịch thi đấu & Kết quả
-              </h1>
-              <div className="flex items-center gap-2 mt-2">
-                <p className="text-red-100 dark:text-gray-400">
-                  V-League 1
-                </p>
-                <Select value={selectedSeason} onValueChange={setSelectedSeason}>
-                  <SelectTrigger className="w-[140px] h-8 bg-white/10 border-white/20 text-white">
-                    <SelectValue placeholder="Chọn mùa giải" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {seasonList.map((s: any) => (
-                      <SelectItem key={s.muagiai} value={s.muagiai}>
-                        {s.muagiai}
-                      </SelectItem>
-                    ))}
+    <div className="min-h-screen bg-gray-50/50 dark:bg-background pb-20">
+      {/* 1. HERO HEADER */}
+      <div className="bg-gradient-to-r from-red-700 to-red-900 dark:from-red-900 dark:to-red-950 text-white shadow-lg pb-12 pt-8 px-6">
+        <div className="max-w-5xl mx-auto">
+          <div className="flex items-center gap-3 opacity-90 mb-2">
+            <Trophy className="w-5 h-5 text-yellow-400" />
+            <span className="text-sm font-bold tracking-widest uppercase">
+              Vietnam Professional Football
+            </span>
+          </div>
+          <h1 className="text-3xl md:text-5xl font-extrabold mb-6 tracking-tight">
+            Lịch thi đấu (BM4)
+          </h1>
 
-                  </SelectContent>
-                </Select>
-                <p className="text-red-100 dark:text-gray-400 text-sm">
-                  - Thể thức vòng tròn 2 lượt
-                </p>
-              </div>
-            </div>
+          {/* Filters Bar */}
+          <div className="flex flex-col md:flex-row gap-4 bg-white/10 p-2 rounded-xl backdrop-blur-sm border border-white/10 inline-flex">
+            <Select value={selectedSeason} onValueChange={setSelectedSeason}>
+              <SelectTrigger className="w-[180px] bg-white dark:bg-neutral-800 text-red-900 dark:text-red-400 font-bold border-none h-10">
+                <SelectValue placeholder="Chọn mùa giải" />
+              </SelectTrigger>
+              <SelectContent>
+                {seasonOptions.length > 0 ? (
+                  seasonOptions.map((s: string) => (
+                    <SelectItem key={s} value={s}>
+                      {s}
+                    </SelectItem>
+                  ))
+                ) : (
+                  <SelectItem value="2024-2025">2024-2025</SelectItem>
+                )}
+              </SelectContent>
+            </Select>
 
-            <div className="flex gap-3">
-              <Button
-                variant="outline"
-                className="border-white text-white hover:bg-white hover:text-red-900 dark:border-gray-600 dark:hover:bg-gray-700 dark:hover:text-white bg-transparent transition-colors"
-              >
-                <Bell className="w-4 h-4 mr-2" />
-                Thông báo
-              </Button>
-              <Button
-                variant="outline"
-                className="border-white text-white hover:bg-white hover:text-red-900 dark:border-gray-600 dark:hover:bg-gray-700 dark:hover:text-white bg-transparent transition-colors"
-                onClick={() => setShowFilters((v) => !v)}
-              >
-                <Filter className="w-4 h-4 mr-2" />
-                Bộ lọc
-              </Button>
-            </div>
+            <Select value={selectedRound} onValueChange={setSelectedRound}>
+              <SelectTrigger className="w-[180px] bg-black/20 text-white border-none h-10 hover:bg-black/30 transition-colors font-medium">
+                <SelectValue placeholder="Chọn vòng đấu" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">Tất cả vòng đấu</SelectItem>
+                {Array.from({ length: 26 }, (_, i) => i + 1).map((r) => (
+                  <SelectItem key={String(r)} value={String(r)}>
+                    Vòng {r}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
           </div>
         </div>
-      </section>
-
-      <div className="container mx-auto px-1 py-6">
-        {/* Date Navigation */}
-        <section className="mb-8">
-          <div className="flex items-center gap-4 mb-4">
-            <Button variant="ghost" size="sm" className="p-2 hover:bg-gray-100 dark:hover:bg-gray-800">
-              <ChevronLeft className="w-4 h-4" />
-            </Button>
-
-            <div className="flex gap-2 overflow-x-auto scrollbar-hide pb-2 w-full">
-              <Button
-                variant={selectedDate === "all" ? "default" : "outline"}
-                onClick={() => setSelectedDate("all")}
-                className={`whitespace-nowrap ${
-                  selectedDate === "all"
-                    ? "bg-red-600 text-white hover:bg-red-700 dark:bg-red-700 dark:hover:bg-red-600"
-                    : "hover:bg-red-50 hover:text-red-600 dark:bg-card dark:text-foreground dark:hover:bg-red-900/30 dark:hover:text-red-400 border-gray-200 dark:border-gray-700"
-                }`}
-              >
-                Tất cả
-              </Button>
-
-              {availableDates
-                .map((dateStr) => {
-                  const d = parseISO(dateStr)
-                  return {
-                    date: dateStr,
-                    dayName: format(d, "EEEE", { locale: vi }),
-                    dayNum: format(d, "dd"),
-                    month: format(d, "MM"),
-                    fullDate: d,
-                  }
-                })
-                .map((item) => (
-                  <Button
-                    key={item.date}
-                    variant={selectedDate === item.date ? "default" : "outline"}
-                    onClick={() => setSelectedDate(item.date)}
-                    className={`flex flex-col h-auto py-2 px-3 min-w-[80px] ${
-                      selectedDate === item.date
-                        ? "bg-red-600 text-white hover:bg-red-700 border-red-600 dark:bg-red-700 dark:hover:bg-red-600 dark:border-red-700"
-                        : "hover:bg-red-50 hover:text-red-600 border-gray-200 dark:bg-card dark:border-gray-700 dark:text-foreground dark:hover:bg-red-900/30 dark:hover:text-red-400"
-                    }`}
-                  >
-                    <span className="text-[10px] uppercase font-medium opacity-80 mb-0.5">
-                      {item.dayName}
-                    </span>
-                    <div className="flex items-baseline gap-0.5">
-                      <span className="text-xl font-bold leading-none">
-                        {item.dayNum}
-                      </span>
-                      <span className="text-xs font-medium opacity-80">
-                        /{item.month}
-                      </span>
-                    </div>
-                  </Button>
-                ))}
-            </div>
-
-            <Button variant="ghost" size="sm" className="p-2 hover:bg-gray-100 dark:hover:bg-gray-800">
-              <ChevronRight className="w-4 h-4" />
-            </Button>
-          </div>
-
-          {/* Secondary Filters */}
-          {showFilters && (
-            <div className="flex gap-4 items-center flex-wrap">
-              <Select value={selectedTeam} onValueChange={setSelectedTeam}>
-                <SelectTrigger className="w-48 bg-white dark:bg-card dark:border-gray-700">
-                  <SelectValue placeholder="Chọn đội bóng" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="all">Tất cả đội</SelectItem>
-                  {teamsData?.map((team) => (
-                    <SelectItem key={team.maclb} value={team.maclb}>
-                      {team.tenclb}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-              <Select value={selectedStatus} onValueChange={setSelectedStatus}>
-                <SelectTrigger className="w-40 bg-white dark:bg-card dark:border-gray-700">
-                  <SelectValue placeholder="Trạng thái" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="all">Tất cả</SelectItem>
-                  <SelectItem value="Sắp diễn ra">Sắp diễn ra</SelectItem>
-                  <SelectItem value="Kết thúc">Kết thúc</SelectItem>
-                </SelectContent>
-              </Select>
-            </div>
-          )}
-        </section>
-
-        {/* Matches List */}
-        <section className="space-y-8">
-          {sortedDates.length === 0 ? (
-            <div className="text-center py-10 text-muted-foreground bg-white dark:bg-card rounded-xl border border-dashed dark:border-gray-700">
-              Không tìm thấy trận đấu nào phù hợp.
-            </div>
-          ) : (
-            sortedDates.map((dateStr) => (
-              <div key={dateStr}>
-                <div className="flex flex-col mb-4">
-                  <h3 className="text-xl font-bold capitalize text-slate-900 dark:text-slate-100">
-                    {format(parseISO(dateStr), "EEEE, d 'tháng' M, yyyy", {
-                      locale: vi,
-                    })}
-                  </h3>
-                  <p className="text-muted-foreground text-sm mt-1">
-                    Vòng {groupedMatches[dateStr][0].vong}
-                  </p>
-                </div>
-
-                <div className="grid gap-4">
-                  {groupedMatches[dateStr].map((match) => (
-                    <Card
-                      key={match.matran}
-                      className="border shadow-sm rounded-xl overflow-hidden hover:shadow-md transition-shadow dark:bg-card dark:border-gray-700"
-                    >
-                      <CardContent className="p-0">
-                        <div className="flex flex-col md:flex-row items-center justify-between p-6 gap-6">
-                          {/* Home Team */}
-                          <div className="flex items-center justify-start w-1/3 md:order-1 gap-3 md:gap-4">
-                            <ImageWithFallback
-                              src={`/images/clubs/${match.maclbnha}.png`}
-                              alt={getClubName(match.maclbnha)}
-                              className="w-10 h-10 md:w-14 md:h-14 object-contain"
-                            />
-                            <div className="flex flex-col items-start text-left">
-                              <span className="font-bold text-sm md:text-lg leading-tight dark:text-foreground">
-                                {getClubName(match.maclbnha)}
-                              </span>
-                              <span className="text-xs text-muted-foreground mt-0.5">
-                                Chủ nhà
-                              </span>
-                            </div>
-                          </div>
-
-                          {/* Center Info: Time & Status */}
-                          <div className="flex flex-col items-center justify-center w-1/3 md:order-2 px-2">
-                            {match.tiso ? (
-                              <span className="text-3xl md:text-4xl font-bold mb-2 text-red-600 dark:text-red-500 tracking-widest">
-                                {match.tiso.replace("-", " - ")}
-                              </span>
-                            ) : (
-                              <span className="text-xl md:text-2xl font-bold mb-2 dark:text-foreground">
-                                {format(
-                                  new Date(match.thoigianthidau),
-                                  "HH:mm",
-                                )}
-                              </span>
-                            )}
-                            {getStatusBadge(getMatchStatus(match))}
-                          </div>
-
-                          {/* Away Team */}
-                          <div className="flex items-center justify-end w-1/3 md:order-3 gap-3 md:gap-4">
-                            <div className="flex flex-col items-end text-right">
-                              <span className="font-bold text-sm md:text-lg leading-tight dark:text-foreground">
-                                {getClubName(match.maclbkhach)}
-                              </span>
-                              <span className="text-xs text-muted-foreground mt-0.5">
-                                Khách
-                              </span>
-                            </div>
-                            <ImageWithFallback
-                              src={`/images/clubs/${match.maclbkhach}.png`}
-                              alt={getClubName(match.maclbkhach)}
-                              className="w-10 h-10 md:w-14 md:h-14 object-contain"
-                            />
-                          </div>
-                        </div>
-
-                        {/* Footer: Stadium & Time */}
-                        <div className="bg-slate-50 dark:bg-muted/30 py-3 px-6 flex flex-col md:flex-row justify-between items-center gap-4 text-sm text-muted-foreground border-t dark:border-gray-700">
-                          <div className="flex items-center gap-6">
-                            <div className="flex items-center gap-2">
-                              <MapPin className="w-4 h-4" />
-                              <span>{getStadiumName(match.masanvandong)}</span>
-                            </div>
-                            <div className="flex items-center gap-2">
-                              <Clock className="w-4 h-4" />
-                              <span>
-                                {getMatchStatus(match) === "Kết thúc"
-                                  ? "Kết thúc"
-                                  : format(
-                                      new Date(match.thoigianthidau),
-                                      "HH:mm",
-                                    )}
-                              </span>
-                            </div>
-                          </div>
-
-                          <Button
-                            size="sm"
-                            variant="outline"
-                            className="w-full md:w-auto hover:bg-red-50 hover:text-red-600 dark:hover:bg-red-900/30 dark:hover:text-red-400"
-                            onClick={() => handleViewDetail(match)}
-                          >
-                            <Eye className="w-4 h-4 mr-2" />
-                            Xem chi tiết
-                          </Button>
-                        </div>
-                      </CardContent>
-                    </Card>
-                  ))}
-                </div>
-              </div>
-            ))
-          )}
-        </section>
       </div>
 
-      <MatchDetailModal
-        isOpen={isDetailModalOpen}
-        onClose={() => setIsDetailModalOpen(false)}
-        matchId={selectedMatchForDetail?.id || null}
-        homeTeamId={selectedMatchForDetail?.homeId || ""}
-        awayTeamId={selectedMatchForDetail?.awayId || ""}
-        homeTeamName={selectedMatchForDetail?.homeName}
-        awayTeamName={selectedMatchForDetail?.awayName}
+      {/* 2. CONTENT AREA */}
+      <div className="max-w-5xl mx-auto px-6 -mt-8 relative z-10">
+        {isLoading ? (
+          <div className="bg-white dark:bg-card p-20 rounded-xl shadow-sm text-center">
+            <div className="animate-spin w-8 h-8 border-4 border-red-600 border-t-transparent rounded-full mx-auto mb-4" />
+            <p className="text-gray-500 dark:text-muted-foreground">
+              Đang tải dữ liệu trận đấu...
+            </p>
+          </div>
+        ) : processedMatches.length === 0 ? (
+          <div className="bg-white dark:bg-card p-20 rounded-xl shadow-sm text-center border-dashed border-2 dark:border-neutral-800">
+            <Shield className="w-16 h-16 mx-auto mb-4 text-gray-200 dark:text-neutral-700" />
+            <h3 className="text-xl font-bold text-gray-800 dark:text-foreground">
+              Không tìm thấy trận đấu
+            </h3>
+            <p className="text-gray-500 dark:text-muted-foreground mt-2">
+              Không có dữ liệu cho Mùa {selectedSeason} - Vòng{" "}
+              {selectedRound === "all" ? "bất kỳ" : selectedRound}.
+            </p>
+          </div>
+        ) : (
+          <div className="space-y-8">
+            {Object.keys(matchesByRound)
+              .sort(
+                (a, b) =>
+                  parseInt(a.replace("Vòng ", ""), 10) -
+                  parseInt(b.replace("Vòng ", ""), 10),
+              )
+              .map((roundKey) => (
+                <div
+                  key={roundKey}
+                  className="animate-in fade-in slide-in-from-bottom-4 duration-500"
+                >
+                  <div className="flex items-center gap-4 mb-4">
+                    <h2 className="text-2xl font-bold text-gray-800 dark:text-foreground bg-white dark:bg-card px-4 py-1 rounded shadow-sm border border-gray-100 dark:border-neutral-800 inline-block">
+                      {roundKey}
+                    </h2>
+                    <div className="h-px bg-gray-300 dark:bg-red-800/60 flex-1" />
+                  </div>
+                  <div className="grid grid-cols-1 gap-4">
+                    {matchesByRound[roundKey].map((match: any) => (
+                      <MatchCard
+                        key={match.matran}
+                        match={match}
+                        onClick={() => handleMatchClick(match)}
+                      />
+                    ))}
+                  </div>
+                </div>
+              ))}
+          </div>
+        )}
+      </div>
+
+      {/* 3. DETAIL MODAL */}
+      <ExternalMatchDetailModal
+        isOpen={isModalOpen}
+        onClose={() => setIsModalOpen(false)}
+        matchId={selectedMatch?.matran || null}
+        homeTeamId={selectedMatch?.maclb_nha}
+        awayTeamId={selectedMatch?.maclb_khach}
+        homeTeamName={selectedMatch?.ten_clb_nha || selectedMatch?.maclb_nha}
+        awayTeamName={
+          selectedMatch?.ten_clb_khach || selectedMatch?.maclb_khach
+        }
       />
     </div>
   )

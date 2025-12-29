@@ -71,14 +71,13 @@ def add_player_to_roster(
 @router.get("/", response_model=list[RosterPlayerDetail])
 def get_roster(
     session: SessionDep,
-    current_user: CurrentUserVLeague,  # Auth required
     maclb: str = Query(..., description="Club ID (required)"),
     muagiai: str = Query(..., description="Season ID (required)"),
 ) -> list[RosterPlayerDetail]:
     """
     Get club roster for a season with player details
     
-    **Authentication required** - Any authenticated user can view rosters
+    Public endpoint - no authentication required
     
     **Required Query Parameters:**
     - maclb: Club ID (e.g., "CLB001")

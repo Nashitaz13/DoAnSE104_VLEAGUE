@@ -562,6 +562,9 @@ class LichThiDauPublic(SQLModel):
     bugiohiep1: Optional[int] = None
     bugiohiep2: Optional[int] = None
     tiso: Optional[str] = None
+    ten_clb_nha: Optional[str] = None
+    ten_clb_khach: Optional[str] = None
+    ten_san: Optional[str] = None
 
 
 class LichThiDauCreate(SQLModel):

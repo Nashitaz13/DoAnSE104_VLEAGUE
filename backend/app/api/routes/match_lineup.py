@@ -19,12 +19,13 @@ router = APIRouter()
 @router.get("/{matran}/lineup", response_model=LineupResponse)
 def read_match_lineup(
     session: SessionDep,
-    current_user: CurrentUserVLeague,
     matran: str,
     maclb: str | None = None,
 ) -> Any:
     """
     Get lineup for match with starting XI, substitutes, and captains.
+    
+    Public endpoint - no authentication required.
     
     - **maclb**: Optional filter by team
     """

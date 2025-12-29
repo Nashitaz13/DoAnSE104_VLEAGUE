@@ -67,7 +67,8 @@ const DeleteUser = ({ id, onSuccess }: DeleteUserProps) => {
             <DialogTitle>Xóa người dùng</DialogTitle>
             <DialogDescription>
               Tất cả dữ liệu liên quan đến người dùng này sẽ bị{" "}
-              <strong>xóa vĩnh viễn.</strong> Bạn có chắc chắn không? Hành động này không thể hoàn tác.
+              <strong>xóa vĩnh viễn.</strong> Bạn có chắc chắn không? Hành động
+              này không thể hoàn tác.
             </DialogDescription>
           </DialogHeader>
 

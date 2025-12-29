@@ -4,9 +4,7 @@ from datetime import datetime, timedelta, timezone
 from pathlib import Path
 from typing import Any
 
-import emails  # type: ignore
 import jwt
-from jinja2 import Template
 from jwt.exceptions import InvalidTokenError
 
 from app.core import security
@@ -62,6 +60,7 @@ def normalize_event_type(event_type: str) -> str:
     return canonical
 
 
+
 # =============================================
 # NATIONALITY NORMALIZATION & VALIDATION
 # =============================================
@@ -69,33 +68,6 @@ def normalize_event_type(event_type: str) -> str:
 def normalize_nationality(nationality: str | None) -> str | None:
     """
     Normalize nationality to canonical English format.
-    
-    Converts various Vietnamese nationality variants to standard "Vietnam":
-    - "VN", "VNM" -> "Vietnam"
-    - "Việt Nam", "Viet Nam", "việt nam", "viet nam" -> "Vietnam"
-    - "Vietnam ", " Vietnam" -> "Vietnam" (trim spaces)
-    
-    For other nationalities, returns title-cased version with trimmed spaces:
-    - "brazil" -> "Brazil"
-    - "CAMEROON" -> "Cameroon"
-    
-    Args:
-        nationality: Raw nationality string (may be None, empty, with spaces, various cases)
-    
-    Returns:
-        Normalized nationality string, or None if input is None/empty
-    
-    Examples:
-        >>> normalize_nationality("VN")
-        'Vietnam'
-        >>> normalize_nationality("Việt Nam")
-        'Vietnam'
-        >>> normalize_nationality("brazil")
-        'Brazil'
-        >>> normalize_nationality(None)
-        None
-        >>> normalize_nationality("  ")
-        None
     """
     if not nationality or not nationality.strip():
         return None
@@ -166,26 +138,6 @@ def normalize_nationality(nationality: str | None) -> str | None:
 def is_domestic(nationality: str | None) -> bool:
     """
     Check if player is domestic (Vietnamese).
-    
-    Args:
-        nationality: Player's nationality (can be None, various formats)
-    
-    Returns:
-        True if player is Vietnamese, False otherwise
-    
-    Examples:
-        >>> is_domestic("Vietnam")
-        True
-        >>> is_domestic("VN")
-        True
-        >>> is_domestic("Việt Nam")
-        True
-        >>> is_domestic("Brazil")
-        False
-        >>> is_domestic(None)
-        False
-        >>> is_domestic("")
-        False
     """
     normalized = normalize_nationality(nationality)
     return normalized == "Vietnam"
@@ -194,29 +146,6 @@ def is_domestic(nationality: str | None) -> bool:
 def is_foreign(nationality: str | None) -> bool:
     """
     Check if player is foreign (non-Vietnamese).
-    
-    Args:
-        nationality: Player's nationality (can be None, various formats)
-    
-    Returns:
-        True if player is foreign (not Vietnamese), False if Vietnamese or None/empty
-    
-    Examples:
-        >>> is_foreign("Brazil")
-        True
-        >>> is_foreign("Cameroon")
-        True
-        >>> is_foreign("Vietnam")
-        False
-        >>> is_foreign("VN")
-        False
-        >>> is_foreign(None)
-        False
-        >>> is_foreign("")
-        False
-    
-    Note:
-        Returns False for None/empty to avoid counting invalid data as foreign players
     """
     if not nationality or not nationality.strip():
         return False
@@ -225,91 +154,12 @@ def is_foreign(nationality: str | None) -> bool:
     return normalized is not None and normalized != "Vietnam"
 
 
-@dataclass
-class EmailData:
-    html_content: str
-    subject: str
-
-
-def render_email_template(*, template_name: str, context: dict[str, Any]) -> str:
-    template_str = (
-        Path(__file__).parent / "email-templates" / "build" / template_name
-    ).read_text()
-    html_content = Template(template_str).render(context)
-    return html_content
-
-
-def send_email(
-    *,
-    email_to: str,
-    subject: str = "",
-    html_content: str = "",
-) -> None:
-    assert settings.emails_enabled, "no provided configuration for email variables"
-    message = emails.Message(
-        subject=subject,
-        html=html_content,
-        mail_from=(settings.EMAILS_FROM_NAME, settings.EMAILS_FROM_EMAIL),
-    )
-    smtp_options = {"host": settings.SMTP_HOST, "port": settings.SMTP_PORT}
-    if settings.SMTP_TLS:
-        smtp_options["tls"] = True
-    elif settings.SMTP_SSL:
-        smtp_options["ssl"] = True
-    if settings.SMTP_USER:
-        smtp_options["user"] = settings.SMTP_USER
-    if settings.SMTP_PASSWORD:
-        smtp_options["password"] = settings.SMTP_PASSWORD
-    response = message.send(to=email_to, smtp=smtp_options)
-    logger.info(f"send email result: {response}")
-
-
-def generate_test_email(email_to: str) -> EmailData:
-    project_name = settings.PROJECT_NAME
-    subject = f"{project_name} - Test email"
-    html_content = render_email_template(
-        template_name="test_email.html",
-        context={"project_name": settings.PROJECT_NAME, "email": email_to},
-    )
-    return EmailData(html_content=html_content, subject=subject)
-
-
-def generate_reset_password_email(email_to: str, email: str, token: str) -> EmailData:
-    project_name = settings.PROJECT_NAME
-    subject = f"{project_name} - Password recovery for user {email}"
-    link = f"{settings.FRONTEND_HOST}/reset-password?token={token}"
-    html_content = render_email_template(
-        template_name="reset_password.html",
-        context={
-            "project_name": settings.PROJECT_NAME,
-            "username": email,
-            "email": email_to,
-            "valid_hours": settings.EMAIL_RESET_TOKEN_EXPIRE_HOURS,
-            "link": link,
-        },
-    )
-    return EmailData(html_content=html_content, subject=subject)
-
-
-def generate_new_account_email(
-    email_to: str, username: str, password: str
-) -> EmailData:
-    project_name = settings.PROJECT_NAME
-    subject = f"{project_name} - New account for user {username}"
-    html_content = render_email_template(
-        template_name="new_account.html",
-        context={
-            "project_name": settings.PROJECT_NAME,
-            "username": username,
-            "password": password,
-            "email": email_to,
-            "link": settings.FRONTEND_HOST,
-        },
-    )
-    return EmailData(html_content=html_content, subject=subject)
-
-
 def generate_password_reset_token(email: str) -> str:
+    from datetime import datetime, timedelta, timezone
+    import jwt
+    from app.core import security
+    from app.core.config import settings
+    
     delta = timedelta(hours=settings.EMAIL_RESET_TOKEN_EXPIRE_HOURS)
     now = datetime.now(timezone.utc)
     expires = now + delta
@@ -323,6 +173,11 @@ def generate_password_reset_token(email: str) -> str:
 
 
 def verify_password_reset_token(token: str) -> str | None:
+    from app.core import security
+    from app.core.config import settings
+    import jwt
+    from jwt.exceptions import InvalidTokenError
+    
     try:
         decoded_token = jwt.decode(
             token, settings.SECRET_KEY, algorithms=[security.ALGORITHM]
