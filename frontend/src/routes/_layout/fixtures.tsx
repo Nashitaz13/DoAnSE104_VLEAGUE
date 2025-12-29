@@ -797,8 +797,19 @@ function AdminEventForm({ match, onAdd }: { match: any, onAdd: (type: string, mi
 // --- MAIN PAGE ---
 
 function MatchCenterPage() {
-  const [selectedSeason, setSelectedSeason] = useState<string>("2024-2025")
+  // Đọc season từ localStorage để sync với trang khác
+  const getInitialSeason = () => {
+    const saved = localStorage.getItem("selectedSeason");
+    return saved || "2024-2025";
+  };
+  
+  const [selectedSeason, setSelectedSeason] = useState<string>(getInitialSeason())
   const [selectedRound, setSelectedRound] = useState<string>("all")
+
+  // Lưu season vào localStorage khi thay đổi
+  useEffect(() => {
+    localStorage.setItem("selectedSeason", selectedSeason);
+  }, [selectedSeason]);
 
   // Modal State
   const [selectedMatch, setSelectedMatch] = useState<any>(null)

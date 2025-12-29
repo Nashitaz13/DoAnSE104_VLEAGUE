@@ -19,7 +19,18 @@ export const Route = createFileRoute('/_layout/stats')({
 })
 
 function StatisticsPage() {
-  const [selectedSeason, setSelectedSeason] = useState<string>("2024-2025")
+  // Đọc season từ localStorage để sync với trang khác
+  const getInitialSeason = () => {
+    const saved = localStorage.getItem("selectedSeason");
+    return saved || "2024-2025";
+  };
+  
+  const [selectedSeason, setSelectedSeason] = useState<string>(getInitialSeason())
+
+  // Lưu season vào localStorage khi thay đổi
+  useEffect(() => {
+    localStorage.setItem("selectedSeason", selectedSeason);
+  }, [selectedSeason]);
 
   // 1. Lấy danh sách Mùa giải
   const { data: seasonsData, isLoading: loadingSeasons } = useQuery({

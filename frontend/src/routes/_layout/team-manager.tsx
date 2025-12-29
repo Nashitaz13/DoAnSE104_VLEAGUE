@@ -39,13 +39,18 @@ const TABS = [
 
 function ManagerDashboard() {
   const [activeTab, setActiveTab] = useState('overview')
-  const [selectedSeason, setSelectedSeason] = useState("2025-2026") 
+  const [selectedSeason, setSelectedSeason] = useState(() => {
+    return localStorage.getItem("selectedSeason") || "2025-2026";
+  }); 
   const currentUser = getCurrentUser()
   
   // 1. Lấy danh sách Mùa giải
   const { data: seasonsData } = useQuery({
     queryKey: ['seasons'],
-    queryFn: () => SeasonManagementService.getSeasons({ limit: 10 })
+    queryFn: () => SeasonManagementService.getSeasons({ limit: 10 }),
+    staleTime: 0,
+    refetchOnMount: "always",
+    refetchOnWindowFocus: true,
   })
 
   const seasonList = useMemo(() => {
@@ -56,24 +61,26 @@ function ManagerDashboard() {
     return Array.from(seasonSet).map(s => ({ muagiai: s })).sort((a: any, b: any) => b.muagiai.localeCompare(a.muagiai));
   }, [seasonsData]);
 
+  // Sync localStorage khi user chọn season
+  useEffect(() => {
+    if (selectedSeason) {
+      localStorage.setItem("selectedSeason", selectedSeason);
+    }
+  }, [selectedSeason]);
+
   // 2. Lấy danh sách Đội bóng
   const { data: allClubsData, isLoading: loadingClubs } = useQuery({
     queryKey: ['all-clubs', selectedSeason],
-    queryFn: () => ClubsService.getClubs({ limit: 100, muagiai: selectedSeason })
-  })
-
-  const { data: backupClubsData } = useQuery({
-    queryKey: ['all-clubs', '2024-2025'],
-    queryFn: () => ClubsService.getClubs({ limit: 100, muagiai: '2024-2025' }),
-    enabled: selectedSeason === '2025-2026'
+    queryFn: () => ClubsService.getClubs({ limit: 100, muagiai: selectedSeason }),
+    staleTime: 0,
+    refetchOnMount: "always",
+    refetchOnWindowFocus: true,
   })
 
   // 3. Logic tìm đội bóng
   const myClub = useMemo(() => {
     let list = Array.isArray(allClubsData) ? allClubsData : (allClubsData as any)?.data || [];
-    const backupList = Array.isArray(backupClubsData) ? backupClubsData : (backupClubsData as any)?.data || [];
 
-    if (list.length === 0 && backupList.length > 0) list = backupList;
     if (!list.length || !currentUser) return null;
     
     const username = (currentUser.tendangnhap || "").toLowerCase();
@@ -94,30 +101,25 @@ function ManagerDashboard() {
         if (username === 'binhduong' && clubId.includes('binhduong')) return true;
         return false;
     });
-  }, [allClubsData, backupClubsData, currentUser]);
+  }, [allClubsData, currentUser]);
 
   // 4. Lấy danh sách Sân
   const { data: stadiumsData } = useQuery({
     queryKey: ['stadiums', selectedSeason],
-    queryFn: () => StadiumsService.getStadiums({ limit: 100, muagiai: selectedSeason })
-  })
-  
-  const { data: backupStadiumsData } = useQuery({
-    queryKey: ['stadiums', '2024-2025'],
-    queryFn: () => StadiumsService.getStadiums({ limit: 100, muagiai: '2024-2025' }),
-    enabled: selectedSeason === '2025-2026'
+    queryFn: () => StadiumsService.getStadiums({ limit: 100, muagiai: selectedSeason }),
+    staleTime: 0,
+    refetchOnMount: "always",
+    refetchOnWindowFocus: true,
   })
 
   const resolvedStadiumName = useMemo(() => {
-      const stadiumId = myClub?.masanvandong || myClub?.MaSanVanDong;
+      const stadiumId = myClub?.masanvandong;
       if (!stadiumId) return "Chưa cập nhật";
       let list = Array.isArray(stadiumsData) ? stadiumsData : (stadiumsData as any)?.data || [];
-      const backupList = Array.isArray(backupStadiumsData) ? backupStadiumsData : (backupStadiumsData as any)?.data || [];
-      if (list.length === 0) list = backupList;
-      const foundStadium = list.find((s: any) => (s.masanvandong === stadiumId) || (s.MaSanVanDong === stadiumId));
-      const fullName = foundStadium?.tensanvandong || foundStadium?.tensan || stadiumId;
+      const foundStadium = list.find((s: any) => s.masanvandong === stadiumId);
+      const fullName = foundStadium?.tensanvandong || foundStadium?.ten_san || stadiumId;
       return String(fullName).replace("Sân vận động", "SVĐ");
-  }, [myClub, stadiumsData, backupStadiumsData]);
+  }, [myClub, stadiumsData]);
 
   if (loadingClubs && !myClub) return <div className="p-20 text-center"><Loader2 className="animate-spin inline mr-2"/> Đang tải...</div>;
   if (!currentUser) return <div className="p-20 text-center">Vui lòng đăng nhập.</div>;
@@ -350,17 +352,23 @@ function EditPlayerModal({ isOpen, onClose, player, clubId, season }: { isOpen: 
 function OverviewTab({ myClub, season, stadiumName }: { myClub: any, season: string, stadiumName: string }) {
     const { data: standings } = useQuery({
         queryKey: ['standings', season],
-        queryFn: () => StandingsService.getStandings({ muagiai: season })
+        queryFn: () => StandingsService.getStandings({ muagiai: season }),
+        staleTime: 0,
+        refetchOnMount: "always",
+        refetchOnWindowFocus: true,
     })
     
     const listStandings = Array.isArray(standings) ? standings : (standings as any)?.standings || [];
     const myRank = listStandings.find((s: any) => s.maclb === myClub.maclb);
+    
+    // Tính vị trí BXH (position hoặc index+1)
+    const rankPosition = myRank?.position || (listStandings.findIndex((s: any) => s.maclb === myClub.maclb) + 1);
 
     return (
         <div className="space-y-6">
             <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                <StatCard title="Vị trí BXH" value={(myRank && myRank.hang) ? `#${myRank.hang}` : "Chưa xếp"} icon={Target} color="text-orange-600" />
-                <StatCard title="Điểm số" value={myRank?.diem || 0} icon={CheckCircle} color="text-green-600" />
+                <StatCard title="Vị trí BXH" value={rankPosition > 0 ? `#${rankPosition}` : "Chưa xếp"} icon={Target} color="text-orange-600" />
+                <StatCard title="Điểm số" value={myRank?.points || 0} icon={CheckCircle} color="text-green-600" />
                 <StatCard title="Sân nhà" value={stadiumName} icon={MapPin} color="text-blue-600" />
             </div>
              <div className="bg-white rounded-xl shadow-sm border border-gray-100 overflow-hidden">
@@ -389,7 +397,9 @@ function SquadTab({ clubId, season }: { clubId: string, season: string }) {
     const { data: roster, isLoading } = useQuery({
         queryKey: ['roster', clubId, season],
         queryFn: () => RostersService.getRoster({ maclb: clubId, muagiai: season }),
-        staleTime: 5 * 60 * 1000,
+        staleTime: 0,
+        refetchOnMount: "always",
+        refetchOnWindowFocus: true,
     })
 
     const list = Array.isArray(roster) ? roster : (roster as any)?.data || [];
@@ -511,7 +521,10 @@ function SquadTab({ clubId, season }: { clubId: string, season: string }) {
 function MatchesTab({ clubId, season }: { clubId: string, season: string }) {
     const { data: matches, isLoading } = useQuery({
         queryKey: ['matches', clubId, season],
-        queryFn: () => MatchesService.readMatches({ maclb: clubId, muagiai: season, limit: 100 })
+        queryFn: () => MatchesService.readMatches({ maclb: clubId, muagiai: season, limit: 100 }),
+        staleTime: 0,
+        refetchOnMount: "always",
+        refetchOnWindowFocus: true,
     })
 
     const list = Array.isArray(matches) ? matches : (matches as any)?.data || [];
@@ -535,7 +548,8 @@ function MatchesTab({ clubId, season }: { clubId: string, season: string }) {
             ) : (
                 <div className="divide-y divide-gray-100">
                     {sortedList.map((m: any) => {
-                        const isHome = m.maclb_nha === clubId;
+                        // Backend field: maclbnha, maclbkhach (hoặc maclb_nha/maclb_khach)
+                        const isHome = (m.maclbnha === clubId) || (m.maclb_nha === clubId);
                         const matchDate = m.thoigianthidau ? new Date(m.thoigianthidau).toLocaleDateString("vi-VN") : "Chưa xếp lịch";
                         return (
                             <div key={m.matran} className="flex flex-col md:flex-row items-center justify-between p-4 hover:bg-gray-50 transition-colors gap-4">
@@ -544,9 +558,9 @@ function MatchesTab({ clubId, season }: { clubId: string, season: string }) {
                                     <span className="text-sm text-gray-500">{matchDate}</span>
                                 </div>
                                 <div className="flex-1 flex items-center justify-center gap-4 w-full">
-                                    <span className={`text-right flex-1 font-bold ${isHome ? "text-blue-700" : "text-gray-800"}`}>{m.doi_nha?.tenclb || m.maclb_nha}</span>
+                                    <span className={`text-right flex-1 font-bold ${isHome ? "text-blue-700" : "text-gray-800"}`}>{m.ten_clb_nha || m.maclbnha}</span>
                                     <div className="bg-gray-900 text-white px-4 py-1.5 rounded-lg font-mono font-bold text-lg shadow-sm min-w-[80px] text-center">{m.tiso || "vs"}</div>
-                                    <span className={`text-left flex-1 font-bold ${!isHome ? "text-blue-700" : "text-gray-800"}`}>{m.doi_khach?.tenclb || m.maclb_khach}</span>
+                                    <span className={`text-left flex-1 font-bold ${!isHome ? "text-blue-700" : "text-gray-800"}`}>{m.ten_clb_khach || m.maclbkhach}</span>
                                 </div>
                                 <div className="w-full md:w-auto text-center md:text-right">
                                     <span className={`text-xs px-2 py-1 rounded border ${isHome ? 'bg-green-50 border-green-200 text-green-700' : 'bg-orange-50 border-orange-200 text-orange-700'}`}>{isHome ? 'Sân nhà' : 'Sân khách'}</span>

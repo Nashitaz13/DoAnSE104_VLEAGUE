@@ -1,4 +1,4 @@
-import { useState, useMemo } from "react"
+import { useState, useMemo, useEffect } from "react"
 import { createFileRoute } from "@tanstack/react-router"
 import { useQuery } from "@tanstack/react-query"
 import {
@@ -22,8 +22,18 @@ export const Route = createFileRoute('/_layout/league-table')({
 })
 
 function LeagueTablePage() {
-    // Mặc định chọn 2024-2025
-    const [selectedSeason, setSelectedSeason] = useState<string>("2024-2025")
+    // Đọc season từ localStorage để sync với trang khác
+    const getInitialSeason = () => {
+        const saved = localStorage.getItem("selectedSeason");
+        return saved || "2024-2025";
+    };
+    
+    const [selectedSeason, setSelectedSeason] = useState<string>(getInitialSeason())
+
+    // Lưu season vào localStorage khi thay đổi
+    useEffect(() => {
+        localStorage.setItem("selectedSeason", selectedSeason);
+    }, [selectedSeason]);
 
     // 1. Lấy danh sách Mùa giải
     const { data: seasonsData } = useQuery({

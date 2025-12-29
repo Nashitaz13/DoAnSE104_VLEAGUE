@@ -38,7 +38,7 @@ export const Route = createFileRoute("/login")({
 function LoginPage() {
   const [showPassword, setShowPassword] = useState(false)
   const [isLoading, setIsLoading] = useState(false)
-  const [uiRole, setUiRole] = useState("admin") 
+  const [uiRole, setUiRole] = useState("btc") 
   const router = useRouter()
 
   const {
@@ -64,26 +64,33 @@ function LoginPage() {
   const getRoleName = (role: string) => {
     const map: Record<string, string> = {
       'admin': 'Quản trị viên',
-      'manager': 'Quản lý đội bóng',
-      'official': 'Quan chức trận đấu'
+      'btc': 'Ban tổ chức',
+      'trongtai': 'Tổ trọng tài',
+      'clb': 'Đại diện câu lạc bộ'
     };
     return map[role] || role;
   }
 
   const inferRoleFromUser = (user: any): string => {
-      if (user.role && user.role !== "null") return String(user.role);
+      // Backend trả về tennhom từ DB: "Admin", "BTC", "TrongTai", "CLB"
+      if (user.role && user.role !== "null") {
+          const roleLower = String(user.role).toLowerCase();
+          if (roleLower === "admin") return "admin";
+          if (roleLower === "btc") return "btc";
+          if (roleLower === "trongtai") return "trongtai";
+          if (roleLower === "clb") return "clb";
+          return roleLower;
+      }
+      
+      // Fallback: map manhom (không nên xảy ra nếu backend đúng)
       if (user.manhom && user.manhom !== null) {
-          if (user.manhom === 2) return "admin";
-          if (user.manhom === 3) return "manager";
-          if (user.manhom === 4) return "official";
+          if (user.manhom === 1) return "admin";
+          if (user.manhom === 2) return "btc";
+          if (user.manhom === 3) return "trongtai";
+          if (user.manhom === 4) return "clb";
       }
 
-      const username = (user.tendangnhap || user.username || "").toLowerCase();
-
-      if (username.includes("admin") || username.includes("quantri")) return "admin";
-      if (username.includes("trongtai") || username.includes("giamsat") || username.includes("official")) return "official";
-      
-      return "manager"; 
+      return "clb"; 
   }
 
   const onSubmit = async (data: LoginForm) => {
@@ -155,9 +162,9 @@ function LoginPage() {
       <div className="w-full max-w-md space-y-8">
         <div className="text-center">
            <div className="mx-auto flex h-16 w-16 items-center justify-center rounded-xl bg-gradient-to-br from-red-600 to-red-800 text-white shadow-lg">
-            {uiRole === "admin" && <Shield className="h-8 w-8" />}
-            {uiRole === "manager" && <UserCircle className="h-8 w-8" />}
-            {uiRole === "official" && <Flag className="h-8 w-8" />}
+            {(uiRole === "btc" || uiRole === "admin") && <Shield className="h-8 w-8" />}
+            {uiRole === "clb" && <UserCircle className="h-8 w-8" />}
+            {uiRole === "trongtai" && <Flag className="h-8 w-8" />}
           </div>
           <h2 className="mt-6 text-3xl font-extrabold tracking-tight text-gray-900 dark:text-white">
             Đăng nhập hệ thống
@@ -177,13 +184,13 @@ function LoginPage() {
                   <SelectValue placeholder="Chọn vai trò đăng nhập" />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="admin" className="font-medium">
+                  <SelectItem value="btc" className="font-medium">
                     <div className="flex items-center gap-2"><Shield className="w-4 h-4 text-red-600" /> Ban Tổ Chức (BTC)</div>
                   </SelectItem>
-                  <SelectItem value="manager" className="font-medium">
+                  <SelectItem value="clb" className="font-medium">
                     <div className="flex items-center gap-2"><UserCircle className="w-4 h-4 text-blue-600" /> Đội bóng / CLB</div>
                   </SelectItem>
-                  <SelectItem value="official" className="font-medium">
+                  <SelectItem value="trongtai" className="font-medium">
                     <div className="flex items-center gap-2"><Flag className="w-4 h-4 text-yellow-600" /> Trọng tài / Giám sát</div>
                   </SelectItem>
                 </SelectContent>
@@ -231,7 +238,7 @@ function LoginPage() {
                     <Shield className="w-4 h-4 text-red-600" /> Ban Tổ Chức
                 </div>
                 <div 
-                    onClick={() => fillCredential("admin", "admin123", "admin")}
+                    onClick={() => fillCredential("admin", "admin123", "btc")}
                     className="cursor-pointer hover:bg-red-50 hover:border-red-200 transition-colors bg-gray-50 dark:bg-neutral-900 p-3 rounded-lg border border-gray-200 dark:border-neutral-700 text-sm font-mono text-gray-600 dark:text-gray-400 flex justify-between items-center group"
                 >
                     <span>admin / admin123</span>
@@ -246,21 +253,21 @@ function LoginPage() {
                 </div>
                 <div className="space-y-2">
                     <div 
-                        onClick={() => fillCredential("hanoi", "hanoi123", "manager")}
+                        onClick={() => fillCredential("hanoi", "hanoi123", "clb")}
                         className="cursor-pointer hover:bg-blue-50 hover:border-blue-200 transition-colors bg-gray-50 dark:bg-neutral-900 p-3 rounded-lg border border-gray-200 dark:border-neutral-700 text-sm font-mono text-gray-600 dark:text-gray-400 flex justify-between items-center group"
                     >
                         <span>hanoi / hanoi123</span>
                         <Copy className="w-3 h-3 opacity-0 group-hover:opacity-100 transition-opacity"/>
                     </div>
                     <div 
-                        onClick={() => fillCredential("binhdinh", "binhdinh123", "manager")}
+                        onClick={() => fillCredential("binhdinh", "binhdinh123", "clb")}
                         className="cursor-pointer hover:bg-blue-50 hover:border-blue-200 transition-colors bg-gray-50 dark:bg-neutral-900 p-3 rounded-lg border border-gray-200 dark:border-neutral-700 text-sm font-mono text-gray-600 dark:text-gray-400 flex justify-between items-center group"
                     >
                         <span>binhdinh / binhdinh123</span>
                         <Copy className="w-3 h-3 opacity-0 group-hover:opacity-100 transition-opacity"/>
                     </div>
                      <div 
-                        onClick={() => fillCredential("SLNA", "SLNA123", "manager")}
+                        onClick={() => fillCredential("SLNA", "SLNA123", "clb")}
                         className="cursor-pointer hover:bg-blue-50 hover:border-blue-200 transition-colors bg-gray-50 dark:bg-neutral-900 p-3 rounded-lg border border-gray-200 dark:border-neutral-700 text-sm font-mono text-gray-600 dark:text-gray-400 flex justify-between items-center group"
                     >
                         <span>SLNA / SLNA123</span>
@@ -276,14 +283,14 @@ function LoginPage() {
                 </div>
                 <div className="space-y-2">
                     <div 
-                        onClick={() => fillCredential("trongtai1", "trongtai123", "official")}
+                        onClick={() => fillCredential("trongtai1", "trongtai123", "trongtai")}
                         className="cursor-pointer hover:bg-yellow-50 hover:border-yellow-200 transition-colors bg-gray-50 dark:bg-neutral-900 p-3 rounded-lg border border-gray-200 dark:border-neutral-700 text-sm font-mono text-gray-600 dark:text-gray-400 flex justify-between items-center group"
                     >
                         <span>trongtai1 / trongtai123</span>
                         <Copy className="w-3 h-3 opacity-0 group-hover:opacity-100 transition-opacity"/>
                     </div>
                     <div 
-                        onClick={() => fillCredential("trongtai2", "trongtai123", "official")}
+                        onClick={() => fillCredential("trongtai2", "trongtai123", "trongtai")}
                         className="cursor-pointer hover:bg-yellow-50 hover:border-yellow-200 transition-colors bg-gray-50 dark:bg-neutral-900 p-3 rounded-lg border border-gray-200 dark:border-neutral-700 text-sm font-mono text-gray-600 dark:text-gray-400 flex justify-between items-center group"
                     >
                         <span>trongtai2 / trongtai123</span>

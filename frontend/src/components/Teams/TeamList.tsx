@@ -5,9 +5,10 @@ interface TeamListProps {
   clubs: any[]
   selectedId: string | null
   onSelect: (id: string) => void
+  onTeamHover?: (id: string) => void
 }
 
-export function TeamList({ clubs, selectedId, onSelect }: TeamListProps) {
+export function TeamList({ clubs, selectedId, onSelect, onTeamHover }: TeamListProps) {
   return (
     <div className="flex flex-col gap-1">
       {clubs.map((club) => {
@@ -15,7 +16,8 @@ export function TeamList({ clubs, selectedId, onSelect }: TeamListProps) {
           return (
             <div
             key={club.maclb || club.id} 
-            onClick={() => onSelect(club.maclb)} 
+            onClick={() => onSelect(club.maclb)}
+            onMouseEnter={() => onTeamHover?.(club.maclb)}
             className={cn(
                 "cursor-pointer rounded-lg p-3 transition-all border flex items-center justify-between group",
                 isSelected 
