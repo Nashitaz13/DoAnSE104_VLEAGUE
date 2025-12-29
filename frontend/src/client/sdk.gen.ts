@@ -13,23 +13,23 @@ export class AuthService {
     public static login(data: LoginLoginAccessTokenData): CancelablePromise<LoginLoginAccessTokenResponse> {
         return __request(OpenAPI, {
             method: 'POST',
-            url: '/api/login/access-token',
-            formData: data.formData, // Fix: Changed from requestBody to formData based on typical OAuth2 flow
-            mediaType: 'application/x-www-form-urlencoded',
+            url: '/api/auth/login',
+            body: data.requestBody,
+            mediaType: 'application/json',
             errors: {
                 422: 'Validation Error'
             }
         });
     }
 
-     /**
-     * Get Current User Info
-     * Helper to get user info
-     */
-     public static getCurrentUserInfo(): CancelablePromise<any> {
+    /**
+    * Get Current User Info
+    * Helper to get user info
+    */
+    public static getCurrentUserInfo(): CancelablePromise<any> {
         return __request(OpenAPI, {
             method: 'GET',
-            url: '/api/users/me'
+            url: '/api/auth/me'
         });
     }
 }
@@ -44,20 +44,11 @@ export class ItemsService {
      * @returns ItemsPublic Successful Response
      * @throws ApiError
      */
-    public static readItems(data: ItemsReadItemsData = {}): CancelablePromise<ItemsReadItemsResponse> {
-        return __request(OpenAPI, {
-            method: 'GET',
-            url: '/api/items/',
-            query: {
-                skip: data.skip,
-                limit: data.limit
-            },
-            errors: {
-                422: 'Validation Error'
-            }
-        });
+    public static readItems(_data: ItemsReadItemsData = {}): CancelablePromise<ItemsReadItemsResponse> {
+        // Mock response for missing backend router
+        return new Promise(resolve => resolve({ data: [], count: 0 } as any)) as unknown as CancelablePromise<ItemsReadItemsResponse>;
     }
-    
+
     /**
      * Create Item
      * Create new item.
@@ -77,7 +68,7 @@ export class ItemsService {
             }
         });
     }
-    
+
     /**
      * Read Item
      * Get item by ID.
@@ -98,7 +89,7 @@ export class ItemsService {
             }
         });
     }
-    
+
     /**
      * Update Item
      * Update an item.
@@ -122,7 +113,7 @@ export class ItemsService {
             }
         });
     }
-    
+
     /**
      * Delete Item
      * Delete an item.
@@ -157,15 +148,15 @@ export class LoginService {
     public static loginAccessToken(data: LoginLoginAccessTokenData): CancelablePromise<LoginLoginAccessTokenResponse> {
         return __request(OpenAPI, {
             method: 'POST',
-            url: '/api/login/access-token',
-            formData: data.formData,
-            mediaType: 'application/x-www-form-urlencoded',
+            url: '/api/auth/login',
+            body: data.requestBody,
+            mediaType: 'application/json',
             errors: {
                 422: 'Validation Error'
             }
         });
     }
-    
+
     /**
      * Test Token
      * Test access token
@@ -178,7 +169,7 @@ export class LoginService {
             url: '/api/login/test-token'
         });
     }
-    
+
     /**
      * Recover Password
      * Password Recovery
@@ -199,7 +190,7 @@ export class LoginService {
             }
         });
     }
-    
+
     /**
      * Reset Password
      * Reset password
@@ -219,7 +210,7 @@ export class LoginService {
             }
         });
     }
-    
+
     /**
      * Recover Password Html Content
      * HTML Content for Password Recovery
@@ -274,20 +265,11 @@ export class UsersService {
      * @returns UsersPublic Successful Response
      * @throws ApiError
      */
-    public static readUsers(data: UsersReadUsersData = {}): CancelablePromise<UsersReadUsersResponse> {
-        return __request(OpenAPI, {
-            method: 'GET',
-            url: '/api/users/',
-            query: {
-                skip: data.skip,
-                limit: data.limit
-            },
-            errors: {
-                422: 'Validation Error'
-            }
-        });
+    public static readUsers(_data: UsersReadUsersData = {}): CancelablePromise<UsersReadUsersResponse> {
+        // Mock response for missing backend router
+        return new Promise(resolve => resolve({ data: [], count: 0 } as any)) as unknown as CancelablePromise<UsersReadUsersResponse>;
     }
-    
+
     /**
      * Create User
      * Create new user.
@@ -307,7 +289,7 @@ export class UsersService {
             }
         });
     }
-    
+
     /**
      * Read User Me
      * Get current user.
@@ -320,7 +302,7 @@ export class UsersService {
             url: '/api/users/me'
         });
     }
-    
+
     /**
      * Delete User Me
      * Delete own user.
@@ -333,7 +315,7 @@ export class UsersService {
             url: '/api/users/me'
         });
     }
-    
+
     /**
      * Update User Me
      * Update own user.
@@ -353,7 +335,7 @@ export class UsersService {
             }
         });
     }
-    
+
     /**
      * Update Password Me
      * Update own password.
@@ -373,7 +355,7 @@ export class UsersService {
             }
         });
     }
-    
+
     /**
      * Register User
      * Create new user without the need to be logged in.
@@ -393,7 +375,7 @@ export class UsersService {
             }
         });
     }
-    
+
     /**
      * Read User By Id
      * Get a specific user by id.
@@ -414,7 +396,7 @@ export class UsersService {
             }
         });
     }
-    
+
     /**
      * Update User
      * Update a user.
@@ -438,7 +420,7 @@ export class UsersService {
             }
         });
     }
-    
+
     /**
      * Delete User
      * Delete a user.
@@ -482,7 +464,7 @@ export class UtilsService {
             }
         });
     }
-    
+
     /**
      * Health Check
      * @returns boolean Successful Response
@@ -508,7 +490,26 @@ export class ClubsService {
             query: data
         });
     }
+
+    public static getClub(data: { club_id: string, muagiai: string }): CancelablePromise<any> {
+        return __request(OpenAPI, {
+            method: 'GET',
+            url: `/api/clubs/${data.club_id}`,
+            query: { muagiai: data.muagiai }
+        });
+    }
+
+    public static createClub(data: { requestBody: any }): CancelablePromise<any> {
+        return __request(OpenAPI, {
+            method: 'POST',
+            url: '/api/clubs/',
+            body: data.requestBody,
+            mediaType: 'application/json'
+        });
+    }
 }
+
+
 
 export class MatchesService {
     public static readMatches(data: any = {}): CancelablePromise<any> {
@@ -526,13 +527,46 @@ export class MatchesService {
             mediaType: 'application/json'
         });
     }
+    public static updateMatch(data: { matran: string, requestBody: any }): CancelablePromise<any> {
+        return __request(OpenAPI, {
+            method: 'PATCH',
+            url: `/api/matches/${data.matran}`,
+            body: data.requestBody,
+            mediaType: 'application/json'
+        });
+    }
+}
+
+export class MatchEventsService {
+    public static getEvents(data: { matran: string }): CancelablePromise<any> {
+        return __request(OpenAPI, {
+            method: 'GET',
+            url: `/api/matches/${data.matran}/events`
+        });
+    }
+
+    public static createEvent(data: { matran: string, requestBody: any }): CancelablePromise<any> {
+        return __request(OpenAPI, {
+            method: 'POST',
+            url: `/api/matches/${data.matran}/events`,
+            body: data.requestBody,
+            mediaType: 'application/json'
+        });
+    }
+
+    public static deleteEvent(data: { matran: string, masukien: string }): CancelablePromise<any> {
+        return __request(OpenAPI, {
+            method: 'DELETE',
+            url: `/api/matches/${data.matran}/events/${data.masukien}`
+        });
+    }
 }
 
 export class StandingsService {
     public static getStandings(data: any = {}): CancelablePromise<any> {
         return __request(OpenAPI, {
             method: 'GET',
-            url: '/api/standings/',
+            url: '/api/standings',
             query: data
         });
     }
@@ -562,8 +596,148 @@ export class SeasonManagementService {
     public static getSeasons(data: any = {}): CancelablePromise<any> {
         return __request(OpenAPI, {
             method: 'GET',
-            url: '/api/seasons/',
+            url: '/api/season-management/seasons',
             query: data
+        });
+    }
+
+    public static createSeason(data: { requestBody: any }): CancelablePromise<any> {
+        return __request(OpenAPI, {
+            method: 'POST',
+            url: '/api/season-management/seasons',
+            body: data.requestBody,
+            mediaType: 'application/json'
+        });
+    }
+
+    public static updateSeason(data: { season_id: string, requestBody: any }): CancelablePromise<any> {
+        return __request(OpenAPI, {
+            method: 'PUT',
+            url: `/api/season-management/seasons/${data.season_id}`,
+            body: data.requestBody,
+            mediaType: 'application/json'
+        });
+    }
+}
+
+export class PlayersService {
+    public static readPlayers(data: any = {}): CancelablePromise<any> {
+        return __request(OpenAPI, {
+            method: 'GET',
+            url: '/api/players/',
+            query: data
+        });
+    }
+    public static createPlayer(data: any): CancelablePromise<any> {
+        return __request(OpenAPI, {
+            method: 'POST',
+            url: '/api/players/',
+            body: data.requestBody,
+            mediaType: 'application/json'
+        });
+    }
+
+    public static getPlayer(data: { player_id: string }): CancelablePromise<any> {
+        return __request(OpenAPI, {
+            method: 'GET',
+            url: `/api/players/${data.player_id}`
+        });
+    }
+}
+
+export class StatisticsService {
+    public static getPlayerStats(data: any = {}): CancelablePromise<any> {
+        return __request(OpenAPI, {
+            method: 'GET',
+            url: '/api/stats/players',
+            query: data
+        });
+    }
+
+    public static getAwards(data: any = {}): CancelablePromise<any> {
+        return __request(OpenAPI, {
+            method: 'GET',
+            url: '/api/stats/awards',
+            query: data
+        });
+    }
+
+    public static getDiscipline(data: any = {}): CancelablePromise<any> {
+        return __request(OpenAPI, {
+            method: 'GET',
+            url: '/api/stats/discipline',
+            query: data
+        });
+    }
+}
+
+export class ScheduleService {
+    public static generateSchedule(data: { requestBody: any }): CancelablePromise<any> {
+        return __request(OpenAPI, {
+            method: 'POST',
+            url: '/api/schedule/generate',
+            body: data.requestBody,
+            mediaType: 'application/json'
+        });
+    }
+}
+
+export class MatchLineupService {
+    public static getLineup(data: { matran: string; maclb?: string }): CancelablePromise<any> {
+        return __request(OpenAPI, {
+            method: 'GET',
+            url: `/api/matches/${data.matran}/lineup`,
+            query: { maclb: data.maclb }
+        });
+    }
+
+    public static addPlayer(data: { matran: string; requestBody: any }): CancelablePromise<any> {
+        return __request(OpenAPI, {
+            method: 'POST',
+            url: `/api/matches/${data.matran}/lineup`,
+            body: data.requestBody,
+            mediaType: 'application/json'
+        });
+    }
+
+    public static updatePlayer(data: { matran: string; macauthu: string; requestBody: any }): CancelablePromise<any> {
+        return __request(OpenAPI, {
+            method: 'PATCH',
+            url: `/api/matches/${data.matran}/lineup/${data.macauthu}`,
+            body: data.requestBody,
+            mediaType: 'application/json'
+        });
+    }
+
+    public static removePlayer(data: { matran: string; macauthu: string }): CancelablePromise<any> {
+        return __request(OpenAPI, {
+            method: 'DELETE',
+            url: `/api/matches/${data.matran}/lineup/${data.macauthu}`
+        });
+    }
+}
+
+export class MatchRefereesService {
+    public static getReferees(data: { matran: string }): CancelablePromise<any> {
+        return __request(OpenAPI, {
+            method: 'GET',
+            url: `/api/matches/${data.matran}/referees`
+        });
+    }
+
+    public static assignReferee(data: { matran: string; requestBody: any }): CancelablePromise<any> {
+        return __request(OpenAPI, {
+            method: 'POST',
+            url: `/api/matches/${data.matran}/referees`,
+            body: data.requestBody,
+            mediaType: 'application/json'
+        });
+    }
+
+    public static removeReferee(data: { matran: string; tentrongtai: string }): CancelablePromise<any> {
+        return __request(OpenAPI, {
+            method: 'DELETE',
+            url: `/api/matches/${data.matran}/referees/${data.tentrongtai}`
         });
     }
 }

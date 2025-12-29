@@ -1,9 +1,9 @@
-import { useState, useMemo } from "react"
-import { createFileRoute } from "@tanstack/react-router"
+import { useState, useMemo, useEffect } from "react"
+import { createFileRoute, useRouter } from "@tanstack/react-router"
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query"
-import { 
-  LayoutDashboard, FileText, Users, CalendarDays, 
-  CheckCircle, XCircle, Search, Filter, AlertTriangle, Inbox, Clock, Plus, Loader2, Edit, ChevronLeft, ChevronRight, Gavel
+import {
+  LayoutDashboard, FileText, Users, CalendarDays,
+  CheckCircle, XCircle, Search, Filter, AlertTriangle, Inbox, Clock, Plus, Loader2, Edit, ChevronLeft, ChevronRight, Gavel, Save, RefreshCw
 } from "lucide-react"
 
 import { Button } from "@/components/ui/button"
@@ -16,7 +16,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select"
-import { MatchesService, ClubsService, SeasonManagementService } from "@/client"
+import { MatchesService, ClubsService, SeasonManagementService, ScheduleService } from "@/client"
 import { getCurrentUser } from "@/utils/auth"
 
 import {
@@ -25,9 +25,12 @@ import {
   DialogHeader,
   DialogTitle,
   DialogFooter,
+  DialogDescription,
 } from "@/components/ui/dialog"
 import { useToast } from "@/hooks/use-toast"
 import { Checkbox } from "@/components/ui/checkbox"
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 
 export const Route = createFileRoute("/_layout/admin-dashboard")({
   component: AdminDashboard,
@@ -35,70 +38,91 @@ export const Route = createFileRoute("/_layout/admin-dashboard")({
 
 const TABS = [
   { id: 'overview', label: 'Tổng quan', icon: LayoutDashboard },
-  { id: 'season-rules', label: 'Mùa giải & Quy định', icon: Gavel },
-  { id: 'schedule', label: 'Quản lý Lịch thi đấu', icon: CalendarDays },
-  { id: 'reports', label: 'Duyệt báo cáo trận', icon: FileText },
-  { id: 'teams', label: 'Duyệt hồ sơ đội', icon: Users },
+  { id: 'season-rules', label: 'Quản lý Mùa giải', icon: Gavel },
+  { id: 'teams', label: 'Đội bóng tham dự', icon: Users },
+  { id: 'schedule', label: 'Lịch thi đấu', icon: CalendarDays },
 ]
 
 function AdminDashboard() {
   const [activeTab, setActiveTab] = useState('overview')
   const currentUser = getCurrentUser()
+  const [selectedSeasonId, setSelectedSeasonId] = useState<string>("")
+
+  // Fetch all seasons to select active one
+  const { data: seasonsData, refetch: refetchSeasons } = useQuery({
+    queryKey: ['seasons'],
+    queryFn: () => SeasonManagementService.getSeasons({ limit: 100 })
+  });
+
+  const seasons = useMemo(() => Array.isArray(seasonsData) ? seasonsData : (seasonsData as any)?.data || [], [seasonsData]);
+
+  // Set default season
+  useEffect(() => {
+    if (seasons.length > 0 && !selectedSeasonId) {
+      // Find active season or latest
+      const active = seasons.find((s: any) => s.trangthai === 'Active');
+      if (active) setSelectedSeasonId(active.muagiai);
+      else setSelectedSeasonId(seasons[0].muagiai);
+    }
+  }, [seasons, selectedSeasonId]);
 
   return (
     <div className="min-h-[calc(100vh-4rem)] bg-gray-50 font-sans pb-10">
-      
+
       {/* HEADER */}
       <div className="bg-gradient-to-r from-red-700 to-orange-600 text-white p-6 shadow-lg">
-        <div className="max-w-7xl mx-auto">
+        <div className="max-w-7xl mx-auto flex justify-between items-center">
           <div className="flex items-center gap-4 mb-2">
             <div className="p-3 bg-white/20 rounded-lg">
-                <LayoutDashboard className="w-8 h-8" />
+              <LayoutDashboard className="w-8 h-8" />
             </div>
             <div>
-                <h1 className="text-3xl font-bold">Dashboard Quản trị</h1>
-                <p className="opacity-90">Chào mừng {currentUser?.ho_ten || "Quản trị viên"} - Ban Tổ Chức V-League 1</p>
+              <h1 className="text-3xl font-bold">Dashboard Quản trị</h1>
+              <p className="opacity-90">Ban Tổ Chức V-League 1</p>
             </div>
+          </div>
+
+          <div className="bg-white/10 p-2 rounded-lg backdrop-blur-sm border border-white/20">
+            <Label className="text-white text-xs block mb-1">Mùa giải đang làm việc</Label>
+            <Select value={selectedSeasonId} onValueChange={setSelectedSeasonId}>
+              <SelectTrigger className="bg-transparent border-white/30 text-white min-w-[180px]">
+                <SelectValue placeholder="Chọn mùa giải" />
+              </SelectTrigger>
+              <SelectContent>
+                {seasons.map((s: any) => (
+                  <SelectItem key={s.muagiai} value={s.muagiai}>{s.muagiai}</SelectItem>
+                ))}
+                {seasons.length === 0 && <SelectItem value="none" disabled>Chưa có mùa giải</SelectItem>}
+              </SelectContent>
+            </Select>
           </div>
         </div>
       </div>
 
-      {/* STATS CARDS */}
-      <div className="max-w-7xl mx-auto px-6 -mt-8">
-         <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
-            <StatCard title="Báo cáo chờ duyệt" value="0" icon={FileText} color="text-orange-600" />
-            <StatCard title="Yêu cầu nhân sự" value="0" icon={Users} color="text-blue-600" />
-            <StatCard title="Vòng đấu hiện tại" value="1" icon={Clock} color="text-green-600" />
-            <StatCard title="Tổng số trận" value="0" icon={CalendarDays} color="text-purple-600" />
-         </div>
-      </div>
-
       {/* MAIN CONTENT */}
       <div className="max-w-7xl mx-auto p-6 space-y-6">
-        
+
         {/* Navigation */}
         <div className="bg-white p-1 rounded-xl shadow-sm border border-gray-200 flex flex-wrap gap-1">
-            {TABS.map((tab) => (
-                <button
-                    key={tab.id}
-                    onClick={() => setActiveTab(tab.id)}
-                    className={`flex items-center gap-2 px-6 py-3 rounded-lg text-sm font-bold transition-all flex-1 justify-center ${
-                        activeTab === tab.id 
-                        ? 'bg-gray-100 text-gray-900 shadow-inner' 
-                        : 'text-gray-500 hover:bg-gray-50 hover:text-gray-900'
-                    }`}
-                >
-                    <tab.icon className="w-4 h-4" /> {tab.label}
-                </button>
-            ))}
+          {TABS.map((tab) => (
+            <button
+              key={tab.id}
+              onClick={() => setActiveTab(tab.id)}
+              className={`flex items-center gap-2 px-6 py-3 rounded-lg text-sm font-bold transition-all flex-1 justify-center ${activeTab === tab.id
+                  ? 'bg-gray-100 text-gray-900 shadow-inner'
+                  : 'text-gray-500 hover:bg-gray-50 hover:text-gray-900'
+                }`}
+            >
+              <tab.icon className="w-4 h-4" /> {tab.label}
+            </button>
+          ))}
         </div>
 
         <div className="animate-in fade-in duration-300">
-            {activeTab === 'overview' && <OverviewTab onChangeTab={setActiveTab} />}
-            {activeTab === 'season-rules' && <SeasonAndRulesTab />}
-            {activeTab === 'schedule' && <ScheduleTab />}
-            {activeTab === 'reports' && <MatchReportsTab />}
-            {activeTab === 'teams' && <TeamManagementTab />}
+          {activeTab === 'overview' && <OverviewTab onChangeTab={setActiveTab} />}
+          {activeTab === 'season-rules' && <SeasonAndRulesTab selectedSeasonId={selectedSeasonId} onUpdate={refetchSeasons} />}
+          {activeTab === 'schedule' && <ScheduleTab selectedSeasonId={selectedSeasonId} />}
+          {activeTab === 'teams' && <TeamManagementTab selectedSeasonId={selectedSeasonId} />}
         </div>
       </div>
     </div>
@@ -109,532 +133,540 @@ function AdminDashboard() {
 // TAB 1: TỔNG QUAN
 // ====================================================================
 function OverviewTab({ onChangeTab }: { onChangeTab: (tab: string) => void }) {
-    return (
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-            <div className="bg-white rounded-xl shadow-sm border border-orange-200 overflow-hidden flex flex-col h-full min-h-[300px]">
-                <div className="px-6 py-4 border-b bg-orange-50 flex justify-between items-center">
-                    <div className="flex items-center gap-2 text-orange-800">
-                        <AlertTriangle className="w-5 h-5" />
-                        <h3 className="font-bold">Báo cáo cần xử lý</h3>
-                    </div>
-                    <Button variant="ghost" size="sm" className="text-orange-600 hover:text-orange-700" onClick={() => onChangeTab('reports')}>Xem tất cả</Button>
-                </div>
-                <div className="flex-1 flex flex-col items-center justify-center p-12 text-center text-gray-400">
-                    <Inbox className="w-12 h-12 mb-3 opacity-20"/>
-                    <p>Hiện không có báo cáo nào cần duyệt.</p>
-                </div>
-            </div>
-
-            <div className="bg-white rounded-xl shadow-sm border border-blue-200 overflow-hidden flex flex-col h-full min-h-[300px]">
-                <div className="px-6 py-4 border-b bg-blue-50 flex justify-between items-center">
-                    <div className="flex items-center gap-2 text-blue-800">
-                        <CalendarDays className="w-5 h-5" />
-                        <h3 className="font-bold">Quản lý Lịch thi đấu</h3>
-                    </div>
-                    <Button variant="ghost" size="sm" className="text-blue-600 hover:text-blue-700" onClick={() => onChangeTab('schedule')}>Quản lý</Button>
-                </div>
-                <div className="flex-1 flex flex-col items-center justify-center p-8 text-center">
-                    <p className="text-gray-600 mb-4">Tạo lịch thi đấu mới cho các vòng tiếp theo.</p>
-                    <Button onClick={() => onChangeTab('schedule')} className="bg-blue-600 hover:bg-blue-700">Đi tới Lịch thi đấu</Button>
-                </div>
-            </div>
-        </div>
-    )
-}
-
-// ====================================================================
-// TAB: MÙA GIẢI & QUY ĐỊNH (BM1, QĐ1, QĐ3)
-// ====================================================================
-function SeasonAndRulesTab() {
-  const { toast } = useToast()
-  
-  // Fake data for initial state
-  const [seasonInfo, setSeasonInfo] = useState({
-    ten_mua: "V.League 1 - 2024/2025",
-    ngay_bat_dau: "2024-09-14",
-    ngay_ket_thuc: "2025-06-30",
-    so_luong_clb: 14,
-    le_phi: 500000000
-  })
-
-  const [rules, setRules] = useState({
-    tuoi_toi_thieu: 16,
-    tuoi_toi_da: 40,
-    so_luong_cau_thu_toi_thieu: 16,
-    so_luong_cau_thu_toi_da: 22, // Should check if it's 30 or something more realistic? Requirement says 16-22? Wait, BM says "số lượng cầu thủ tối đa".
-    // Re-reading: "số lượng cầu thủ (16-22)" in prompt. Wait, typically a squad is larger. But prompt says 16-22.
-    // Let's stick to prompt.
-    so_luong_cau_thu_nuoc_ngoai_dang_ky: 5,
-    so_luong_cau_thu_nuoc_ngoai_thi_dau: 3,
-    suc_chua_san_toi_thieu: 10000,
-    diem_thang: 3,
-    diem_hoa: 1,
-    diem_thua: 0
-  })
-
-  const handleSeasonSubmit = (e: React.FormEvent) => {
-    e.preventDefault()
-    // Call API to update season info
-    toast({
-      title: "Thành công",
-      description: "Đã cập nhật thông tin mùa giải.",
-    })
-  }
-
-  const handleRulesSubmit = (e: React.FormEvent) => {
-    e.preventDefault()
-    // Call API to update rules
-    toast({
-      title: "Thành công",
-      description: "Đã cập nhật quy định giải đấu.",
-    })
-  }
-
   return (
-    <div className="grid grid-cols-1 xl:grid-cols-2 gap-6">
-      {/* BM1: THIẾT LẬP MÙA GIẢI */}
-      <div className="bg-white p-6 rounded-xl shadow-sm border border-gray-200">
-        <div className="flex items-center gap-3 mb-6 pb-4 border-b">
-          <div className="p-2 bg-blue-100 text-blue-700 rounded-lg">
-            <Clock className="w-5 h-5" />
-          </div>
-          <div>
-            <h3 className="font-bold text-lg text-gray-800">Thiết lập Mùa giải (BM1)</h3>
-            <p className="text-sm text-gray-500">Thông tin cơ bản của mùa giải hiện tại</p>
-          </div>
-        </div>
+    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+      <Card className="border-orange-200 bg-orange-50/50 cursor-pointer hover:shadow-md transition-all" onClick={() => onChangeTab('season-rules')}>
+        <CardHeader>
+          <CardTitle className="text-orange-700 flex items-center gap-2">
+            <Gavel className="w-5 h-5" /> Quy định Mùa giải
+          </CardTitle>
+          <CardDescription>Thiết lập luật thi đấu, đăng ký cầu thủ</CardDescription>
+        </CardHeader>
+        <CardContent>
+          <p className="text-sm text-gray-600">Quản lý các thông số như tuổi cầu thủ, số lượng ngoại binh, và thông tin mùa giải mới.</p>
+        </CardContent>
+      </Card>
 
-        <form onSubmit={handleSeasonSubmit} className="space-y-4">
-          <div className="space-y-2">
-            <Label>Tên mùa giải</Label>
-            <Input 
-              value={seasonInfo.ten_mua}
-              onChange={(e) => setSeasonInfo({...seasonInfo, ten_mua: e.target.value})}
-              placeholder="VD: V.League 1 - 2024/2025"
-            />
-          </div>
-          
-          <div className="grid grid-cols-2 gap-4">
-            <div className="space-y-2">
-              <Label>Ngày bắt đầu</Label>
-              <Input 
-                type="date"
-                value={seasonInfo.ngay_bat_dau}
-                onChange={(e) => setSeasonInfo({...seasonInfo, ngay_bat_dau: e.target.value})}
-              />
-            </div>
-            <div className="space-y-2">
-              <Label>Ngày kết thúc</Label>
-              <Input 
-                type="date"
-                value={seasonInfo.ngay_ket_thuc}
-                onChange={(e) => setSeasonInfo({...seasonInfo, ngay_ket_thuc: e.target.value})}
-              />
-            </div>
-          </div>
+      <Card className="border-blue-200 bg-blue-50/50 cursor-pointer hover:shadow-md transition-all" onClick={() => onChangeTab('teams')}>
+        <CardHeader>
+          <CardTitle className="text-blue-700 flex items-center gap-2">
+            <Users className="w-5 h-5" /> Hồ sơ Đội bóng
+          </CardTitle>
+          <CardDescription>Tiếp nhận đăng ký và hồ sơ</CardDescription>
+        </CardHeader>
+        <CardContent>
+          <p className="text-sm text-gray-600">Quản lý các đội bóng tham dự mùa giải và danh sách cầu thủ.</p>
+        </CardContent>
+      </Card>
 
-          <div className="grid grid-cols-2 gap-4">
-             <div className="space-y-2">
-                <Label>Số lượng CLB tối đa</Label>
-                <Input 
-                  type="number"
-                  value={seasonInfo.so_luong_clb}
-                  onChange={(e) => setSeasonInfo({...seasonInfo, so_luong_clb: parseInt(e.target.value)})}
-                />
-             </div>
-             <div className="space-y-2">
-                <Label>Lệ phí tham dự (VND)</Label>
-                <Input 
-                  type="number"
-                  value={seasonInfo.le_phi}
-                  onChange={(e) => setSeasonInfo({...seasonInfo, le_phi: parseInt(e.target.value)})}
-                />
-             </div>
-          </div>
-
-          <div className="pt-4 flex justify-end">
-            <Button type="submit" className="bg-blue-600 hover:bg-blue-700">
-               Lưu thay đổi
-            </Button>
-          </div>
-        </form>
-      </div>
-
-      {/* QĐ1, QĐ3: THAY ĐỔI QUY ĐỊNH */}
-      <div className="bg-white p-6 rounded-xl shadow-sm border border-gray-200">
-        <div className="flex items-center gap-3 mb-6 pb-4 border-b">
-          <div className="p-2 bg-purple-100 text-purple-700 rounded-lg">
-            <Gavel className="w-5 h-5" />
-          </div>
-          <div>
-            <h3 className="font-bold text-lg text-gray-800">Quy định Giải đấu (QĐ1, QĐ3)</h3>
-            <p className="text-sm text-gray-500">Các tham số kiểm soát giải đấu</p>
-          </div>
-        </div>
-
-        <form onSubmit={handleRulesSubmit} className="space-y-4">
-          <div className="grid grid-cols-2 gap-4">
-            <div className="space-y-2">
-              <Label>Tuổi cầu thủ tối thiểu</Label>
-              <Input 
-                type="number"
-                value={rules.tuoi_toi_thieu}
-                onChange={(e) => setRules({...rules, tuoi_toi_thieu: parseInt(e.target.value)})}
-              />
-            </div>
-            <div className="space-y-2">
-              <Label>Tuổi cầu thủ tối đa</Label>
-              <Input 
-                type="number"
-                value={rules.tuoi_toi_da}
-                onChange={(e) => setRules({...rules, tuoi_toi_da: parseInt(e.target.value)})}
-              />
-            </div>
-          </div>
-
-          <div className="grid grid-cols-2 gap-4">
-            <div className="space-y-2">
-              <Label>Số lượng cầu thủ tối thiểu</Label>
-              <Input 
-                type="number"
-                value={rules.so_luong_cau_thu_toi_thieu}
-                onChange={(e) => setRules({...rules, so_luong_cau_thu_toi_thieu: parseInt(e.target.value)})}
-              />
-            </div>
-            <div className="space-y-2">
-              <Label>Số lượng cầu thủ tối đa</Label>
-              <Input 
-                type="number"
-                value={rules.so_luong_cau_thu_toi_da}
-                onChange={(e) => setRules({...rules, so_luong_cau_thu_toi_da: parseInt(e.target.value)})}
-              />
-            </div>
-          </div>
-
-          <div className="grid grid-cols-2 gap-4">
-             <div className="space-y-2">
-                <Label>Cầu thủ nước ngoài (ĐK)</Label>
-                <Input 
-                  type="number"
-                  value={rules.so_luong_cau_thu_nuoc_ngoai_dang_ky}
-                  onChange={(e) => setRules({...rules, so_luong_cau_thu_nuoc_ngoai_dang_ky: parseInt(e.target.value)})}
-                />
-             </div>
-             <div className="space-y-2">
-                <Label>Cầu thủ nước ngoài (Thi đấu)</Label>
-                <Input 
-                  type="number"
-                  value={rules.so_luong_cau_thu_nuoc_ngoai_thi_dau}
-                  onChange={(e) => setRules({...rules, so_luong_cau_thu_nuoc_ngoai_thi_dau: parseInt(e.target.value)})}
-                />
-             </div>
-          </div>
-
-          <div className="space-y-2">
-            <Label>Sức chứa sân tối thiểu</Label>
-            <Input 
-              type="number"
-              value={rules.suc_chua_san_toi_thieu}
-              onChange={(e) => setRules({...rules, suc_chua_san_toi_thieu: parseInt(e.target.value)})}
-            />
-          </div>
-
-           <div className="grid grid-cols-3 gap-2">
-             <div className="space-y-2">
-                <Label>Điểm Thắng</Label>
-                <Input type="number" value={rules.diem_thang} onChange={(e) => setRules({...rules, diem_thang: parseInt(e.target.value)})} />
-             </div>
-             <div className="space-y-2">
-                <Label>Điểm Hòa</Label>
-                <Input type="number" value={rules.diem_hoa} onChange={(e) => setRules({...rules, diem_hoa: parseInt(e.target.value)})} />
-             </div>
-             <div className="space-y-2">
-                <Label>Điểm Thua</Label>
-                <Input type="number" value={rules.diem_thua} onChange={(e) => setRules({...rules, diem_thua: parseInt(e.target.value)})} />
-             </div>
-          </div>
-
-          <div className="pt-4 flex justify-end">
-            <Button type="submit" className="bg-purple-600 hover:bg-purple-700">
-               Cập nhật Quy định
-            </Button>
-          </div>
-        </form>
-      </div>
+      <Card className="border-green-200 bg-green-50/50 cursor-pointer hover:shadow-md transition-all" onClick={() => onChangeTab('schedule')}>
+        <CardHeader>
+          <CardTitle className="text-green-700 flex items-center gap-2">
+            <CalendarDays className="w-5 h-5" /> Lịch thi đấu
+          </CardTitle>
+          <CardDescription>Xếp lịch tự động</CardDescription>
+        </CardHeader>
+        <CardContent>
+          <p className="text-sm text-gray-600">Tự động xếp lịch thi đấu vòng tròn và quản lý kết quả.</p>
+        </CardContent>
+      </Card>
     </div>
   )
 }
 
 // ====================================================================
-// TAB 3 (Empty)
+// TAB: MÙA GIẢI & QUY ĐỊNH
 // ====================================================================
-function MatchReportsTab() {
+function SeasonAndRulesTab({ selectedSeasonId, onUpdate }: { selectedSeasonId: string, onUpdate: () => void }) {
+  const { toast } = useToast()
+  const queryClient = useQueryClient()
+  const [isCreating, setIsCreating] = useState(false)
+
+  // Fetch detail
+  const { data: seasonDetail, refetch } = useQuery({
+    queryKey: ['season', selectedSeasonId],
+    queryFn: () => SeasonManagementService.getSeasons({ limit: 100 }).then((res: any) => { // Using list endpoint then filtering as getSeasonById might be tricky if ID format varies
+      const list = Array.isArray(res) ? res : res.data;
+      return list.find((s: any) => s.muagiai === selectedSeasonId);
+    }),
+    enabled: !!selectedSeasonId
+  });
+
+  // State for form
+  const [formData, setFormData] = useState<any>({})
+
+  useEffect(() => {
+    if (seasonDetail) {
+      setFormData({
+        ...seasonDetail,
+        // formatted dates
+        ngaybatdau: seasonDetail.ngaybatdau ? seasonDetail.ngaybatdau.split('T')[0] : '',
+        ngayketthuc: seasonDetail.ngayketthuc ? seasonDetail.ngayketthuc.split('T')[0] : ''
+      })
+    } else {
+      // Reset or set defaults for creating
+      setFormData({
+        muagiai: "",
+        ngaybatdau: "",
+        ngayketthuc: "",
+        soclbthamdutoida: 14,
+        lephithamgia: 0,
+        socauthutoithieu: 16,
+        socauthutoida: 22,
+        sothumontoithieu: 2,
+        tuoicauthutoithieu: 16,
+        tuoicauthutoida: 40,
+        succhuatoithieu: 10000,
+        thoidiemghibantoida: 100
+      })
+    }
+  }, [seasonDetail, selectedSeasonId])
+
+  const mutation = useMutation({
+    mutationFn: async (data: any) => {
+      if (isCreating) {
+        return SeasonManagementService.createSeason({ requestBody: data })
+      } else {
+        return SeasonManagementService.updateSeason({ season_id: selectedSeasonId, requestBody: data })
+      }
+    },
+    onSuccess: () => {
+      toast({ title: "Thành công", description: "Đã lưu thông tin mùa giải" })
+      queryClient.invalidateQueries({ queryKey: ['seasons'] })
+      queryClient.invalidateQueries({ queryKey: ['season'] })
+      onUpdate()
+      setIsCreating(false)
+    },
+    onError: (err) => {
+      toast({ title: "Lỗi", description: "Không thể lưu thông tin. Mùa giải có thể đã tồn tại.", variant: "destructive" })
+    }
+  })
+
+  // Start new season mode
+  const handleNewSeason = () => {
+    setIsCreating(true)
+    setFormData({
+      muagiai: "2025-2026",
+      ngaybatdau: "2025-08-01",
+      ngayketthuc: "2026-05-30",
+      soclbthamdutoida: 14,
+      lephithamgia: 500000000,
+      socauthutoithieu: 16,
+      socauthutoida: 30, // Adjusted to realistic
+      sothumontoithieu: 3,
+      tuoicauthutoithieu: 16,
+      tuoicauthutoida: 40,
+      succhuatoithieu: 10000,
+      thoidiemghibantoida: 100, // 90 + 10 extra
+      trangphucquydinh: "Full kit", // Extra
+      trangthai: "Active"
+    })
+  }
+
+  const handleSubmit = (e: React.FormEvent) => {
+    e.preventDefault()
+    mutation.mutate(formData)
+  }
+
+  if (!selectedSeasonId && !isCreating) {
     return (
-        <div className="space-y-6">
-            <div className="flex items-center gap-2 text-gray-800 font-bold text-lg"><FileText className="w-5 h-5"/> Danh sách báo cáo chờ duyệt</div>
-            <div className="bg-white p-12 rounded-xl border border-dashed border-gray-300 text-center flex flex-col items-center justify-center text-gray-400">
-                <CheckCircle className="w-12 h-12 mb-3 text-green-500 opacity-30"/>
-                <p>Tất cả báo cáo đã được xử lý.</p>
-            </div>
-        </div>
+      <div className="text-center py-20">
+        <h2 className="text-xl font-bold mb-4">Chưa có mùa giải nào</h2>
+        <Button onClick={handleNewSeason}><Plus className="mr-2" /> Tạo mùa giải mới</Button>
+      </div>
     )
+  }
+
+  return (
+    <div className="grid grid-cols-1 xl:grid-cols-2 gap-6">
+      {/* HEADER ACTION */}
+      <div className="xl:col-span-2 flex justify-between items-center bg-white p-4 rounded-lg border">
+        <div>
+          <h2 className="text-lg font-bold">
+            {isCreating ? "Tạo Mùa giải mới" : `Cấu hình: ${selectedSeasonId}`}
+          </h2>
+          {isCreating && <p className="text-sm text-gray-500">Nhập ký hiệu mùa giải (VD: 2025-2026) và các quy định kèm theo.</p>}
+        </div>
+        {!isCreating && <Button onClick={handleNewSeason} variant="outline"><Plus className="mr-2 h-4 w-4" /> Tạo mùa giải khác</Button>}
+        {isCreating && <Button onClick={() => setIsCreating(false)} variant="ghost">Hủy bỏ</Button>}
+      </div>
+
+      {/* FORM: THIẾT LẬP CƠ BẢN */}
+      <form onSubmit={handleSubmit} className="contents">
+        <div className="bg-white p-6 rounded-xl shadow-sm border border-gray-200">
+          <div className="flex items-center gap-3 mb-6 pb-4 border-b">
+            <div className="p-2 bg-blue-100 text-blue-700 rounded-lg"><Clock className="w-5 h-5" /></div>
+            <h3 className="font-bold text-lg text-gray-800">Thông tin cơ bản</h3>
+          </div>
+
+          <div className="space-y-4">
+            <div className="space-y-2">
+              <Label>Mã mùa giải (ID)</Label>
+              <Input
+                disabled={!isCreating} // ID cannot be changed once created
+                value={formData.muagiai || ""}
+                onChange={e => setFormData({ ...formData, muagiai: e.target.value })}
+                placeholder="VD: 2024-2025"
+                required
+              />
+            </div>
+            <div className="grid grid-cols-2 gap-4">
+              <div className="space-y-2">
+                <Label>Ngày bắt đầu</Label>
+                <Input type="date" value={formData.ngaybatdau || ""} onChange={e => setFormData({ ...formData, ngaybatdau: e.target.value })} />
+              </div>
+              <div className="space-y-2">
+                <Label>Ngày kết thúc</Label>
+                <Input type="date" value={formData.ngayketthuc || ""} onChange={e => setFormData({ ...formData, ngayketthuc: e.target.value })} />
+              </div>
+            </div>
+            <div className="space-y-2">
+              <Label>Trạng thái</Label>
+              <Select value={formData.trangthai || "Active"} onValueChange={v => setFormData({ ...formData, trangthai: v })}>
+                <SelectTrigger><SelectValue /></SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="Active">Đang diễn ra (Active)</SelectItem>
+                  <SelectItem value="Planned">Dự kiến (Planned)</SelectItem>
+                  <SelectItem value="Finished">Đã kết thúc (Finished)</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+          </div>
+        </div>
+
+        {/* FORM: QUY ĐỊNH */}
+        <div className="bg-white p-6 rounded-xl shadow-sm border border-gray-200">
+          <div className="flex items-center gap-3 mb-6 pb-4 border-b">
+            <div className="p-2 bg-purple-100 text-purple-700 rounded-lg"><Gavel className="w-5 h-5" /></div>
+            <h3 className="font-bold text-lg text-gray-800">Quy định Điều lệ</h3>
+          </div>
+
+          <div className="space-y-4">
+            <div className="grid grid-cols-2 gap-4">
+              <div className="space-y-2">
+                <Label>Tuổi TT</Label>
+                <Input type="number" value={formData.tuoicauthutoithieu || 0} onChange={e => setFormData({ ...formData, tuoicauthutoithieu: parseInt(e.target.value) })} />
+              </div>
+              <div className="space-y-2">
+                <Label>Tuổi TĐ</Label>
+                <Input type="number" value={formData.tuoicauthutoida || 0} onChange={e => setFormData({ ...formData, tuoicauthutoida: parseInt(e.target.value) })} />
+              </div>
+            </div>
+
+            <div className="grid grid-cols-2 gap-4">
+              <div className="space-y-2">
+                <Label>Số CT tối thiểu</Label>
+                <Input type="number" value={formData.socauthutoithieu || 0} onChange={e => setFormData({ ...formData, socauthutoithieu: parseInt(e.target.value) })} />
+              </div>
+              <div className="space-y-2">
+                <Label>Số CT tối đa</Label>
+                <Input type="number" value={formData.socauthutoida || 0} onChange={e => setFormData({ ...formData, socauthutoida: parseInt(e.target.value) })} />
+              </div>
+            </div>
+
+            <div className="space-y-2">
+              <Label>Số thủ môn tối thiểu</Label>
+              <Input type="number" value={formData.sothumontoithieu || 0} onChange={e => setFormData({ ...formData, sothumontoithieu: parseInt(e.target.value) })} />
+            </div>
+
+            <div className="space-y-2">
+              <Label>Thời điểm ghi bàn tối đa (phút)</Label>
+              <Input type="number" value={formData.thoidiemghibantoida || 0} onChange={e => setFormData({ ...formData, thoidiemghibantoida: parseInt(e.target.value) })} />
+            </div>
+
+            <div className="pt-4">
+              <Button type="submit" disabled={mutation.isPending} className="w-full bg-blue-600 hover:bg-blue-700">
+                {mutation.isPending && <Loader2 className="animate-spin mr-2 h-4 w-4" />}
+                {isCreating ? "Tạo Mùa Giải & Quy Định" : "Lưu Thay Đổi"}
+              </Button>
+            </div>
+          </div>
+        </div>
+      </form>
+    </div>
+  )
 }
 
-function TeamManagementTab() {
-    return (
-        <div className="space-y-6">
-            <div className="flex justify-between items-center"><div className="flex items-center gap-2 text-gray-800 font-bold text-lg"><Users className="w-5 h-5"/> Yêu cầu nhân sự từ các đội</div></div>
-            <div className="bg-white p-12 rounded-xl border border-dashed border-gray-300 text-center flex flex-col items-center justify-center text-gray-400">
-                <Users className="w-12 h-12 mb-3 opacity-20"/>
-                <p>Không có yêu cầu nhân sự nào mới.</p>
-            </div>
+// ====================================================================
+// TAB 3: ĐỘI BÓNG (REGISTER TEAMS)
+// ====================================================================
+function TeamManagementTab({ selectedSeasonId }: { selectedSeasonId: string }) {
+  const queryClient = useQueryClient()
+  const { toast } = useToast()
+  const [isRegisterOpen, setIsRegisterOpen] = useState(false)
+  const [searchTerm, setSearchTerm] = useState("");
+
+  // Get teams for CURRENT season
+  const { data: currentClubsData } = useQuery({
+    queryKey: ['clubs', selectedSeasonId],
+    queryFn: () => ClubsService.getClubs({ muagiai: selectedSeasonId, limit: 100 }),
+    enabled: !!selectedSeasonId
+  });
+
+  // Get ALL clubs (history) for suggestions
+  const { data: allClubsData } = useQuery({
+    queryKey: ['all-clubs-history'],
+    queryFn: () => ClubsService.getClubs({ limit: 1000 }) // Get mostly everything
+  });
+
+  const currentClubs = useMemo(() => Array.isArray(currentClubsData) ? currentClubsData : (currentClubsData as any)?.data || [], [currentClubsData]);
+  const historyClubs = useMemo(() => Array.isArray(allClubsData) ? allClubsData : (allClubsData as any)?.data || [], [allClubsData]);
+
+  // Unique clubs from history (deduped by name) not currently registered
+  const availableClubs = useMemo(() => {
+    const registeredNames = new Set(currentClubs.map((c: any) => c.tenclb));
+    const unique = new Map();
+    historyClubs.forEach((c: any) => {
+      if (!registeredNames.has(c.tenclb) && !unique.has(c.tenclb)) {
+        unique.set(c.tenclb, c);
+      }
+    });
+    return Array.from(unique.values()).filter(c => c.tenclb.toLowerCase().includes(searchTerm.toLowerCase()));
+  }, [currentClubs, historyClubs, searchTerm]);
+
+  // Register Mutation
+  const registerMutation = useMutation({
+    mutationFn: async (club: any) => {
+      // Create a new club entry for this season based on the old one
+      const newClubData = {
+        maclb: club.maclb, // Reuse ID? Usually ID is unique per record. wait.
+        // Models says `maclb` + `muagiai` is PK. So we can Reuse `maclb`.
+        muagiai: selectedSeasonId,
+        tenclb: club.tenclb,
+        masanvandong: club.masanvandong, // Reuse stadium ID? Stadium also has muagiai PK...
+        // Warning: If Stadium is Season-Scoped, we must Register Stadium First.
+        // Ideally backend handles this or we ignore stadium for now.
+        // Let's assume we copy basic info.
+        diachitruso: club.diachitruso,
+        donvichuquan: club.donvichuquan,
+        trangphucchunha: club.trangphucchunha,
+        trangphuckhach: club.trangphuckhach,
+        trangphucduphong: club.trangphucduphong
+      };
+      return ClubsService.createClub({ requestBody: newClubData });
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['clubs', selectedSeasonId] });
+      toast({ title: "Đã thêm đội bóng", description: "Đội bóng đã được đăng ký cho mùa giải này." });
+    },
+    onError: () => {
+      toast({ title: "Lỗi", description: "Không thể thêm đội bóng. Có thể ID đã tồn tại." });
+    }
+  });
+
+  return (
+    <div className="space-y-6">
+      <div className="flex justify-between items-center">
+        <div>
+          <h2 className="text-xl font-bold flex items-center gap-2"><Users className="w-6 h-6" /> Các đội tham dự ({selectedSeasonId})</h2>
+          <p className="text-gray-500">Quản lý danh sách CLB chính thức</p>
         </div>
-    )
+        <Button onClick={() => setIsRegisterOpen(true)} className="bg-green-600 hover:bg-green-700">
+          <Plus className="mr-2 h-4 w-4" /> Đăng ký Đội từ DS cũ
+        </Button>
+      </div>
+
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+        {currentClubs.map((club: any) => (
+          <Card key={club.maclb}>
+            <CardHeader className="pb-2">
+              <CardTitle className="text-lg">{club.tenclb}</CardTitle>
+              <CardDescription>{club.maclb}</CardDescription>
+            </CardHeader>
+            <CardContent>
+              <div className="text-sm text-gray-600">
+                <p>Sân: {club.masanvandong || "Chưa đăng ký"}</p>
+                <p>Trụ sở: {club.diachitruso || "N/A"}</p>
+              </div>
+            </CardContent>
+          </Card>
+        ))}
+        {currentClubs.length === 0 && (
+          <div className="col-span-full py-12 text-center bg-white border border-dashed rounded-xl">
+            <Users className="w-12 h-12 mx-auto text-gray-300 mb-2" />
+            <p className="text-gray-500">Chưa có đội bóng nào đăng ký cho mùa giải này.</p>
+            <Button variant="link" onClick={() => setIsRegisterOpen(true)}>Đăng ký ngay</Button>
+          </div>
+        )}
+      </div>
+
+      {/* REGISTER MODAL */}
+      <Dialog open={isRegisterOpen} onOpenChange={setIsRegisterOpen}>
+        <DialogContent className="max-w-2xl">
+          <DialogHeader>
+            <DialogTitle>Chọn đội bóng từ dữ liệu cũ</DialogTitle>
+            <DialogDescription>Chọn các đội từ các mùa giải trước để đăng ký cho {selectedSeasonId}</DialogDescription>
+          </DialogHeader>
+
+          <div className="py-4">
+            <div className="relative mb-4">
+              <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-gray-500" />
+              <Input
+                placeholder="Tìm kiếm tên đội..."
+                className="pl-9"
+                value={searchTerm}
+                onChange={(e) => setSearchTerm(e.target.value)}
+              />
+            </div>
+            <div className="max-h-[300px] overflow-y-auto space-y-2 border p-2 rounded-md">
+              {availableClubs.map((club: any) => (
+                <div key={club.maclb + club.muagiai} className="flex items-center justify-between p-3 hover:bg-gray-50 rounded border">
+                  <div>
+                    <p className="font-bold">{club.tenclb}</p>
+                    <p className="text-xs text-gray-500">{club.donvichuquan}</p>
+                  </div>
+                  <Button size="sm" variant="outline" onClick={() => registerMutation.mutate(club)}>
+                    <Plus className="w-4 h-4 mr-1" /> Thêm
+                  </Button>
+                </div>
+              ))}
+              {availableClubs.length === 0 && <p className="text-center text-gray-500 py-4">Không tìm thấy đội phù hợp hoặc tất cả đã được đăng ký.</p>}
+            </div>
+          </div>
+        </DialogContent>
+      </Dialog>
+    </div>
+  )
 }
 
 // ====================================================================
 // TAB 4: QUẢN LÝ LỊCH THI ĐẤU
 // ====================================================================
-function ScheduleTab() {
-    const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
-    const [selectedRound, setSelectedRound] = useState("all");
-    const [selectedStatus, setSelectedStatus] = useState("all");
+function ScheduleTab({ selectedSeasonId }: { selectedSeasonId: string }) {
+  const queryClient = useQueryClient();
+  const [isGenerateOpen, setIsGenerateOpen] = useState(false);
 
-    const { data: matchesData } = useQuery({
-        queryKey: ['matches', '2024-2025'],
-        queryFn: () => MatchesService.readMatches({ muagiai: '2024-2025', limit: 100 })
-    });
+  // Data
+  const { data: matchesData } = useQuery({
+    queryKey: ['matches', selectedSeasonId],
+    queryFn: () => MatchesService.readMatches({ muagiai: selectedSeasonId, limit: 100 }),
+    enabled: !!selectedSeasonId
+  });
 
-    const matches = useMemo(() => {
-        let list = Array.isArray(matchesData) ? matchesData : (matchesData as any)?.data || [];
-        if (selectedRound !== "all") list = list.filter((m: any) => String(m.vong) === selectedRound);
-        if (selectedStatus === "upcoming") list = list.filter((m: any) => !m.tiso);
-        else if (selectedStatus === "finished") list = list.filter((m: any) => m.tiso);
-        return list.sort((a: any, b: any) => new Date(b.thoigianthidau).getTime() - new Date(a.thoigianthidau).getTime());
-    }, [matchesData, selectedRound, selectedStatus]);
+  const matches = useMemo(() => {
+    let list = Array.isArray(matchesData) ? matchesData : (matchesData as any)?.data || [];
+    return list.sort((a: any, b: any) => new Date(a.thoigianthidau).getTime() - new Date(b.thoigianthidau).getTime());
+  }, [matchesData]);
 
-    return (
-        <div className="space-y-6">
-            <div className="flex items-center justify-between">
-                <div className="flex items-center gap-2 text-gray-800 font-bold text-lg"><CalendarDays className="w-5 h-5"/> Danh sách trận đấu</div>
-                <Button className="bg-gray-900 text-white hover:bg-black" onClick={() => setIsCreateModalOpen(true)}>
-                    <Plus className="w-4 h-4 mr-2"/> Tạo lịch thi đấu
-                </Button>
-            </div>
+  const { data: seasonDetail } = useQuery({
+    queryKey: ['season', selectedSeasonId],
+    queryFn: () => SeasonManagementService.getSeasons({ limit: 100 }).then((res: any) => (Array.isArray(res) ? res : res.data).find((s: any) => s.muagiai === selectedSeasonId)),
+    enabled: !!selectedSeasonId
+  });
 
-            <div className="bg-white p-4 rounded-lg border shadow-sm flex flex-col md:flex-row gap-4 items-end">
-                <div className="flex-1 w-full">
-                    <label className="text-xs font-bold text-gray-500 mb-1 block">Vòng đấu</label>
-                    <Select value={selectedRound} onValueChange={setSelectedRound}>
-                        <SelectTrigger className="bg-gray-50 border-gray-200"><SelectValue placeholder="Tất cả vòng" /></SelectTrigger>
-                        <SelectContent><SelectItem value="all">Tất cả vòng</SelectItem>{Array.from({length: 18}, (_, i) => i + 1).map(r => (<SelectItem key={r} value={String(r)}>Vòng {r}</SelectItem>))}</SelectContent>
-                    </Select>
-                </div>
-                <div className="flex-1 w-full">
-                    <label className="text-xs font-bold text-gray-500 mb-1 block">Trạng thái</label>
-                    <Select value={selectedStatus} onValueChange={setSelectedStatus}>
-                        <SelectTrigger className="bg-gray-50 border-gray-200"><SelectValue placeholder="Tất cả trạng thái" /></SelectTrigger>
-                        <SelectContent><SelectItem value="all">Tất cả</SelectItem><SelectItem value="upcoming">Sắp diễn ra</SelectItem><SelectItem value="finished">Đã kết thúc</SelectItem></SelectContent>
-                    </Select>
-                </div>
-            </div>
+  const [genConfig, setGenConfig] = useState({
+    ngaybatdau_lutdi: "",
+    ngaybatdau_lutve: "",
+    interval: 7
+  })
 
-            <div className="space-y-2">
-                {matches.length === 0 ? (
-                    <div className="text-center py-20 bg-white rounded-lg border border-dashed border-gray-300">
-                        <p className="text-gray-400">Không tìm thấy trận đấu nào phù hợp.</p>
-                    </div>
-                ) : (
-                    matches.map((m: any) => (
-                        <div key={m.matran} className="bg-white p-4 rounded-lg border flex justify-between items-center hover:bg-gray-50">
-                            <div className="flex items-center gap-4">
-                                <span className="bg-gray-100 text-gray-600 px-2 py-1 rounded text-xs font-bold w-16 text-center">Vòng {m.vong}</span>
-                                <div className="text-sm">
-                                    <span className="font-bold">{m.doi_nha?.tenclb || m.maclb_nha}</span>
-                                    <span className="mx-2 text-gray-400">vs</span>
-                                    <span className="font-bold">{m.doi_khach?.tenclb || m.maclb_khach}</span>
-                                </div>
-                            </div>
-                            <div className="text-sm text-gray-500">{new Date(m.thoigianthidau).toLocaleString('vi-VN')}</div>
-                        </div>
-                    ))
-                )}
-            </div>
+  // Init dates from season
+  useEffect(() => {
+    if (seasonDetail) {
+      setGenConfig(prev => ({
+        ...prev,
+        ngaybatdau_lutdi: seasonDetail.ngaybatdau ? seasonDetail.ngaybatdau.split('T')[0] : "",
+        ngaybatdau_lutve: seasonDetail.ngayketthuc ? new Date(new Date(seasonDetail.ngayketthuc).getTime() - 90 * 24 * 60 * 60 * 1000).toISOString().split('T')[0] : "" // approx 3 months before end
+      }))
+    }
+  }, [seasonDetail])
 
-            <CreateMatchModal isOpen={isCreateModalOpen} onClose={() => setIsCreateModalOpen(false)} />
-        </div>
-    )
-}
-
-// ====================================================================
-// MODAL TẠO LỊCH THI ĐẤU (FIX LỖI LẶP TÊN & VALIDATION)
-// ====================================================================
-function CreateMatchModal({ isOpen, onClose }: { isOpen: boolean, onClose: () => void }) {
-    const queryClient = useQueryClient();
-    
-    const [formData, setFormData] = useState({
-        vong: "1",
-        maclb_nha: "",
-        maclb_khach: "",
-        thoigian: "",
-        san: ""
-    });
-
-    const { data: clubs } = useQuery({ queryKey: ['all-clubs'], queryFn: () => ClubsService.getClubs({ limit: 100 }) });
-    const clubList = Array.isArray(clubs) ? clubs : (clubs as any)?.data || [];
-
-    // Tự động điền sân khi chọn đội nhà
-    const handleHomeTeamChange = (clubId: string) => {
-        const selectedClub = clubList.find((c: any) => c.maclb === clubId);
-        const stadiumId = selectedClub?.masanvandong || selectedClub?.MaSanVanDong || "";
-        setFormData(prev => ({ ...prev, maclb_nha: clubId, san: stadiumId }));
-    };
-
-    // Hàm lấy tên đội để hiển thị thủ công (Tránh lỗi lặp tên)
-    const getClubName = (id: string) => {
-        if (!id) return undefined; // Trả về undefined để hiện Placeholder
-        const club = clubList.find((c: any) => c.maclb === id);
-        return club ? club.tenclb : id;
-    };
-
-    const mutation = useMutation({
-        mutationFn: async (newData: any) => {
-            // await MatchesService.createMatch({ requestBody: newData });
-            return new Promise(resolve => setTimeout(() => resolve(newData), 1000));
-        },
-        onSuccess: () => {
-            queryClient.invalidateQueries({ queryKey: ['matches'] });
-            alert(`Đã tạo lịch thi đấu thành công!`);
-            onClose();
-            setFormData({ vong: "1", maclb_nha: "", maclb_khach: "", thoigian: "", san: "" });
+  const generateMutation = useMutation({
+    mutationFn: async () => {
+      return ScheduleService.generateSchedule({
+        requestBody: {
+          muagiai: selectedSeasonId,
+          ngaybatdau_lutdi: new Date(genConfig.ngaybatdau_lutdi).toISOString(),
+          ngaybatdau_lutve: new Date(genConfig.ngaybatdau_lutve).toISOString(),
+          interval_days: genConfig.interval
         }
-    });
+      })
+    },
+    onSuccess: (res) => {
+      alert(`Thành công! Đã tạo ${res.matches_created} trận đấu qua ${res.rounds_generated} vòng.`);
+      setIsGenerateOpen(false);
+      queryClient.invalidateQueries({ queryKey: ['matches'] });
+    },
+    onError: (err: any) => {
+      alert("Lỗi tạo lịch: " + err.body?.detail || err.message);
+    }
+  })
 
-    // Kiểm tra tính hợp lệ (Validation)
-    const isValid = useMemo(() => {
-        return (
-            formData.vong &&
-            formData.maclb_nha && 
-            formData.maclb_khach && 
-            formData.thoigian && // Bắt buộc phải có thời gian
-            formData.maclb_nha !== formData.maclb_khach // Đội nhà phải khác đội khách
-        );
-    }, [formData]);
-
-    return (
-        <Dialog open={isOpen} onOpenChange={onClose}>
-            <DialogContent className="sm:max-w-[500px]">
-                <DialogHeader>
-                    <DialogTitle>Tạo lịch thi đấu mới</DialogTitle>
-                </DialogHeader>
-                <div className="grid gap-4 py-4">
-                    <div className="grid grid-cols-2 gap-4">
-                        <div>
-                            <Label>Vòng đấu</Label>
-                            <Select 
-                                value={formData.vong} 
-                                onValueChange={(v) => setFormData({...formData, vong: v})}
-                            >
-                                <SelectTrigger>
-                                    <SelectValue placeholder="Chọn vòng" />
-                                </SelectTrigger>
-                                <SelectContent>
-                                    {Array.from({length: 18}, (_, i) => i + 1).map(r => (
-                                        <SelectItem key={r} value={String(r)}>Vòng {r}</SelectItem>
-                                    ))}
-                                </SelectContent>
-                            </Select>
-                        </div>
-                        <div>
-                            <Label>Thời gian <span className="text-red-500">*</span></Label>
-                            <Input 
-                                type="datetime-local" 
-                                value={formData.thoigian}
-                                onChange={(e) => setFormData({...formData, thoigian: e.target.value})}
-                                className={!formData.thoigian ? "border-red-200" : ""}
-                            />
-                        </div>
-                    </div>
-                    
-                    <div className="grid grid-cols-2 gap-4">
-                        <div>
-                            <Label>Đội nhà</Label>
-                            <Select 
-                                value={formData.maclb_nha} 
-                                onValueChange={handleHomeTeamChange}
-                            >
-                                <SelectTrigger>
-                                    {/* FIX LỖI LẶP TÊN: Hiển thị trực tiếp text thay vì để component tự đoán */}
-                                    <SelectValue placeholder="Chọn đội nhà">
-                                        {getClubName(formData.maclb_nha)}
-                                    </SelectValue>
-                                </SelectTrigger>
-                                <SelectContent>
-                                    {clubList.map((c: any) => (
-                                        <SelectItem key={c.maclb} value={c.maclb}>
-                                            {c.tenclb}
-                                        </SelectItem>
-                                    ))}
-                                </SelectContent>
-                            </Select>
-                        </div>
-                        <div>
-                            <Label>Đội khách</Label>
-                            <Select 
-                                value={formData.maclb_khach} 
-                                onValueChange={(v) => setFormData({...formData, maclb_khach: v})}
-                            >
-                                <SelectTrigger>
-                                    {/* FIX LỖI LẶP TÊN */}
-                                    <SelectValue placeholder="Chọn đội khách">
-                                        {getClubName(formData.maclb_khach)}
-                                    </SelectValue>
-                                </SelectTrigger>
-                                <SelectContent>
-                                    {clubList.map((c: any) => (
-                                        <SelectItem key={c.maclb} value={c.maclb}>
-                                            {c.tenclb}
-                                        </SelectItem>
-                                    ))}
-                                </SelectContent>
-                            </Select>
-                        </div>
-                    </div>
-
-                    <div>
-                        <Label>Sân thi đấu (Tự động theo đội nhà)</Label>
-                        <Input 
-                            value={formData.san} 
-                            disabled 
-                            className="bg-gray-100 font-mono text-gray-600" 
-                            placeholder="Chưa chọn đội nhà..."
-                        />
-                    </div>
-                </div>
-                <DialogFooter>
-                    <Button variant="outline" onClick={onClose}>Hủy</Button>
-                    <Button 
-                        onClick={() => mutation.mutate(formData)} 
-                        disabled={mutation.isPending || !isValid} // Nút sẽ mờ đi nếu !isValid
-                        className={`${!isValid ? 'opacity-50 cursor-not-allowed' : 'bg-green-600 hover:bg-green-700'}`}
-                    >
-                        {mutation.isPending && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-                        Lưu lịch thi đấu
-                    </Button>
-                </DialogFooter>
-            </DialogContent>
-        </Dialog>
-    )
-}
-
-function StatCard({ title, value, icon: Icon, color }: any) {
-    return (
-      <div className="bg-white p-6 rounded-xl shadow-sm border border-gray-100 flex flex-col items-center justify-center text-center hover:shadow-md transition-shadow">
-          <div className={`p-3 rounded-full mb-3 bg-opacity-10 ${color.replace('text-', 'bg-')}`}>
-              <Icon className={`w-6 h-6 ${color}`} />
-          </div>
-          <div className={`text-3xl font-bold ${color} mb-1`}>{value}</div>
-          <div className="text-gray-500 text-xs font-bold uppercase tracking-wide">{title}</div>
+  return (
+    <div className="space-y-6">
+      <div className="flex items-center justify-between">
+        <div>
+          <h2 className="text-xl font-bold flex items-center gap-2"><CalendarDays className="w-6 h-6" /> Lịch thi đấu mùa {selectedSeasonId}</h2>
+          <p className="text-gray-500">Xếp lịch và quản lý trận đấu</p>
+        </div>
+        <Button className="bg-gray-900 text-white hover:bg-black" onClick={() => setIsGenerateOpen(true)}>
+          <RefreshCw className="w-4 h-4 mr-2" /> Xếp lịch tự động
+        </Button>
       </div>
-    )
+
+      <div className="space-y-2">
+        {matches.length === 0 ? (
+          <div className="text-center py-20 bg-white rounded-lg border border-dashed border-gray-300">
+            <CalendarDays className="w-12 h-12 mx-auto text-gray-300 mb-3" />
+            <p className="text-gray-500">Chưa có lịch thi đấu.</p>
+            <Button variant="link" onClick={() => setIsGenerateOpen(true)}>Tạo lịch ngay</Button>
+          </div>
+        ) : (
+          <div className="grid gap-2">
+            {matches.map((m: any) => (
+              <div key={m.matran} className="bg-white p-4 rounded-lg border flex justify-between items-center hover:bg-gray-50 shadow-sm">
+                <div className="flex items-center gap-4">
+                  <span className="bg-blue-100 text-blue-800 px-2 py-1 rounded text-xs font-bold w-20 text-center">Vòng {m.vong}</span>
+                  <div className="text-sm">
+                    <span className="font-bold">{m.doi_nha?.tenclb || m.maclb_nha || m.ten_clb_nha}</span>
+                    <span className="mx-2 text-gray-400 font-bold">vs</span>
+                    <span className="font-bold">{m.doi_khach?.tenclb || m.maclb_khach || m.ten_clb_khach}</span>
+                  </div>
+                </div>
+                <div className="text-sm text-gray-500 flex items-center gap-2">
+                  <Clock className="w-3 h-3" />
+                  {new Date(m.thoigianthidau).toLocaleString('vi-VN')}
+                </div>
+              </div>
+            ))}
+          </div>
+        )}
+      </div>
+
+      {/* GENERATE MODAL */}
+      <Dialog open={isGenerateOpen} onOpenChange={setIsGenerateOpen}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Xếp lịch thi đấu tự động</DialogTitle>
+            <DialogDescription>Thuật toán Round-Robin sẽ tạo lịch thi đấu cho tất cả các đội đã đăng ký.</DialogDescription>
+          </DialogHeader>
+          <div className="space-y-4 py-4">
+            <div className="grid grid-cols-2 gap-4">
+              <div className="space-y-2">
+                <Label>Ngày bắt đầu Lượt đi</Label>
+                <Input type="date" value={genConfig.ngaybatdau_lutdi} onChange={e => setGenConfig({ ...genConfig, ngaybatdau_lutdi: e.target.value })} />
+              </div>
+              <div className="space-y-2">
+                <Label>Ngày bắt đầu Lượt về</Label>
+                <Input type="date" value={genConfig.ngaybatdau_lutve} onChange={e => setGenConfig({ ...genConfig, ngaybatdau_lutve: e.target.value })} />
+              </div>
+            </div>
+            <div className="space-y-2">
+              <Label>Khoảng cách giữa các vòng (Ngày)</Label>
+              <Input type="number" value={genConfig.interval} onChange={e => setGenConfig({ ...genConfig, interval: parseInt(e.target.value) })} />
+            </div>
+            <div className="bg-yellow-50 p-3 rounded text-xs text-yellow-800 border border-yellow-200">
+              Lưu ý: Hệ thống sẽ xóa lịch thi đấu cũ của mùa giải này nếu có.
+            </div>
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setIsGenerateOpen(false)}>Hủy</Button>
+            <Button onClick={() => generateMutation.mutate()} disabled={generateMutation.isPending} className="bg-blue-600">
+              {generateMutation.isPending && <Loader2 className="animate-spin mr-2 h-4 w-4" />} Tạo Lịch
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+    </div>
+  )
 }

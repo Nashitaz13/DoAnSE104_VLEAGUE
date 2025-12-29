@@ -1,4 +1,4 @@
 // Placeholder for UserInformation
-export function UserInformation() {
+export default function UserInformation() {
   return <div>User Information</div>;
 }
