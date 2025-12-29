@@ -1,6 +1,6 @@
 from sqlmodel import Session, select
-from typing import Optional
-from datetime import datetime
+from typing import Optional, Any
+from datetime import datetime, date
 from sqlalchemy import or_
 from sqlalchemy.orm import aliased
 
@@ -29,6 +29,26 @@ from app.models import (
 
 
 # =============================================
+# HELPER FUNCTIONS
+# =============================================
+
+def _to_date(dt: datetime | date | None) -> date | None:
+    """
+    Convert datetime/date to date for consistent comparisons.
+    
+    Handles:
+    - datetime -> date (via .date())
+    - date -> date (passthrough)
+    - None -> None
+    """
+    if dt is None:
+        return None
+    if isinstance(dt, datetime):
+        return dt.date()
+    return dt
+
+
+# =============================================
 # V-LEAGUE AUTHENTICATION CRUD
 # =============================================
 
@@ -48,35 +68,27 @@ def get_user_by_email(*, session: Session, email: str) -> Optional[TaiKhoan]:
     return session.exec(statement).first()
 
 
+# Module-level logger (configured once, avoids handler leak)
+import logging as _auth_logging
+_auth_logger = _auth_logging.getLogger(f"{__name__}.auth")
+
+
 def authenticate(*, session: Session, username: str, password: str) -> Optional[TaiKhoan]:
     """
     Authenticate user with username and password
     Returns TaiKhoan if credentials are valid, None otherwise
     """
-    import logging
-    logger = logging.getLogger(__name__)
-    logger.setLevel(logging.INFO)
-    # Add file handler to capture logs
-    fh = logging.FileHandler('auth_debug.log')
-    fh.setLevel(logging.INFO)
-    formatter = logging.Formatter('%(asctime)s - %(name)s - %(levelname)s - %(message)s')
-    fh.setFormatter(formatter)
-    logger.addHandler(fh)
-    
-    logger.info(f"Authenticating user: '{username}'")
+    _auth_logger.info(f"Authenticating user: '{username}'")
 
     user = get_user_by_username(session=session, username=username)
     if not user:
-        logger.warning(f"User '{username}' not found in database.")
-        logger.removeHandler(fh)
+        _auth_logger.warning(f"User '{username}' not found in database.")
         return None
     if not verify_password(password, user.matkhau):
-        logger.warning(f"Password verification failed for '{username}'.")
-        logger.removeHandler(fh)
+        _auth_logger.warning(f"Password verification failed for '{username}'.")
         return None
     
-    logger.info(f"User '{username}' authenticated successfully.")
-    logger.removeHandler(fh)
+    _auth_logger.info(f"User '{username}' authenticated successfully.")
     return user
 
 
@@ -778,9 +790,13 @@ def get_matches(
     denngay: Optional[datetime] = None,  # Date to
     skip: int = 0,
     limit: int = 100
-) -> list["LichThiDau"]:
+) -> list[dict[str, any]]:
     """
-    Get matches with optional filters
+    Get matches with optional filters.
+    
+    Returns list of dicts (enriched with club/stadium names).
+    Access fields via dict keys: m["maclbnha"], m["vong"], etc.
+    
     maclb: Get matches where club is home OR away
     """
     from app.models import LichThiDau, CauLacBo, SanVanDong
@@ -1002,13 +1018,15 @@ def validate_match_creation(
             raise ValueError(f"Stadium {match_in.masanvandong} not found for season {match_in.muagiai}")
     
     # 6. Validate match time within season
-    # Convert datetime to date for comparison
-    match_date = match_in.thoigianthidau.date()
+    # Use _to_date() helper for consistent date comparisons
+    match_date = _to_date(match_in.thoigianthidau)
+    season_start = _to_date(season.ngaybatdau)
+    season_end = _to_date(season.ngayketthuc)
     
-    if season.ngaybatdau and match_date < season.ngaybatdau:
+    if season_start and match_date and match_date < season_start:
         raise ValueError(f"Match time before season start date ({season.ngaybatdau})")
     
-    if season.ngayketthuc and match_date > season.ngayketthuc:
+    if season_end and match_date and match_date > season_end:
         raise ValueError(f"Match time after season end date ({season.ngayketthuc})")
     
     # 7. Validate round number > 0
@@ -1795,7 +1813,10 @@ def validate_schedule(
     - Each pair plays exactly 2 times (home & away)
     - No duplicate rounds for same clubs
     - All matches within season dates
+    
+    PERF: Builds index once (O(n)) instead of repeated list comprehensions (was O(n²))
     """
+    from collections import defaultdict
     from app.models import ScheduleValidationResult
     
     # Validate input
@@ -1831,65 +1852,86 @@ def validate_schedule(
     
     expected_matches_per_club = (n_clubs - 1) * 2  # Each club plays all others twice
     
-    # Count matches per club
-    club_match_counts = {}
-    for club in clubs:
-        club_matches = [m for m in matches if m.maclbnha == club.maclb or m.maclbkhach == club.maclb]
-        club_match_counts[club.maclb] = len(club_matches)
+    # PERF: Build indexes ONCE - O(n) instead of O(n²) repeated scans
+    # Index: club_id -> list of matches involving that club
+    matches_by_club: dict[str, list[dict]] = defaultdict(list)
+    # Index: (club1, club2) sorted tuple -> list of matches between them
+    matches_by_pair: dict[tuple[str, str], list[dict]] = defaultdict(list)
+    max_vong = 0
+    
+    for m in matches:
+        home = m["maclbnha"]
+        away = m["maclbkhach"]
+        vong = m.get("vong", 0) or 0
         
-        if len(club_matches) != expected_matches_per_club:
+        matches_by_club[home].append(m)
+        matches_by_club[away].append(m)
+        
+        # Sorted tuple ensures (A,B) == (B,A) for indexing
+        pair_key = tuple(sorted([home, away]))
+        matches_by_pair[pair_key].append(m)
+        
+        if vong > max_vong:
+            max_vong = vong
+    
+    # 1. Count matches per club - O(clubs) using index
+    for club in clubs:
+        club_matches = matches_by_club.get(club.maclb, [])
+        count = len(club_matches)
+        
+        if count != expected_matches_per_club:
             errors.append(
-                f"Club {club.maclb} has {len(club_matches)} matches, "
+                f"Club {club.maclb} has {count} matches, "
                 f"expected {expected_matches_per_club}"
             )
     
-    # Check each pair plays exactly twice (home & away)
+    # 2. Check each pair plays exactly twice (home & away) - O(pairs) using index
     for i, club1 in enumerate(clubs):
         for club2 in clubs[i+1:]:
-            club1_vs_club2 = [
-                m for m in matches
-                if (m.maclbnha == club1.maclb and m.maclbkhach == club2.maclb) or
-                   (m.maclbnha == club2.maclb and m.maclbkhach == club1.maclb)
-            ]
+            pair_key = tuple(sorted([club1.maclb, club2.maclb]))
+            pair_matches = matches_by_pair.get(pair_key, [])
             
-            if len(club1_vs_club2) != 2:
+            if len(pair_matches) != 2:
                 errors.append(
-                    f"Clubs {club1.maclb} vs {club2.maclb} have {len(club1_vs_club2)} matches, expected 2"
+                    f"Clubs {club1.maclb} vs {club2.maclb} have {len(pair_matches)} matches, expected 2"
                 )
             
             # Check one home, one away
-            if len(club1_vs_club2) == 2:
-                home_counts = sum(1 for m in club1_vs_club2 if m.maclbnha == club1.maclb)
+            if len(pair_matches) == 2:
+                home_counts = sum(1 for m in pair_matches if m["maclbnha"] == club1.maclb)
                 if home_counts != 1:
                     errors.append(
                         f"Clubs {club1.maclb} vs {club2.maclb} don't have balanced home/away"
                     )
     
-    # Check all matches within season dates
+    # 3. Check all matches within season dates - O(n)
     if season.ngaybatdau or season.ngayketthuc:
         for match in matches:
-            if not match.thoigianthidau:
-                errors.append(f"Match {match.matran} has no scheduled time")
+            match_time = match.get("thoigianthidau")
+            matran = match.get("matran", "unknown")
+            
+            if not match_time:
+                errors.append(f"Match {matran} has no scheduled time")
                 continue
             
             # Convert datetime to date for comparison if needed
-            match_date = match.thoigianthidau.date() if hasattr(match.thoigianthidau, 'date') else match.thoigianthidau
+            match_date = match_time.date() if hasattr(match_time, 'date') else match_time
             
             if season.ngaybatdau:
-                season_start = season.ngaybatdau.date() if hasattr(season.ngaybatdau, 'date') else season.ngaybatdau
+                season_start = _to_date(season.ngaybatdau)
                 if match_date < season_start:
-                    errors.append(f"Match {match.matran} before season start")
+                    errors.append(f"Match {matran} before season start")
             
             if season.ngayketthuc:
-                season_end = season.ngayketthuc.date() if hasattr(season.ngayketthuc, 'date') else season.ngayketthuc
+                season_end = _to_date(season.ngayketthuc)
                 if match_date > season_end:
-                    errors.append(f"Match {match.matran} after season end")
+                    errors.append(f"Match {matran} after season end")
     
     stats = {
         "total_matches": len(matches),
         "total_clubs": n_clubs,
         "expected_total_matches": n_clubs * (n_clubs - 1),  # n * (n-1)
-        "rounds_detected": max([m.vong for m in matches]) if matches else 0
+        "rounds_detected": max_vong
     }
     
     return ScheduleValidationResult(

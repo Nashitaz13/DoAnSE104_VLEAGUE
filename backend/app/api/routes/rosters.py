@@ -256,13 +256,21 @@ def validate_roster(
     stats["goalkeepers"] = gk_check["goalkeeper_count"]
     stats["min_goalkeepers"] = gk_check["min_required"]
     
-    # 3. Count foreign players
-    current_roster = crud.get_roster(session=session, maclb=maclb, muagiai=muagiai)
-    foreign_count = 0
-    for entry in current_roster:
-        player = crud.get_player_by_id(session=session, macauthu=entry.macauthu)
-        if player and player.quoctich and player.quoctich != "VN":
-            foreign_count += 1
+    # 3. Count foreign players - PERF: Single JOIN query (avoid N+1)
+    from sqlmodel import select
+    from app.models import ChiTietDoiBong, CauThu
+    from app.utils import is_foreign
+    
+    foreign_stmt = (
+        select(CauThu.quoctich)
+        .join(ChiTietDoiBong, ChiTietDoiBong.macauthu == CauThu.macauthu)
+        .where(
+            ChiTietDoiBong.maclb == maclb,
+            ChiTietDoiBong.muagiai == muagiai
+        )
+    )
+    nationalities = session.exec(foreign_stmt).all()
+    foreign_count = sum(1 for nat in nationalities if is_foreign(nat))
     stats["foreign_players"] = foreign_count
     
     return RosterValidationResult(
