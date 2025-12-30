@@ -1283,8 +1283,10 @@ def validate_match_event(
         )
     
     # 5. Validate event time (1-130 minutes, allowing overtime)
-    if event_in.phutthidau < 1 or event_in.phutthidau > 130:
-        raise ValueError(f"Event time must be between 1 and 130 minutes, got {event_in.phutthidau}")
+    # Exception: MVP can be recorded at minute 0 (post-match)
+    min_time = 0 if event_in.loaisukien == "MVP" else 1
+    if event_in.phutthidau < min_time or event_in.phutthidau > 130:
+        raise ValueError(f"Event time must be between {min_time} and 130 minutes, got {event_in.phutthidau}")
     
     # 5b. Validate bugio (added time) with strict rules
     if event_in.bugio is not None:
@@ -2858,19 +2860,12 @@ def compute_mvp(
     limit: int = 10
 ) -> MVPResponse:
     """
-    Compute MVP candidates based on player performance.
+    Compute MVP candidates based on 'MVP' (Man of the Match) awards.
     
-    Rating formula:
-    - Goals: +3 points each
-    - Assists: +2 points each
-    - Matches played: +0.1 per match
-    - Clean sheets (for goalkeepers): Not calculated due to lack of data
-    
-    Returns top N players sorted by average rating.
+    Returns top N players sorted by number of MVP awards.
     """
-    from collections import defaultdict
-    from app.utils import normalize_event_type, logger
     import traceback
+    from collections import defaultdict
     
     try:
         # Verify season exists
@@ -2882,143 +2877,75 @@ def compute_mvp(
                 generated_at=datetime.utcnow()
             )
         
-        # Get all matches in season
-        matches_stmt = select(LichThiDau.matran).where(LichThiDau.muagiai == muagiai)
-        match_ids = list(session.exec(matches_stmt).all())
+        # Query 'MVP' events for the season
+        # Join SuKienTranDau with LichThiDau to filter by muagiai
+        stmt = select(SuKienTranDau.macauthu, func.count(SuKienTranDau.masukien).label("mvp_count"))\
+            .join(LichThiDau, SuKienTranDau.matran == LichThiDau.matran)\
+            .where(LichThiDau.muagiai == muagiai)\
+            .where(SuKienTranDau.loaisukien == "MVP")\
+            .group_by(SuKienTranDau.macauthu)\
+            .order_by(desc("mvp_count"))\
+            .limit(limit)
+            
+        results = session.exec(stmt).all()
         
-        if not match_ids:
-            return MVPResponse(
+        if not results:
+             return MVPResponse(
                 muagiai=muagiai,
                 mvp_candidates=[],
                 generated_at=datetime.utcnow()
             )
-        
-        # Initialize stats
-        player_stats = defaultdict(lambda: {
-            "goals": 0,
-            "assists": 0,
-            "matches_played": set(),
-            "man_of_match": 0  # Placeholder - not tracked in current schema
-        })
-        player_clubs = {}  # macauthu -> maclb
-        
-        # Get all events in season
-        events_stmt = select(SuKienTranDau).where(SuKienTranDau.matran.in_(match_ids))
-        events = session.exec(events_stmt).all()
-        
-        # Process events
-        for event in events:
-            try:
-                loaisukien = normalize_event_type(event.loaisukien)
-            except ValueError:
-                continue
             
-            if loaisukien == "BanThang":
-                if event.macauthu:
-                    player_stats[event.macauthu]["goals"] += 1
-                    if event.macauthu not in player_clubs and event.maclb:
-                        player_clubs[event.macauthu] = event.maclb
-                
-                if event.cauthulienquan:
-                    player_stats[event.cauthulienquan]["assists"] += 1
-                    if event.cauthulienquan not in player_clubs and event.maclb:
-                        player_clubs[event.cauthulienquan] = event.maclb
-        
-        # Get matches played from lineup
-        lineup_stmt = select(
-            DoiHinhXuatPhat.macauthu,
-            DoiHinhXuatPhat.matran
-        ).where(DoiHinhXuatPhat.matran.in_(match_ids))
-        
-        for macauthu, matran in session.exec(lineup_stmt).all():
-            player_stats[macauthu]["matches_played"].add(matran)
-        
-        # Get player info (name, position)
-        all_player_ids = list(player_stats.keys())
-        if not all_player_ids:
-            return MVPResponse(
-                muagiai=muagiai,
-                mvp_candidates=[],
-                generated_at=datetime.utcnow()
-            )
-        
-        players_stmt = select(CauThu).where(CauThu.macauthu.in_(all_player_ids))
-        players_map = {p.macauthu: p for p in session.exec(players_stmt).all()}
-        
-        # Get club names
-        club_ids = {val for val in player_clubs.values() if val}
-        club_names = {}
-        if club_ids:
-            clubs_stmt = select(CauLacBo.maclb, CauLacBo.tenclb).where(
-                CauLacBo.muagiai == muagiai,
-                CauLacBo.maclb.in_(list(club_ids)),
-            )
-            club_names = {maclb: tenclb for maclb, tenclb in session.exec(clubs_stmt).all()}
-        
-        # Calculate ratings
-        mvp_rows = []
-        for macauthu, stats in player_stats.items():
-            # Skip players with no activity
-            if stats["goals"] == 0 and stats["assists"] == 0:
-                continue
-            
-            matches = len(stats["matches_played"])
-            if matches == 0:
-                continue  # Cannot calculate rating without matches played
-            
-            # Simple rating formula
-            rating = (
-                (stats["goals"] * 3.0) +
-                (stats["assists"] * 2.0) +
-                (matches * 0.1)
-            ) / matches  # Normalize by matches played
-            
-            player = players_map.get(macauthu)
-            maclb = player_clubs.get(macauthu)
-            
-            mvp_rows.append({
-                "macauthu": macauthu,
-                "tencauthu": player.tencauthu if player else "Unknown",
-                "maclb": maclb,
-                "tenclb": club_names.get(maclb) if maclb else None,
-                "vitrithidau": player.vitrithidau if player else None,
-                "goals": stats["goals"],
-                "assists": stats["assists"],
-                "man_of_match": stats["man_of_match"],
-                "average_rating": round(rating, 2),
-                "matches_played": matches
-            })
-        
-        # Sort by rating DESC, then goals DESC
-        mvp_rows.sort(key=lambda x: (-x["average_rating"], -x["goals"], -x["assists"]))
-        
-        # Assign ranks and limit
         mvp_candidates = []
         current_rank = 1
-        prev_rating = None
+        prev_count = None
         
-        for idx, row in enumerate(mvp_rows):
-            if prev_rating is not None and row["average_rating"] < prev_rating:
+        # Fetch player details
+        player_ids = [r.macauthu for r in results]
+        players_stmt = select(CauThu).where(CauThu.macauthu.in_(player_ids))
+        players_map = {p.macauthu: p for p in session.exec(players_stmt).all()}
+        
+        # Get club info for these players (latest club in season)
+        # Simplified: just get from roster
+        rosters_stmt = select(ChiTietDoiBong).where(
+            ChiTietDoiBong.macauthu.in_(player_ids),
+            ChiTietDoiBong.muagiai == muagiai
+        )
+        roster_map = {r.macauthu: r for r in session.exec(rosters_stmt).all()}
+        
+        club_ids = {r.maclb for r in roster_map.values()}
+        clubs_map = {}
+        if club_ids:
+            clubs_stmt = select(CauLacBo).where(
+                CauLacBo.maclb.in_(club_ids),
+                CauLacBo.muagiai == muagiai
+            )
+            clubs_map = {c.maclb: c for c in session.exec(clubs_stmt).all()}
+
+        for idx, (macauthu, count) in enumerate(results):
+            if prev_count is not None and count < prev_count:
                 current_rank = idx + 1
             
-            if idx < limit:
-                mvp_candidates.append(MVPPlayerRow(
-                    macauthu=row["macauthu"],
-                    tencauthu=row["tencauthu"],
-                    maclb=row["maclb"],
-                    tenclb=row["tenclb"],
-                    vitrithidau=row["vitrithidau"],
-                    goals=row["goals"],
-                    assists=row["assists"],
-                    man_of_match=row["man_of_match"],
-                    average_rating=row["average_rating"],
-                    matches_played=row["matches_played"],
-                    rank=current_rank
-                ))
-            else:
-                break
-            prev_rating = row["average_rating"]
-        
+            player = players_map.get(macauthu)
+            roster = roster_map.get(macauthu)
+            club = clubs_map.get(roster.maclb) if roster else None
+            
+            mvp_candidates.append(MVPPlayerRow(
+                macauthu=macauthu,
+                tencauthu=player.tencauthu if player else "Unknown",
+                maclb=club.maclb if club else None,
+                tenclb=club.tenclb if club else None,
+                vitrithidau=player.vitrithidau if player else None,
+                goals=0, # Not relevant for this calculation anymore
+                assists=0, # Not relevant
+                man_of_match=count, 
+                average_rating=float(count), # Use count as rating for sorting compatibility
+                matches_played=0, # Not queried
+                rank=current_rank
+            ))
+            
+            prev_count = count
+            
         return MVPResponse(
             muagiai=muagiai,
             mvp_candidates=mvp_candidates,
@@ -3026,7 +2953,7 @@ def compute_mvp(
         )
         
     except Exception as e:
-        logger.error(f"Error computing MVP: {str(e)}")
+        print(f"Error computing MVP: {str(e)}")
         traceback.print_exc()
         return MVPResponse(
             muagiai=muagiai,

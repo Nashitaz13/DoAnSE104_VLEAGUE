@@ -1,22 +1,16 @@
 import { useState, useMemo, useEffect } from "react"
 import { useQuery, useQueryClient } from "@tanstack/react-query"
 import { createFileRoute } from "@tanstack/react-router"
-import { format, parseISO } from "date-fns"
-import { vi } from "date-fns/locale"
+import { format } from "date-fns"
 import {
   CalendarDays,
   Clock,
   MapPin,
-  ChevronRight,
   Trophy,
-  Filter,
-  Shield,
-  Activity,
-  Users,
-  Flag
+  Shield
 } from "lucide-react"
 
-import { MatchesService, SeasonManagementService, ClubsService, RostersService, MatchEventsService, MatchRefereesService, MatchLineupService } from "@/client"
+import { MatchesService, SeasonManagementService, RostersService, MatchEventsService, MatchRefereesService, MatchLineupService } from "@/client"
 import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
 import {
@@ -131,6 +125,7 @@ function MatchDetailModal({ match, isOpen, onClose }: { match: any; isOpen: bool
   const [scoreHome, setScoreHome] = useState("");
   const [scoreAway, setScoreAway] = useState("");
   const [playerNames, setPlayerNames] = useState<Record<string, string>>({});
+  const [playersList, setPlayersList] = useState<any[]>([]);
 
   const queryClient = useQueryClient()
 
@@ -170,11 +165,15 @@ function MatchDetailModal({ match, isOpen, onClose }: { match: any; isOpen: bool
         const awayPlayers = Array.isArray(awayRes) ? awayRes : awayRes.data || [];
 
         const nameMap: Record<string, string> = {};
+        const fullList: any[] = [];
+
         [...homePlayers, ...awayPlayers].forEach((p: any) => {
           nameMap[p.macauthu] = p.cauthu?.hoten || p.tencauthu || p.macauthu;
+          fullList.push(p);
         });
 
         setPlayerNames(nameMap);
+        setPlayersList(fullList);
       } catch (e) {
         console.error("Failed to fetch player names", e);
       }
@@ -339,6 +338,67 @@ function MatchDetailModal({ match, isOpen, onClose }: { match: any; isOpen: bool
             {/* TAB: STATS */}
             <TabsContent value="stats">
               <div className="bg-white rounded-xl border p-6 space-y-6">
+                {/* MVP Section */}
+                <div className="bg-gradient-to-r from-yellow-50 to-orange-50 rounded-xl border border-yellow-100 p-6 flex flex-col items-center gap-4">
+                  <div className="flex items-center gap-2 text-yellow-700 font-bold uppercase tracking-widest text-sm">
+                    <Trophy className="w-5 h-5" />
+                    Man of the Match
+                  </div>
+
+                  {isAdmin ? (
+                    <div className="w-full max-w-sm">
+                      <Select
+                        value={events?.find((e: any) => e.loaisukien === 'MVP')?.macauthu || ""}
+                        onValueChange={async (playerId) => {
+                          if (!playerId) return;
+                          const player = playersList.find((p: any) => p.macauthu === playerId);
+                          if (!player) return;
+
+                          // 1. Check if MVP exists, delete if so
+                          const existing = events?.find((e: any) => e.loaisukien === 'MVP');
+                          if (existing) {
+                            try {
+                              await MatchEventsService.deleteEvent({ matran: match.matran, masukien: existing.masukien });
+                            } catch (e) { console.error("Error removing old MVP", e); }
+                          }
+
+                          // 2. Add new MVP
+                          // Generating ID here or let helper doing it? handleAddEvent uses helper.
+                          // We can just reuse handleAddEvent
+                          handleAddEvent('MVP', 0, playerId, player.maclb || match.maclb_nha); // default to home if missing (roster usually has maclb)
+                        }}>
+                        <SelectTrigger className="w-full bg-white border-yellow-200">
+                          <SelectValue placeholder="Chọn cầu thủ xuất sắc nhất" />
+                        </SelectTrigger>
+                        <SelectContent>
+                          {playersList.map((p: any) => (
+                            <SelectItem key={p.macauthu} value={p.macauthu}>
+                              {p.cauthu?.hoten || p.tencauthu} ({p.maclb === match.maclb_nha ? 'Home' : 'Away'})
+                            </SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                    </div>
+                  ) : (
+                    <div className="text-center">
+                      {events?.find((e: any) => e.loaisukien === 'MVP') ? (
+                        <div className="space-y-1">
+                          <div className="text-2xl font-bold text-gray-900">
+                            {playerNames[events.find((e: any) => e.loaisukien === 'MVP')?.macauthu] || "---"}
+                          </div>
+                          <div className="text-sm text-gray-500">
+                            {events.find((e: any) => e.loaisukien === 'MVP')?.maclb === match.maclb_nha ? match.ten_clb_nha : match.ten_clb_khach}
+                          </div>
+                        </div>
+                      ) : (
+                        <span className="text-gray-400 italic">Chưa công bố</span>
+                      )}
+                    </div>
+                  )}
+                </div>
+
+                <Separator />
+
                 <StatRow
                   label="Bàn thắng"
                   home={events?.filter((e: any) => e.loaisukien === 'BanThang' && (e.maclb === match.maclb_nha || e.maclb === match.maclbnha)).length.toString()}

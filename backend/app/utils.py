@@ -47,6 +47,7 @@ def normalize_event_type(event_type: str) -> str:
         "thevang": "TheVang",
         "thedo": "TheDo",
         "thaynguoi": "ThayNguoi",
+        "mvp": "MVP",
     }
     
     canonical = event_map.get(normalized)
