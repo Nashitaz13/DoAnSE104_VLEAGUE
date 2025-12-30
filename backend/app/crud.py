@@ -1981,7 +1981,7 @@ def compute_standings(
     matches = session.exec(
         select(LichThiDau)
         .where(LichThiDau.muagiai == muagiai)
-        .order_by(LichThiDau.ngaythidau, LichThiDau.giothidau)  # Chronological order
+        .order_by(LichThiDau.thoigianthidau)  # Chronological order
     ).all()
     
     # Get all clubs in season

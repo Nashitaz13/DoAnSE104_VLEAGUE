@@ -561,6 +561,8 @@ function MatchLineupTab({ match, isAdmin }: { match: any, isAdmin: boolean }) {
   const [addingTeam, setAddingTeam] = useState<'home' | 'away' | null>(null);
   const [selectedPlayer, setSelectedPlayer] = useState("");
   const [isStarter, setIsStarter] = useState(true);
+  const [isCaptain, setIsCaptain] = useState(false);
+  const [isGoalkeeper, setIsGoalkeeper] = useState(false);
   const [availablePlayers, setAvailablePlayers] = useState<any[]>([]);
 
   // Fetch available players when adding
@@ -588,12 +590,14 @@ function MatchLineupTab({ match, isAdmin }: { match: any, isAdmin: boolean }) {
           macauthu: selectedPlayer,
           maclb: addingTeam === 'home' ? match.maclb_nha : match.maclb_khach,
           duocxuatphat: isStarter,
-          ladoitruong: false,
-          vitri: "CT"
+          ladoitruong: isCaptain,
+          vitri: isGoalkeeper ? "GK" : "CT"
         }
       });
       setAddingTeam(null);
       setSelectedPlayer("");
+      setIsCaptain(false);
+      setIsGoalkeeper(false);
       refetch();
     } catch (e: any) {
       alert("Lỗi thêm cầu thủ: " + (e.body?.detail || e.message));
@@ -697,15 +701,37 @@ function MatchLineupTab({ match, isAdmin }: { match: any, isAdmin: boolean }) {
                   ))}
                 </select>
               </div>
-              <div className="flex items-center gap-2">
-                <input
-                  type="checkbox"
-                  id="starter"
-                  checked={isStarter}
-                  onChange={e => setIsStarter(e.target.checked)}
-                  className="w-4 h-4"
-                />
-                <label htmlFor="starter">Đá chính (Starting XI)</label>
+              <div className="space-y-2">
+                <div className="flex items-center gap-2">
+                  <input
+                    type="checkbox"
+                    id="starter"
+                    checked={isStarter}
+                    onChange={e => setIsStarter(e.target.checked)}
+                    className="w-4 h-4"
+                  />
+                  <label htmlFor="starter">Đá chính (Starting XI)</label>
+                </div>
+                <div className="flex items-center gap-2">
+                  <input
+                    type="checkbox"
+                    id="captain"
+                    checked={isCaptain}
+                    onChange={e => setIsCaptain(e.target.checked)}
+                    className="w-4 h-4"
+                  />
+                  <label htmlFor="captain">Đội trưởng (Captain)</label>
+                </div>
+                <div className="flex items-center gap-2">
+                  <input
+                    type="checkbox"
+                    id="goalkeeper"
+                    checked={isGoalkeeper}
+                    onChange={e => setIsGoalkeeper(e.target.checked)}
+                    className="w-4 h-4"
+                  />
+                  <label htmlFor="goalkeeper">Thủ môn (Goalkeeper)</label>
+                </div>
               </div>
               <Button onClick={handleAddPlayer} className="w-full">Thêm vào đội hình</Button>
             </div>
@@ -828,7 +854,7 @@ function MatchCenterPage() {
     const saved = localStorage.getItem("selectedSeason");
     return saved || "2024-2025";
   };
-  
+
   const [selectedSeason, setSelectedSeason] = useState<string>(getInitialSeason())
   const [selectedRound, setSelectedRound] = useState<string>("all")
 
@@ -928,7 +954,7 @@ function MatchCenterPage() {
               </SelectTrigger>
               <SelectContent>
                 <SelectItem value="all">Tất cả vòng đấu</SelectItem>
-                {Array.from({ length: 26 }, (_, i) => i + 1).map(r => (
+                {Array.from({ length: 18 }, (_, i) => i + 1).map(r => (
                   <SelectItem key={String(r)} value={String(r)}>Vòng {r}</SelectItem>
                 ))}
               </SelectContent>
