@@ -227,6 +227,8 @@ function AddPlayerModal({ isOpen, onClose, clubId, season }: { isOpen: boolean, 
                 msg = "Không có quyền! CLB chỉ được quản lý đội của mình.";
             } else if (err?.status === 400 && msg.includes("Shirt number")) {
                 msg = "Số áo đã được sử dụng. Vui lòng chọn số áo khác.";
+            } else if (err?.status === 400 && msg.includes("Roster size limit exceeded")) {
+                msg = "Đội bóng đã đủ số lượng cầu thủ tối đa theo quy định. Không thể thêm cầu thủ mới.";
             }
             
             toast({ title: "Lỗi", description: msg, variant: "destructive" });
