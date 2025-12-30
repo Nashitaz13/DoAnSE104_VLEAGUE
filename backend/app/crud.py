@@ -396,6 +396,22 @@ def update_player(
     if 'quoctich' in update_data:
         update_data['quoctich'] = normalize_nationality(update_data['quoctich'])
     
+    # Validate chieucao (height) if being updated: 50-250 cm
+    if 'chieucao' in update_data and update_data['chieucao'] is not None:
+        height = update_data['chieucao']
+        if not (50 <= height <= 250):
+            raise ValueError(
+                f"Invalid height '{height}'. Must be between 50 and 250 cm."
+            )
+    
+    # Validate cannang (weight) if being updated: 20-200 kg
+    if 'cannang' in update_data and update_data['cannang'] is not None:
+        weight = update_data['cannang']
+        if not (20 <= weight <= 200):
+            raise ValueError(
+                f"Invalid weight '{weight}'. Must be between 20 and 200 kg."
+            )
+    
     db_player.sqlmodel_update(update_data)
     session.add(db_player)
     session.commit()
@@ -449,6 +465,18 @@ def get_roster_player(
         ChiTietDoiBong.macauthu == macauthu,
         ChiTietDoiBong.maclb == maclb,
         ChiTietDoiBong.muagiai == muagiai
+    )
+    return session.exec(statement).first()
+
+
+def get_roster_by_shirt(
+    *, session: Session, maclb: str, muagiai: str, soaothidau: int
+) -> Optional[ChiTietDoiBong]:
+    """Get roster entry by shirt number (unique within club+season)"""
+    statement = select(ChiTietDoiBong).where(
+        ChiTietDoiBong.maclb == maclb,
+        ChiTietDoiBong.muagiai == muagiai,
+        ChiTietDoiBong.soaothidau == soaothidau
     )
     return session.exec(statement).first()
 

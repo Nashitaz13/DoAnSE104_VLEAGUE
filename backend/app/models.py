@@ -430,6 +430,11 @@ class ChiTietDoiBongCreate(SQLModel):
     soaothidau: int = Field(ge=1, le=99, description="Shirt number (1-99, required)")
 
 
+class ChiTietDoiBongUpdate(SQLModel):
+    """Update roster entry (shirt number only)"""
+    soaothidau: Optional[int] = Field(default=None, ge=1, le=99, description="Shirt number (1-99)")
+
+
 class RosterPlayerDetail(SQLModel):
     """Roster entry with player details"""
     macauthu: str
@@ -438,6 +443,8 @@ class RosterPlayerDetail(SQLModel):
     vitrithidau: Optional[str] = None
     soaothidau: int  # NOT NULL required
     ngaysinh: Optional[datetime] = None
+    chieucao: Optional[float] = None  # Height in cm
+    cannang: Optional[float] = None   # Weight in kg
 
 
 class RosterValidationResult(SQLModel):
@@ -913,7 +920,7 @@ __all__ = [
     # Players
     "CauThu", "CauThuPublic", "CauThuCreate", "CauThuUpdate", "ViTriThiDau",
     # Rosters
-    "ChiTietDoiBong", "ChiTietDoiBongPublic", "ChiTietDoiBongCreate",
+    "ChiTietDoiBong", "ChiTietDoiBongPublic", "ChiTietDoiBongCreate", "ChiTietDoiBongUpdate",
     "RosterPlayerDetail", "RosterValidationResult",
     # Matches
     "LichThiDau", "LichThiDauPublic", "LichThiDauCreate", "LichThiDauUpdate", "LichThiDauDetail",

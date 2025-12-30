@@ -4,23 +4,76 @@ from fastapi import APIRouter, Depends, HTTPException, status, Query
 from app import crud
 from app.api.deps import SessionDep, require_role, CurrentUserVLeague
 from app.models import (
-    ChiTietDoiBongPublic, ChiTietDoiBongCreate, 
+    ChiTietDoiBongPublic, ChiTietDoiBongCreate, ChiTietDoiBongUpdate,
     RosterPlayerDetail, RosterValidationResult, Message, TaiKhoan
 )
 
 router = APIRouter()
 
 
+# Same mapping as clubs.py for username->club heuristic
+USERNAME_CLUB_MAPPING = {
+    "hanoi": ["hanoi", "hn"],
+    "viettel": ["viettel", "thecong"],
+    "hcmc": ["tphcm", "hcm", "hcmc"],
+    "binhdinh": ["binhdinh"],
+    "slna": ["slna", "songlamnghe"],
+    "hagl": ["hagl", "gialai"],
+    "namdinh": ["namdinh"],
+    "haiphong": ["haiphong"],
+    "thanhhoa": ["thanhhoa"],
+    "quangninh": ["quangninh"],
+    "binhduong": ["binhduong"],
+}
+
+
+def _user_owns_club(username: str, maclb: str) -> bool:
+    """Check if username matches club ID using heuristic"""
+    username_lower = username.lower()
+    club_id_lower = maclb.lower()
+    
+    # Direct match
+    if club_id_lower == username_lower:
+        return True
+    
+    # Check mapping patterns
+    if username_lower in USERNAME_CLUB_MAPPING:
+        patterns = USERNAME_CLUB_MAPPING[username_lower]
+        for pattern in patterns:
+            if pattern in club_id_lower:
+                return True
+    
+    return False
+
+
+def _check_club_ownership(current_user: TaiKhoan, maclb: str) -> None:
+    """Check if QuanLyDoi user owns this club, BTC can access any club"""
+    user_role = current_user.nhom.tennhom if current_user.nhom else None
+    if user_role == "BTC":
+        return  # BTC can manage any club
+    if user_role == "QuanLyDoi":
+        if not _user_owns_club(current_user.tendangnhap, maclb):
+            raise HTTPException(
+                status_code=status.HTTP_403_FORBIDDEN,
+                detail="You can only manage your own club's roster"
+            )
+        return
+    raise HTTPException(
+        status_code=status.HTTP_403_FORBIDDEN,
+        detail="Access denied. Required role: BTC or QuanLyDoi"
+    )
+
+
 @router.post("/", response_model=ChiTietDoiBongPublic, status_code=status.HTTP_201_CREATED)
 def add_player_to_roster(
     session: SessionDep,
     roster_in: ChiTietDoiBongCreate,
-    current_user: Annotated[TaiKhoan, Depends(require_role("BTC"))]
+    current_user: Annotated[TaiKhoan, Depends(require_role("BTC", "QuanLyDoi"))]
 ) -> ChiTietDoiBongPublic:
     """
     Register player to club roster for a season
     
-    **Requires BTC role** - Only Ban Tổ Chức can register players to rosters
+    **Requires BTC or QuanLyDoi role** - QuanLyDoi can only add to their own club
     
     Validations performed:
     - Player exists
@@ -42,9 +95,13 @@ def add_player_to_roster(
     
     **Error Responses:**
     - 400: Validation failed (age, quota, shirt number)
+    - 403: QuanLyDoi trying to add to another club
     - 404: Player/Club/Season not found
     - 409: Player already registered to this club+season
     """
+    # Check ownership for QuanLyDoi
+    _check_club_ownership(current_user, roster_in.maclb)
+    
     # Check if already registered
     existing = crud.get_roster_player(
         session=session,
@@ -66,6 +123,71 @@ def add_player_to_roster(
             status_code=status.HTTP_400_BAD_REQUEST,
             detail=str(e)
         )
+
+
+@router.patch("/{player_id}", response_model=ChiTietDoiBongPublic)
+def update_roster_player(
+    session: SessionDep,
+    player_id: str,
+    roster_in: ChiTietDoiBongUpdate,
+    current_user: Annotated[TaiKhoan, Depends(require_role("BTC", "QuanLyDoi"))],
+    maclb: str = Query(..., description="Club ID (required)"),
+    muagiai: str = Query(..., description="Season ID (required)")
+) -> ChiTietDoiBongPublic:
+    """
+    Update roster entry (e.g., change shirt number)
+    
+    **Requires BTC or QuanLyDoi role** - QuanLyDoi can only update their own club
+    
+    **Path:** `PATCH /rosters/{player_id}?maclb=CLB001&muagiai=2024-2025`
+    
+    **Body:**
+    ```json
+    {"soaothidau": 99}
+    ```
+    """
+    # Check ownership for QuanLyDoi
+    _check_club_ownership(current_user, maclb)
+    
+    # Get existing roster entry
+    roster_entry = crud.get_roster_player(
+        session=session,
+        macauthu=player_id,
+        maclb=maclb,
+        muagiai=muagiai
+    )
+    if not roster_entry:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail=f"Player {player_id} not found in roster for club {maclb}, season {muagiai}"
+        )
+    
+    # Update only provided fields
+    update_data = roster_in.model_dump(exclude_unset=True)
+    if update_data:
+        # Check shirt number uniqueness if changing it
+        if "soaothidau" in update_data:
+            new_shirt = update_data["soaothidau"]
+            if new_shirt != roster_entry.soaothidau:
+                existing = crud.get_roster_by_shirt(
+                    session=session,
+                    maclb=maclb,
+                    muagiai=muagiai,
+                    soaothidau=new_shirt
+                )
+                if existing:
+                    raise HTTPException(
+                        status_code=status.HTTP_400_BAD_REQUEST,
+                        detail=f"Shirt number {new_shirt} already taken by another player"
+                    )
+        
+        for key, value in update_data.items():
+            setattr(roster_entry, key, value)
+        session.add(roster_entry)
+        session.commit()
+        session.refresh(roster_entry)
+    
+    return roster_entry
 
 
 @router.get("/", response_model=list[RosterPlayerDetail])
@@ -110,7 +232,7 @@ def get_roster(
     
     results = session.exec(roster_stmt).all()
     
-    # Build detailed roster from JOIN results
+    # Build detailed roster from JOIN results (including chieucao/cannang)
     roster_details = [
         RosterPlayerDetail(
             macauthu=roster.macauthu,
@@ -118,7 +240,9 @@ def get_roster(
             quoctich=player.quoctich,
             vitrithidau=player.vitrithidau,
             soaothidau=roster.soaothidau,
-            ngaysinh=player.ngaysinh
+            ngaysinh=player.ngaysinh,
+            chieucao=player.chieucao,
+            cannang=player.cannang
         )
         for roster, player in results
     ]
