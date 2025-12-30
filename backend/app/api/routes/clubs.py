@@ -2,10 +2,78 @@ from typing import Annotated, Optional
 from fastapi import APIRouter, Depends, HTTPException, status, Query
 
 from app import crud
-from app.api.deps import SessionDep, require_role
+from app.api.deps import SessionDep, require_role, CurrentUserVLeague
 from app.models import CauLacBoPublic, CauLacBoCreate, CauLacBoUpdate, Message
 
 router = APIRouter()
+
+
+# Mapping username -> club ID (heuristic-based, no DB column needed)
+USERNAME_CLUB_MAPPING = {
+    "hanoi": ["hanoi", "hn"],
+    "viettel": ["viettel", "thecong"],
+    "hcmc": ["tphcm", "hcm", "hcmc"],
+    "binhdinh": ["binhdinh"],
+    "slna": ["slna", "songlamnghe"],
+    "hagl": ["hagl", "gialai"],
+    "namdinh": ["namdinh"],
+    "haiphong": ["haiphong"],
+    "thanhhoa": ["thanhhoa"],
+    "quangninh": ["quangninh"],
+    "binhduong": ["binhduong"],
+}
+
+
+def _find_club_for_user(username: str, clubs: list) -> Optional[dict]:
+    """Find club matching username using heuristic mapping"""
+    username_lower = username.lower()
+    
+    for club in clubs:
+        club_id = str(club.maclb or "").lower()
+        
+        # Direct match
+        if club_id == username_lower:
+            return club
+        
+        # Check mapping patterns
+        if username_lower in USERNAME_CLUB_MAPPING:
+            patterns = USERNAME_CLUB_MAPPING[username_lower]
+            for pattern in patterns:
+                if pattern in club_id:
+                    return club
+    
+    return None
+
+
+@router.get("/me", response_model=CauLacBoPublic)
+def get_my_club(
+    session: SessionDep,
+    current_user: CurrentUserVLeague,
+    muagiai: str = Query(..., description="Season ID (required)")
+) -> CauLacBoPublic:
+    """
+    Get the club assigned to the current user (QuanLyDoi)
+    
+    **Authentication required** - Returns the club linked to current user based on username mapping
+    
+    **Query Parameters:**
+    - muagiai: Season ID (required)
+    
+    Returns 404 if no matching club found for the user
+    """
+    # Get all clubs for the season
+    clubs = crud.get_clubs(session=session, muagiai=muagiai, skip=0, limit=100)
+    
+    # Find matching club using heuristic
+    my_club = _find_club_for_user(current_user.tendangnhap, clubs)
+    
+    if not my_club:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="No club assigned to current user"
+        )
+    
+    return my_club
 
 
 @router.get("/", response_model=list[CauLacBoPublic])
