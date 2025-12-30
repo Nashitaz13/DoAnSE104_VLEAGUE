@@ -3,7 +3,7 @@ import { createFileRoute } from "@tanstack/react-router"
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query"
 import { 
   LayoutDashboard, Users, CalendarDays, ClipboardEdit, 
-  CheckCircle, AlertCircle, User, Target, MapPin, Plus, X, Loader2, Pencil
+  CheckCircle, AlertCircle, User, Target, MapPin, Plus, X, Loader2, Pencil, Building2
 } from "lucide-react"
 
 import { Button } from "@/components/ui/button"
@@ -23,9 +23,11 @@ import {
     StandingsService, 
     RostersService, 
     StadiumsService,
-    SeasonManagementService 
+    SeasonManagementService,
+    PlayersService
 } from "@/client"
-import { getCurrentUser } from "@/utils/auth"
+import { getCurrentUser, isBTC } from "@/utils/auth"
+import { useToast } from "@/hooks/use-toast"
 
 export const Route = createFileRoute("/_layout/team-manager")({
   component: ManagerDashboard,
@@ -68,42 +70,19 @@ function ManagerDashboard() {
     }
   }, [selectedSeason]);
 
-  // 2. Lấy danh sách Đội bóng
-  const { data: allClubsData, isLoading: loadingClubs } = useQuery({
-    queryKey: ['all-clubs', selectedSeason],
-    queryFn: () => ClubsService.getClubs({ limit: 100, muagiai: selectedSeason }),
-    staleTime: 0,
-    refetchOnMount: "always",
-    refetchOnWindowFocus: true,
+  // 2. Lấy CLB của tôi qua API /clubs/me (thay thế heuristic cũ)
+  const { data: myClubData, isLoading: loadingMyClub, error: myClubError } = useQuery({
+    queryKey: ['my-club', selectedSeason],
+    queryFn: () => ClubsService.getMyClub({ muagiai: selectedSeason }),
+    staleTime: 5 * 60 * 1000,
+    retry: false, // 404 là hợp lệ (chưa gán club)
+    enabled: !!currentUser && !!selectedSeason,
   })
 
-  // 3. Logic tìm đội bóng
-  const myClub = useMemo(() => {
-    let list = Array.isArray(allClubsData) ? allClubsData : (allClubsData as any)?.data || [];
+  // myClub lấy trực tiếp từ API response
+  const myClub = myClubData || null;
 
-    if (!list.length || !currentUser) return null;
-    
-    const username = (currentUser.tendangnhap || "").toLowerCase();
-
-    return list.find((club: any) => {
-        const clubId = String(club.maclb || "").toLowerCase();
-        if (clubId === username) return true;
-        if (username === 'hanoi' && clubId.includes('hanoi')) return true;
-        if (username === 'viettel' && (clubId.includes('viettel') || clubId.includes('thecong'))) return true;
-        if (username === 'hcmc' && (clubId.includes('tphcm') || clubId.includes('hcm'))) return true;
-        if (username === 'binhdinh' && clubId.includes('binhdinh')) return true;
-        if (username === 'slna' && clubId.includes('slna')) return true;
-        if (username === 'hagl' && clubId.includes('hagl')) return true;
-        if (username === 'namdinh' && clubId.includes('namdinh')) return true;
-        if (username === 'haiphong' && clubId.includes('haiphong')) return true;
-        if (username === 'thanhhoa' && clubId.includes('thanhhoa')) return true;
-        if (username === 'quangninh' && clubId.includes('quangninh')) return true;
-        if (username === 'binhduong' && clubId.includes('binhduong')) return true;
-        return false;
-    });
-  }, [allClubsData, currentUser]);
-
-  // 4. Lấy danh sách Sân
+  // 3. Lấy danh sách Sân
   const { data: stadiumsData } = useQuery({
     queryKey: ['stadiums', selectedSeason],
     queryFn: () => StadiumsService.getStadiums({ limit: 100, muagiai: selectedSeason }),
@@ -121,7 +100,12 @@ function ManagerDashboard() {
       return String(fullName).replace("Sân vận động", "SVĐ");
   }, [myClub, stadiumsData]);
 
-  if (loadingClubs && !myClub) return <div className="p-20 text-center"><Loader2 className="animate-spin inline mr-2"/> Đang tải...</div>;
+  // Prepare stadiums list for EditClubModal
+  const stadiumsList = useMemo(() => {
+      return Array.isArray(stadiumsData) ? stadiumsData : (stadiumsData as any)?.data || [];
+  }, [stadiumsData]);
+
+  if (loadingMyClub && !myClub) return <div className="p-20 text-center"><Loader2 className="animate-spin inline mr-2"/> Đang tải...</div>;
   if (!currentUser) return <div className="p-20 text-center">Vui lòng đăng nhập.</div>;
   if (!myClub) return <div className="p-20 text-center text-red-500">Chưa liên kết đội bóng!</div>;
 
@@ -172,7 +156,7 @@ function ManagerDashboard() {
         </div>
 
         <div className="animate-in fade-in duration-300">
-            {activeTab === 'overview' && <OverviewTab myClub={myClub} season={selectedSeason} stadiumName={resolvedStadiumName} />}
+            {activeTab === 'overview' && <OverviewTab myClub={myClub} season={selectedSeason} stadiumName={resolvedStadiumName} stadiums={stadiumsList} />}
             {activeTab === 'squad' && <SquadTab clubId={myClub.maclb} season={selectedSeason} />}
             {activeTab === 'matches' && <MatchesTab clubId={myClub.maclb} season={selectedSeason} />}
         </div>
@@ -192,15 +176,39 @@ function AddPlayerModal({ isOpen, onClose, clubId, season }: { isOpen: boolean, 
 
     const mutation = useMutation({
         mutationFn: async (newPlayer: any) => {
-            // Giả lập API gọi
-            console.log("Adding player:", newPlayer);
-            return new Promise((resolve) => setTimeout(resolve, 800));
+            // 1. Tạo mã cầu thủ unique (timestamp-based)
+            const macauthu = `CT${Date.now()}`;
+            
+            // 2. Tạo cầu thủ mới trong bảng CauThu
+            const playerPayload = {
+                macauthu,
+                tencauthu: newPlayer.tencauthu,
+                ngaysinh: newPlayer.ngaysinh || null,
+                quoctich: newPlayer.quoctich || "Vietnam",
+                vitrithidau: newPlayer.vitrithidau || "MF",
+                chieucao: newPlayer.chieucao ? parseFloat(newPlayer.chieucao) : null,
+                cannang: newPlayer.cannang ? parseFloat(newPlayer.cannang) : null,
+            };
+            await PlayersService.createPlayer({ requestBody: playerPayload });
+            
+            // 3. Đăng ký vào roster với số áo
+            const rosterPayload = {
+                macauthu,
+                maclb: clubId,
+                muagiai: season,
+                soaothidau: parseInt(newPlayer.soaothidau, 10),
+            };
+            return await RostersService.addPlayerToRoster({ requestBody: rosterPayload });
         },
         onSuccess: () => {
             alert("Đăng ký thành công!");
             queryClient.invalidateQueries({ queryKey: ['roster', clubId, season] });
             onClose();
             setFormData({ tencauthu: "", soaothidau: "", vitrithidau: "MF", quoctich: "Vietnam", ngaysinh: "", chieucao: "", cannang: "" });
+        },
+        onError: (err: any) => {
+            const msg = err?.body?.detail || err?.message || "Có lỗi xảy ra";
+            alert("Lỗi: " + msg);
         },
     });
 
@@ -231,18 +239,30 @@ function AddPlayerModal({ isOpen, onClose, clubId, season }: { isOpen: boolean, 
                 </div>
                 <div className="px-6 py-4 border-t bg-gray-50 flex justify-end gap-2">
                     <Button variant="outline" onClick={onClose}>Hủy</Button>
-                    <Button className="bg-blue-600 hover:bg-blue-700" onClick={() => mutation.mutate(formData)} disabled={mutation.isPending || !formData.tencauthu}>{mutation.isPending ? "Đang lưu..." : "Lưu hồ sơ"}</Button>
+                    <Button className="bg-blue-600 hover:bg-blue-700" onClick={() => mutation.mutate(formData)} disabled={mutation.isPending || !formData.tencauthu || !formData.soaothidau}>{mutation.isPending ? "Đang lưu..." : "Lưu hồ sơ"}</Button>
                 </div>
             </div>
         </div>
     )
 }
 
+// Helper: Format date to YYYY-MM-DD without timezone shift
+const formatDateForInput = (dateValue: string | null | undefined): string => {
+    if (!dateValue) return "";
+    if (/^\d{4}-\d{2}-\d{2}$/.test(dateValue)) return dateValue;
+    const date = new Date(dateValue);
+    const year = date.getFullYear();
+    const month = String(date.getMonth() + 1).padStart(2, '0');
+    const day = String(date.getDate()).padStart(2, '0');
+    return `${year}-${month}-${day}`;
+};
+
 // ====================================================================
-// COMPONENT: MODAL CHỈNH SỬA CẦU THỦ (MỚI)
+// COMPONENT: MODAL CHỈNH SỬA CẦU THỦ (Option B: đầy đủ chieucao/cannang)
 // ====================================================================
 function EditPlayerModal({ isOpen, onClose, player, clubId, season }: { isOpen: boolean, onClose: () => void, player: any, clubId: string, season: string }) {
     const queryClient = useQueryClient();
+    const { toast } = useToast();
     const [formData, setFormData] = useState({
         tencauthu: "", soaothidau: "", vitrithidau: "", quoctich: "", ngaysinh: "", chieucao: "", cannang: ""
     });
@@ -251,44 +271,87 @@ function EditPlayerModal({ isOpen, onClose, player, clubId, season }: { isOpen: 
         if (player) {
             setFormData({
                 tencauthu: player.tencauthu || "",
-                soaothidau: player.soaothidau || "",
+                soaothidau: String(player.soaothidau || ""),
                 vitrithidau: player.vitrithidau || "MF",
                 quoctich: player.quoctich || "",
-                ngaysinh: player.ngaysinh ? new Date(player.ngaysinh).toISOString().split('T')[0] : "",
-                chieucao: player.chieucao || "",
-                cannang: player.cannang || ""
+                ngaysinh: formatDateForInput(player.ngaysinh),
+                // Option B: chieucao/cannang giờ có từ GET /players/{id}
+                chieucao: player.chieucao != null ? String(player.chieucao) : "",
+                cannang: player.cannang != null ? String(player.cannang) : ""
             });
         }
     }, [player]);
 
     const mutation = useMutation({
         mutationFn: async (updatedData: any) => {
-            // --- GIAI ĐOẠN 1: NẾU CHƯA CÓ BACKEND API ---
-            // Giả lập độ trễ mạng
-            return new Promise((resolve) => {
-                setTimeout(() => {
-                    resolve({ ...player, ...updatedData });
-                }, 500);
-            });
-
-            // --- GIAI ĐOẠN 2: KHI ĐÃ CÓ BACKEND API (Bỏ comment dòng dưới) ---
+            // 1. Build payload cho PATCH /players/{id}
+            const playerPayload: Record<string, any> = {};
+            
+            if (updatedData.tencauthu !== player.tencauthu) {
+                playerPayload.tencauthu = updatedData.tencauthu;
+            }
+            if (updatedData.vitrithidau !== player.vitrithidau) {
+                playerPayload.vitrithidau = updatedData.vitrithidau;
+            }
+            if (updatedData.quoctich !== player.quoctich) {
+                playerPayload.quoctich = updatedData.quoctich;
+            }
+            
+            // Ngày sinh: so sánh đúng format
+            const oldNgaysinh = formatDateForInput(player.ngaysinh);
+            if (updatedData.ngaysinh && updatedData.ngaysinh !== oldNgaysinh) {
+                playerPayload.ngaysinh = updatedData.ngaysinh;
+            }
+            
+            // Chiều cao: parse number, handle empty string -> null
+            const newChieucao = updatedData.chieucao?.trim() ? parseFloat(updatedData.chieucao) : null;
+            const oldChieucao = player.chieucao != null ? parseFloat(player.chieucao) : null;
+            // So sánh: cả khi đổi thành null hoặc đổi giá trị
+            const chieucaoChanged = (newChieucao !== null || oldChieucao !== null) && newChieucao !== oldChieucao;
+            if (chieucaoChanged) {
+                playerPayload.chieucao = newChieucao; // Gửi null nếu xóa, hoặc số mới
+            }
+            
+            // Cân nặng: parse number, handle empty string -> null
+            const newCannang = updatedData.cannang?.trim() ? parseFloat(updatedData.cannang) : null;
+            const oldCannang = player.cannang != null ? parseFloat(player.cannang) : null;
+            const cannangChanged = (newCannang !== null || oldCannang !== null) && newCannang !== oldCannang;
+            if (cannangChanged) {
+                playerPayload.cannang = newCannang;
+            }
+            
+            // Gọi API cập nhật cầu thủ nếu có thay đổi
+            if (Object.keys(playerPayload).length > 0) {
+                await PlayersService.updatePlayer({
+                    player_id: player.macauthu,
+                    requestBody: playerPayload
+                });
+            }
+            
+            // 2. Nếu số áo thay đổi, cập nhật trong bảng ChiTietDoiBong
+            const newShirt = parseInt(updatedData.soaothidau, 10);
+            const oldShirt = parseInt(player.soaothidau, 10);
+            if (newShirt !== oldShirt && !isNaN(newShirt)) {
+                await RostersService.updateRosterPlayer({
+                    player_id: player.macauthu,
+                    maclb: clubId,
+                    muagiai: season,
+                    requestBody: { soaothidau: newShirt }
+                });
+            }
+            
+            return { ...player, ...updatedData };
         },
-        onSuccess: (savedPlayer: any) => {
-            queryClient.setQueryData(['roster', clubId, season], (oldData: any) => {
-                const currentList = Array.isArray(oldData) ? oldData : (oldData?.data || []);
-                
-                const newList = currentList.map((p: any) => 
-                    p.macauthu === player.macauthu ? { ...p, ...formData } : p
-                );
-
-                return Array.isArray(oldData) ? newList : { ...oldData, data: newList };
-            });
-
-            alert(`Đã cập nhật thông tin cầu thủ: ${formData.tencauthu}`);
+        onSuccess: () => {
+            // Invalidate queries để refetch dữ liệu mới
+            queryClient.invalidateQueries({ queryKey: ['roster', clubId, season] });
+            queryClient.invalidateQueries({ queryKey: ['player-detail', player.macauthu] });
+            toast({ title: "Thành công", description: `Đã cập nhật thông tin cầu thủ: ${formData.tencauthu}` });
             onClose();
         },
-        onError: (err) => {
-            alert("Có lỗi xảy ra: " + err);
+        onError: (err: any) => {
+            const msg = err?.body?.detail || err?.message || "Có lỗi xảy ra";
+            toast({ title: "Lỗi", description: msg, variant: "destructive" });
         }
     });
 
@@ -325,8 +388,32 @@ function EditPlayerModal({ isOpen, onClose, player, clubId, season }: { isOpen: 
                         </div>
                         <div><Label>Ngày sinh</Label><Input type="date" value={formData.ngaysinh} onChange={(e) => setFormData({...formData, ngaysinh: e.target.value})}/></div>
                         <div><Label>Quốc tịch</Label><Input value={formData.quoctich} onChange={(e) => setFormData({...formData, quoctich: e.target.value})}/></div>
-                        <div><Label>Chiều cao (cm)</Label><Input type="number" value={formData.chieucao} onChange={(e) => setFormData({...formData, chieucao: e.target.value})}/></div>
-                        <div><Label>Cân nặng (kg)</Label><Input type="number" value={formData.cannang} onChange={(e) => setFormData({...formData, cannang: e.target.value})}/></div>
+                        <div>
+                            <Label>Chiều cao (cm)</Label>
+                            <Input 
+                                type="number" 
+                                step="0.1"
+                                min="50"
+                                max="250"
+                                placeholder="VD: 175"
+                                value={formData.chieucao} 
+                                onChange={(e) => setFormData({...formData, chieucao: e.target.value})}
+                            />
+                            <p className="text-xs text-gray-400 mt-1">50 - 250 cm</p>
+                        </div>
+                        <div>
+                            <Label>Cân nặng (kg)</Label>
+                            <Input 
+                                type="number" 
+                                step="0.1"
+                                min="20"
+                                max="200"
+                                placeholder="VD: 70"
+                                value={formData.cannang} 
+                                onChange={(e) => setFormData({...formData, cannang: e.target.value})}
+                            />
+                            <p className="text-xs text-gray-400 mt-1">20 - 200 kg</p>
+                        </div>
                     </div>
                 </div>
 
@@ -346,10 +433,218 @@ function EditPlayerModal({ isOpen, onClose, player, clubId, season }: { isOpen: 
 }
 
 // ====================================================================
+// COMPONENT: MODAL CHỈNH SỬA THÔNG TIN CLB (BTC ONLY)
+// ====================================================================
+function EditClubModal({ 
+    isOpen, 
+    onClose, 
+    club, 
+    season,
+    stadiums
+}: { 
+    isOpen: boolean; 
+    onClose: () => void; 
+    club: any; 
+    season: string;
+    stadiums: any[];
+}) {
+    const queryClient = useQueryClient();
+    const { toast } = useToast();
+    
+    const [formData, setFormData] = useState({
+        tenclb: "",
+        diachitruso: "",
+        donvichuquan: "",
+        trangphucchunha: "",
+        trangphuckhach: "",
+        trangphucduphong: "",
+        masanvandong: ""
+    });
+
+    useEffect(() => {
+        if (club) {
+            setFormData({
+                tenclb: club.tenclb || "",
+                diachitruso: club.diachitruso || "",
+                donvichuquan: club.donvichuquan || "",
+                trangphucchunha: club.trangphucchunha || "",
+                trangphuckhach: club.trangphuckhach || "",
+                trangphucduphong: club.trangphucduphong || "",
+                masanvandong: club.masanvandong || ""
+            });
+        }
+    }, [club]);
+
+    const mutation = useMutation({
+        mutationFn: async (updatedData: typeof formData) => {
+            // Build payload with only changed fields
+            const payload: Record<string, any> = {};
+            if (updatedData.tenclb !== club.tenclb) payload.tenclb = updatedData.tenclb;
+            if (updatedData.diachitruso !== (club.diachitruso || "")) payload.diachitruso = updatedData.diachitruso || null;
+            if (updatedData.donvichuquan !== (club.donvichuquan || "")) payload.donvichuquan = updatedData.donvichuquan || null;
+            if (updatedData.trangphucchunha !== (club.trangphucchunha || "")) payload.trangphucchunha = updatedData.trangphucchunha || null;
+            if (updatedData.trangphuckhach !== (club.trangphuckhach || "")) payload.trangphuckhach = updatedData.trangphuckhach || null;
+            if (updatedData.trangphucduphong !== (club.trangphucduphong || "")) payload.trangphucduphong = updatedData.trangphucduphong || null;
+            if (updatedData.masanvandong !== (club.masanvandong || "")) payload.masanvandong = updatedData.masanvandong || null;
+            
+            if (Object.keys(payload).length === 0) {
+                throw new Error("Không có thay đổi nào");
+            }
+            
+            return await ClubsService.updateClub({
+                club_id: club.maclb,
+                muagiai: season,
+                requestBody: payload
+            });
+        },
+        onSuccess: () => {
+            toast({ title: "Thành công", description: "Đã cập nhật thông tin câu lạc bộ" });
+            queryClient.invalidateQueries({ queryKey: ['my-club', season] });
+            queryClient.invalidateQueries({ queryKey: ['club', club.maclb, season] });
+            onClose();
+        },
+        onError: (err: any) => {
+            const status = err?.status || err?.response?.status;
+            const detail = err?.body?.detail || err?.message || "Có lỗi xảy ra";
+            
+            if (status === 403) {
+                toast({ title: "Không có quyền", description: "Chỉ Ban Tổ Chức (BTC) mới được chỉnh sửa thông tin CLB", variant: "destructive" });
+            } else {
+                toast({ title: "Lỗi", description: detail, variant: "destructive" });
+            }
+        }
+    });
+
+    if (!isOpen || !club) return null;
+
+    const handleSubmit = () => {
+        if (!formData.tenclb.trim()) {
+            toast({ title: "Lỗi", description: "Tên câu lạc bộ không được để trống", variant: "destructive" });
+            return;
+        }
+        mutation.mutate(formData);
+    };
+
+    return (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm p-4 animate-in fade-in">
+            <div className="bg-white rounded-xl shadow-xl w-full max-w-2xl overflow-hidden border border-blue-200 max-h-[90vh] flex flex-col">
+                <div className="px-6 py-4 border-b flex justify-between items-center bg-blue-50 shrink-0">
+                    <h3 className="font-bold text-lg text-blue-800 flex items-center gap-2">
+                        <Building2 className="w-5 h-5"/> Chỉnh sửa thông tin Câu lạc bộ
+                    </h3>
+                    <button onClick={onClose} disabled={mutation.isPending}>
+                        <X className="w-5 h-5 text-gray-400 hover:text-gray-600"/>
+                    </button>
+                </div>
+                
+                <div className="p-6 space-y-4 overflow-y-auto flex-1">
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                        <div className="md:col-span-2">
+                            <Label className="text-sm font-medium text-gray-700">Tên Câu lạc bộ <span className="text-red-500">*</span></Label>
+                            <Input 
+                                value={formData.tenclb}
+                                onChange={(e) => setFormData({...formData, tenclb: e.target.value})}
+                                placeholder="VD: Câu lạc bộ Hà Nội FC"
+                                className="mt-1"
+                            />
+                        </div>
+                        
+                        <div className="md:col-span-2">
+                            <Label className="text-sm font-medium text-gray-700">Địa chỉ trụ sở</Label>
+                            <Input 
+                                value={formData.diachitruso}
+                                onChange={(e) => setFormData({...formData, diachitruso: e.target.value})}
+                                placeholder="VD: 18 Lý Văn Phức, Đống Đa, Hà Nội"
+                                className="mt-1"
+                            />
+                        </div>
+                        
+                        <div>
+                            <Label className="text-sm font-medium text-gray-700">Đơn vị chủ quản</Label>
+                            <Input 
+                                value={formData.donvichuquan}
+                                onChange={(e) => setFormData({...formData, donvichuquan: e.target.value})}
+                                placeholder="VD: Công ty Cổ phần Bóng đá Hà Nội"
+                                className="mt-1"
+                            />
+                        </div>
+                        
+                        <div>
+                            <Label className="text-sm font-medium text-gray-700">Sân vận động</Label>
+                            <select 
+                                className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm mt-1"
+                                value={formData.masanvandong}
+                                onChange={(e) => setFormData({...formData, masanvandong: e.target.value})}
+                            >
+                                <option value="">-- Chọn sân vận động --</option>
+                                {stadiums.map((s: any) => (
+                                    <option key={s.masanvandong} value={s.masanvandong}>
+                                        {s.tensanvandong}
+                                    </option>
+                                ))}
+                            </select>
+                        </div>
+                        
+                        <div>
+                            <Label className="text-sm font-medium text-gray-700">Trang phục chủ nhà</Label>
+                            <Input 
+                                value={formData.trangphucchunha}
+                                onChange={(e) => setFormData({...formData, trangphucchunha: e.target.value})}
+                                placeholder="VD: Đỏ - Vàng"
+                                className="mt-1"
+                            />
+                        </div>
+                        
+                        <div>
+                            <Label className="text-sm font-medium text-gray-700">Trang phục sân khách</Label>
+                            <Input 
+                                value={formData.trangphuckhach}
+                                onChange={(e) => setFormData({...formData, trangphuckhach: e.target.value})}
+                                placeholder="VD: Trắng - Đen"
+                                className="mt-1"
+                            />
+                        </div>
+                        
+                        <div className="md:col-span-2">
+                            <Label className="text-sm font-medium text-gray-700">Trang phục dự phòng</Label>
+                            <Input 
+                                value={formData.trangphucduphong}
+                                onChange={(e) => setFormData({...formData, trangphucduphong: e.target.value})}
+                                placeholder="VD: Xanh dương"
+                                className="mt-1"
+                            />
+                        </div>
+                    </div>
+                    
+                    <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-3 text-sm text-yellow-800 flex items-start gap-2">
+                        <AlertCircle className="w-4 h-4 mt-0.5 shrink-0"/>
+                        <span>Chỉ có vai trò <strong>Ban Tổ Chức (BTC)</strong> mới được chỉnh sửa thông tin này. Mã CLB và Mùa giải không thể thay đổi.</span>
+                    </div>
+                </div>
+
+                <div className="px-6 py-4 border-t bg-gray-50 flex justify-end gap-2 shrink-0">
+                    <Button variant="outline" onClick={onClose} disabled={mutation.isPending}>Hủy bỏ</Button>
+                    <Button 
+                        className="bg-blue-600 hover:bg-blue-700 text-white" 
+                        onClick={handleSubmit}
+                        disabled={mutation.isPending || !formData.tenclb.trim()}
+                    >
+                        {mutation.isPending && <Loader2 className="animate-spin mr-2 h-4 w-4"/>}
+                        {mutation.isPending ? "Đang lưu..." : "Lưu thay đổi"}
+                    </Button>
+                </div>
+            </div>
+        </div>
+    );
+}
+
+// ====================================================================
 // SUB-COMPONENTS
 // ====================================================================
 
-function OverviewTab({ myClub, season, stadiumName }: { myClub: any, season: string, stadiumName: string }) {
+function OverviewTab({ myClub, season, stadiumName, stadiums }: { myClub: any, season: string, stadiumName: string, stadiums: any[] }) {
+    const [isEditClubModalOpen, setIsEditClubModalOpen] = useState(false);
+    
     const { data: standings } = useQuery({
         queryKey: ['standings', season],
         queryFn: () => StandingsService.getStandings({ muagiai: season }),
@@ -366,6 +661,15 @@ function OverviewTab({ myClub, season, stadiumName }: { myClub: any, season: str
 
     return (
         <div className="space-y-6">
+            {/* Edit Club Modal - BTC only */}
+            <EditClubModal 
+                isOpen={isEditClubModalOpen} 
+                onClose={() => setIsEditClubModalOpen(false)} 
+                club={myClub} 
+                season={season}
+                stadiums={stadiums}
+            />
+            
             <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                 <StatCard title="Vị trí BXH" value={rankPosition > 0 ? `#${rankPosition}` : "Chưa xếp"} icon={Target} color="text-orange-600" />
                 <StatCard title="Điểm số" value={myRank?.points || 0} icon={CheckCircle} color="text-green-600" />
@@ -374,13 +678,28 @@ function OverviewTab({ myClub, season, stadiumName }: { myClub: any, season: str
              <div className="bg-white rounded-xl shadow-sm border border-gray-100 overflow-hidden">
                 <div className="px-6 py-4 border-b border-gray-100 bg-gray-50/50 flex justify-between items-center">
                     <h3 className="font-bold text-gray-800 flex items-center gap-2"><User className="w-5 h-5 text-gray-500"/> Hồ sơ đăng ký</h3>
-                    <span className="text-xs font-mono bg-gray-200 text-gray-600 px-2 py-1 rounded">Mùa: {season}</span>
+                    <div className="flex items-center gap-2">
+                        <span className="text-xs font-mono bg-gray-200 text-gray-600 px-2 py-1 rounded">Mùa: {season}</span>
+                        {/* Chỉ hiển thị nút Edit cho BTC */}
+                        {isBTC() && (
+                            <Button 
+                                variant="outline" 
+                                size="sm" 
+                                className="gap-1 text-blue-600 border-blue-200 hover:bg-blue-50"
+                                onClick={() => setIsEditClubModalOpen(true)}
+                            >
+                                <Pencil className="w-3 h-3"/> Chỉnh sửa
+                            </Button>
+                        )}
+                    </div>
                 </div>
                 <div className="p-6 grid grid-cols-1 md:grid-cols-2 gap-y-6 gap-x-12">
                     <div><label className="text-xs text-gray-400 font-bold uppercase tracking-wider block mb-1">Tên Câu Lạc Bộ</label><div className="text-lg font-bold text-gray-900">{myClub.tenclb}</div></div>
                     <div><label className="text-xs text-gray-400 font-bold uppercase tracking-wider block mb-1">Mã Hệ Thống</label><div className="font-mono text-gray-700 bg-gray-100 inline-block px-2 py-0.5 rounded">{myClub.maclb}</div></div>
                     <div><label className="text-xs text-gray-400 font-bold uppercase tracking-wider block mb-1">Sân Vận Động</label><div className="font-medium text-gray-900">{stadiumName}</div></div>
-                    <div><label className="text-xs text-gray-400 font-bold uppercase tracking-wider block mb-1">Địa chỉ</label><div className="text-gray-700">{myClub.san_nha?.diachi || "Chưa cập nhật"}</div></div>
+                    <div><label className="text-xs text-gray-400 font-bold uppercase tracking-wider block mb-1">Địa chỉ trụ sở</label><div className="text-gray-700">{myClub.diachitruso || "Chưa cập nhật"}</div></div>
+                    <div><label className="text-xs text-gray-400 font-bold uppercase tracking-wider block mb-1">Đơn vị chủ quản</label><div className="text-gray-700">{myClub.donvichuquan || "Chưa cập nhật"}</div></div>
+                    <div><label className="text-xs text-gray-400 font-bold uppercase tracking-wider block mb-1">Trang phục chủ nhà</label><div className="text-gray-700">{myClub.trangphucchunha || "Chưa cập nhật"}</div></div>
                 </div>
             </div>
         </div>
@@ -390,9 +709,10 @@ function OverviewTab({ myClub, season, stadiumName }: { myClub: any, season: str
 function SquadTab({ clubId, season }: { clubId: string, season: string }) {
     const [isAddModalOpen, setIsAddModalOpen] = useState(false);
     
-    // --- STATE CHO CHỈNH SỬA ---
+    // --- STATE CHO CHỈNH SỬA (Option B: fetch full player detail) ---
     const [isEditModalOpen, setIsEditModalOpen] = useState(false);
-    const [editingPlayer, setEditingPlayer] = useState<any>(null); // Lưu cầu thủ đang được sửa
+    const [selectedPlayerId, setSelectedPlayerId] = useState<string | null>(null);
+    const [selectedRosterItem, setSelectedRosterItem] = useState<any>(null); // Lưu số áo từ roster
 
     const { data: roster, isLoading } = useQuery({
         queryKey: ['roster', clubId, season],
@@ -401,6 +721,23 @@ function SquadTab({ clubId, season }: { clubId: string, season: string }) {
         refetchOnMount: "always",
         refetchOnWindowFocus: true,
     })
+
+    // Option B: Fetch full player detail when editing (có chieucao/cannang)
+    const { data: playerDetail, isLoading: loadingPlayerDetail } = useQuery({
+        queryKey: ['player-detail', selectedPlayerId],
+        queryFn: () => PlayersService.getPlayer({ player_id: selectedPlayerId! }),
+        enabled: !!selectedPlayerId && isEditModalOpen, // Chỉ fetch khi có ID và modal mở
+        staleTime: 5 * 60 * 1000,
+    });
+
+    // Merge player detail (có chieucao/cannang) + roster item (có soaothidau)
+    const mergedPlayer = useMemo(() => {
+        if (!playerDetail || !selectedRosterItem) return null;
+        return {
+            ...playerDetail,
+            soaothidau: selectedRosterItem.soaothidau, // Lấy số áo từ roster
+        };
+    }, [playerDetail, selectedRosterItem]);
 
     const list = Array.isArray(roster) ? roster : (roster as any)?.data || [];
 
@@ -414,8 +751,15 @@ function SquadTab({ clubId, season }: { clubId: string, season: string }) {
     }, [list]);
 
     const handleEditClick = (player: any) => {
-        setEditingPlayer(player); // Lưu thông tin cầu thủ vào state
-        setIsEditModalOpen(true); // Mở modal
+        setSelectedPlayerId(player.macauthu); // Lưu ID để fetch full detail
+        setSelectedRosterItem(player);        // Lưu roster item (có soaothidau)
+        setIsEditModalOpen(true);             // Mở modal
+    };
+
+    const handleCloseEditModal = () => {
+        setIsEditModalOpen(false);
+        setSelectedPlayerId(null);
+        setSelectedRosterItem(null);
     };
 
     return (
@@ -440,13 +784,24 @@ function SquadTab({ clubId, season }: { clubId: string, season: string }) {
             
             <AddPlayerModal isOpen={isAddModalOpen} onClose={() => setIsAddModalOpen(false)} clubId={clubId} season={season} />
             
+            {/* Option B: Pass mergedPlayer (có chieucao/cannang từ GET /players/{id}) */}
             <EditPlayerModal 
-                isOpen={isEditModalOpen} 
-                onClose={() => setIsEditModalOpen(false)} 
-                player={editingPlayer} // Truyền cầu thủ cần sửa vào
+                isOpen={isEditModalOpen && !loadingPlayerDetail && !!mergedPlayer} 
+                onClose={handleCloseEditModal} 
+                player={mergedPlayer}
                 clubId={clubId} 
                 season={season} 
             />
+            
+            {/* Loading indicator khi đang fetch player detail */}
+            {isEditModalOpen && loadingPlayerDetail && (
+                <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm">
+                    <div className="bg-white rounded-xl p-6 shadow-xl flex items-center gap-3">
+                        <Loader2 className="animate-spin w-5 h-5 text-blue-600"/>
+                        <span className="text-gray-700">Đang tải thông tin cầu thủ...</span>
+                    </div>
+                </div>
+            )}
 
             {isLoading ? (
                 <div className="text-center py-10">Đang tải danh sách...</div>

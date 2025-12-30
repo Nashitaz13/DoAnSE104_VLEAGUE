@@ -499,10 +499,46 @@ export class ClubsService {
         });
     }
 
+    public static getMyClub(data: { muagiai: string }): CancelablePromise<any> {
+        return __request(OpenAPI, {
+            method: 'GET',
+            url: '/api/clubs/me',
+            query: { muagiai: data.muagiai }
+        });
+    }
+
     public static createClub(data: { requestBody: any }): CancelablePromise<any> {
         return __request(OpenAPI, {
             method: 'POST',
             url: '/api/clubs/',
+            body: data.requestBody,
+            mediaType: 'application/json'
+        });
+    }
+
+    /**
+     * Update club information (BTC role required)
+     * @param data.club_id - Club ID
+     * @param data.muagiai - Season ID (required for composite PK)
+     * @param data.requestBody - Club update payload
+     */
+    public static updateClub(data: { 
+        club_id: string; 
+        muagiai: string; 
+        requestBody: {
+            tenclb?: string;
+            diachitruso?: string;
+            donvichuquan?: string;
+            trangphucchunha?: string;
+            trangphuckhach?: string;
+            trangphucduphong?: string;
+            masanvandong?: string;
+        } 
+    }): CancelablePromise<any> {
+        return __request(OpenAPI, {
+            method: 'PUT',
+            url: `/api/clubs/${data.club_id}`,
+            query: { muagiai: data.muagiai },
             body: data.requestBody,
             mediaType: 'application/json'
         });
@@ -580,6 +616,33 @@ export class RostersService {
             query: data
         });
     }
+
+    public static addPlayerToRoster(data: { requestBody: { macauthu: string, maclb: string, muagiai: string, soaothidau: number } }): CancelablePromise<any> {
+        return __request(OpenAPI, {
+            method: 'POST',
+            url: '/api/rosters/',
+            body: data.requestBody,
+            mediaType: 'application/json'
+        });
+    }
+
+    public static updateRosterPlayer(data: { player_id: string, maclb: string, muagiai: string, requestBody: { soaothidau?: number } }): CancelablePromise<any> {
+        return __request(OpenAPI, {
+            method: 'PATCH',
+            url: `/api/rosters/${data.player_id}`,
+            query: { maclb: data.maclb, muagiai: data.muagiai },
+            body: data.requestBody,
+            mediaType: 'application/json'
+        });
+    }
+
+    public static removePlayerFromRoster(data: { player_id: string, maclb: string, muagiai: string }): CancelablePromise<any> {
+        return __request(OpenAPI, {
+            method: 'DELETE',
+            url: `/api/rosters/${data.player_id}`,
+            query: { maclb: data.maclb, muagiai: data.muagiai }
+        });
+    }
 }
 
 export class StadiumsService {
@@ -641,6 +704,15 @@ export class PlayersService {
         return __request(OpenAPI, {
             method: 'GET',
             url: `/api/players/${data.player_id}`
+        });
+    }
+
+    public static updatePlayer(data: { player_id: string, requestBody: any }): CancelablePromise<any> {
+        return __request(OpenAPI, {
+            method: 'PATCH',
+            url: `/api/players/${data.player_id}`,
+            body: data.requestBody,
+            mediaType: 'application/json'
         });
     }
 }
