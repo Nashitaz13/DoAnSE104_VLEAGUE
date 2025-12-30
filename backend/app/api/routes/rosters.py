@@ -1,17 +1,25 @@
 from typing import Annotated, Optional
 from fastapi import APIRouter, Depends, HTTPException, status, Query
+import uuid
+from datetime import datetime
 
 from app import crud
 from app.api.deps import SessionDep, require_role, CurrentUserVLeague
 from app.models import (
     ChiTietDoiBongPublic, ChiTietDoiBongCreate, ChiTietDoiBongUpdate,
-    RosterPlayerDetail, RosterValidationResult, Message, TaiKhoan
+    RosterPlayerDetail, RosterValidationResult, Message, TaiKhoan,
+    RegisterPlayerRequest, RegisterPlayerResponse, CauThuCreate
 )
 
 router = APIRouter()
 
 
-# Same mapping as clubs.py for username->club heuristic
+# =============================================
+# USERNAME -> CLUB HEURISTIC MAPPING
+# =============================================
+# TODO (Technical Debt): Replace with proper DB mapping (user -> club)
+# Currently using heuristic based on username patterns
+# Proper solution: Add maclb field to TaiKhoan or create QuanLyDoiClub table
 USERNAME_CLUB_MAPPING = {
     "hanoi": ["hanoi", "hn"],
     "viettel": ["viettel", "thecong"],
@@ -28,12 +36,31 @@ USERNAME_CLUB_MAPPING = {
 
 
 def _user_owns_club(username: str, maclb: str) -> bool:
-    """Check if username matches club ID using heuristic"""
+    """
+    Check if username matches club ID using heuristic.
+    
+    TODO (Technical Debt): Replace with DB lookup once user->club mapping exists.
+    """
     username_lower = username.lower()
     club_id_lower = maclb.lower()
     
     # Direct match
     if club_id_lower == username_lower:
+        return True
+    
+    # Remove common prefix like "clb_" or "clb-" or "clb"
+    club_id_normalized = club_id_lower
+    for prefix in ["clb_", "clb-", "clb"]:
+        if club_id_normalized.startswith(prefix):
+            club_id_normalized = club_id_normalized[len(prefix):]
+            break
+    
+    # Match after removing prefix: "hanoi" matches "clb_hanoi"
+    if club_id_normalized == username_lower:
+        return True
+    
+    # Also try removing underscores: "binhdinh" matches "binh_dinh"
+    if club_id_normalized.replace("_", "") == username_lower.replace("_", ""):
         return True
     
     # Check mapping patterns
@@ -46,34 +73,216 @@ def _user_owns_club(username: str, maclb: str) -> bool:
     return False
 
 
-def _check_club_ownership(current_user: TaiKhoan, maclb: str) -> None:
-    """Check if QuanLyDoi user owns this club, BTC can access any club"""
+def _get_user_club_id(session: SessionDep, current_user: TaiKhoan, muagiai: str) -> Optional[str]:
+    """
+    Get club ID owned by user for a specific season.
+    
+    Returns maclb if found, None otherwise.
+    
+    TODO (Technical Debt): Currently uses heuristic. Should query DB mapping.
+    """
+    # Get all clubs for season
+    clubs = crud.get_clubs(session=session, muagiai=muagiai, limit=100)
+    
+    username = current_user.tendangnhap
+    for club in clubs:
+        if _user_owns_club(username, club.maclb):
+            return club.maclb
+    
+    return None
+
+
+def _check_club_ownership(session: SessionDep, current_user: TaiKhoan, maclb: str, muagiai: str) -> None:
+    """
+    Check if user can manage this club.
+    
+    - BTC: Can manage any club
+    - QuanLyDoi/CLB: Can only manage their own club (heuristic check)
+    
+    Raises HTTPException 403 if access denied.
+    """
     user_role = current_user.nhom.tennhom if current_user.nhom else None
+    
     if user_role == "BTC":
         return  # BTC can manage any club
-    if user_role == "QuanLyDoi":
-        if not _user_owns_club(current_user.tendangnhap, maclb):
+    
+    if user_role in ("QuanLyDoi", "CLB"):
+        # Get user's club for this season
+        user_club_id = _get_user_club_id(session, current_user, muagiai)
+        
+        if not user_club_id:
             raise HTTPException(
                 status_code=status.HTTP_403_FORBIDDEN,
-                detail="You can only manage your own club's roster"
+                detail=f"No club found for user '{current_user.tendangnhap}' in season {muagiai}"
+            )
+        
+        if user_club_id.lower() != maclb.lower():
+            raise HTTPException(
+                status_code=status.HTTP_403_FORBIDDEN,
+                detail=f"You can only manage your own club's roster ({user_club_id})"
             )
         return
+    
     raise HTTPException(
         status_code=status.HTTP_403_FORBIDDEN,
-        detail="Access denied. Required role: BTC or QuanLyDoi"
+        detail="Access denied. Required role: BTC, QuanLyDoi, or CLB"
     )
 
+
+# =============================================
+# ATOMIC PLAYER REGISTRATION ENDPOINT
+# =============================================
+
+@router.post("/register-player", response_model=RegisterPlayerResponse, status_code=status.HTTP_201_CREATED)
+def register_player(
+    session: SessionDep,
+    request: RegisterPlayerRequest,
+    current_user: Annotated[TaiKhoan, Depends(require_role("BTC", "QuanLyDoi", "CLB"))]
+) -> RegisterPlayerResponse:
+    """
+    **ATOMIC** Create new player AND add to roster in one transaction.
+    
+    **Requires BTC, QuanLyDoi, or CLB role**
+    - BTC: Can specify any maclb, or omit to require it
+    - QuanLyDoi/CLB: maclb is auto-determined from username and forced (cannot specify other club)
+    
+    **Use case:** CLB managers registering new players to their squad.
+    
+    **Request Body:**
+    ```json
+    {
+      "tencauthu": "Nguyễn Văn A",
+      "ngaysinh": "1998-05-15",
+      "quoctich": "Vietnam",
+      "vitrithidau": "MF",
+      "chieucao": 175.0,
+      "cannang": 68.0,
+      "soaothidau": 10,
+      "muagiai": "2024-2025",
+      "maclb": "CLB_HANOI"
+    }
+    ```
+    
+    **Notes:**
+    - `macauthu` is auto-generated (UUID-based)
+    - For CLB/QuanLyDoi: `maclb` is ignored and auto-assigned based on username
+    - Transaction: If roster creation fails, player creation is rolled back
+    
+    **Error Responses:**
+    - 400: Validation failed (age, quota, shirt number, height/weight)
+    - 403: CLB/QuanLyDoi trying to specify another club
+    - 404: Club/Season not found
+    """
+    user_role = current_user.nhom.tennhom if current_user.nhom else None
+    
+    # Determine target club
+    if user_role in ("QuanLyDoi", "CLB"):
+        # Force club based on username heuristic
+        user_club_id = _get_user_club_id(session, current_user, request.muagiai)
+        if not user_club_id:
+            raise HTTPException(
+                status_code=status.HTTP_403_FORBIDDEN,
+                detail=f"No club found for user '{current_user.tendangnhap}' in season {request.muagiai}"
+            )
+        target_club = user_club_id
+        
+        # If user tried to specify a different club, warn them
+        if request.maclb and request.maclb.lower() != user_club_id.lower():
+            raise HTTPException(
+                status_code=status.HTTP_403_FORBIDDEN,
+                detail=f"You can only register players to your own club ({user_club_id}), not '{request.maclb}'"
+            )
+    else:
+        # BTC - must specify club or error
+        if not request.maclb:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="BTC must specify maclb"
+            )
+        target_club = request.maclb
+    
+    # Validate club exists for season
+    club = crud.get_club_by_id(session=session, maclb=target_club, muagiai=request.muagiai)
+    if not club:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail=f"Club '{target_club}' not found for season {request.muagiai}"
+        )
+    
+    # Generate unique player ID
+    timestamp = datetime.now().strftime("%Y%m%d%H%M%S")
+    short_uuid = str(uuid.uuid4())[:8].upper()
+    macauthu = f"CT{timestamp}{short_uuid}"
+    
+    try:
+        # Create player
+        player_create = CauThuCreate(
+            macauthu=macauthu,
+            tencauthu=request.tencauthu,
+            ngaysinh=request.ngaysinh,
+            quoctich=request.quoctich,
+            vitrithidau=request.vitrithidau,
+            chieucao=request.chieucao,
+            cannang=request.cannang,
+        )
+        
+        # Validate height/weight before creating
+        if request.chieucao is not None and (request.chieucao < 50 or request.chieucao > 250):
+            raise ValueError("Height (chieucao) must be between 50 and 250 cm")
+        if request.cannang is not None and (request.cannang < 20 or request.cannang > 200):
+            raise ValueError("Weight (cannang) must be between 20 and 200 kg")
+        
+        new_player = crud.create_player(session=session, player_in=player_create)
+        
+        # Create roster entry
+        roster_create = ChiTietDoiBongCreate(
+            macauthu=macauthu,
+            maclb=target_club,
+            muagiai=request.muagiai,
+            soaothidau=request.soaothidau
+        )
+        
+        roster_entry = crud.add_player_to_roster(session=session, roster_in=roster_create)
+        
+        return RegisterPlayerResponse(
+            macauthu=new_player.macauthu,
+            tencauthu=new_player.tencauthu,
+            ngaysinh=new_player.ngaysinh,
+            quoctich=new_player.quoctich,
+            vitrithidau=new_player.vitrithidau,
+            chieucao=new_player.chieucao,
+            cannang=new_player.cannang,
+            maclb=roster_entry.maclb,
+            muagiai=roster_entry.muagiai,
+            soaothidau=roster_entry.soaothidau,
+        )
+        
+    except ValueError as e:
+        # Rollback: delete player if roster creation failed
+        # (Session should auto-rollback on exception, but be explicit)
+        session.rollback()
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail=str(e)
+        )
+
+
+# =============================================
+# EXISTING ROSTER ENDPOINTS
+# =============================================
 
 @router.post("/", response_model=ChiTietDoiBongPublic, status_code=status.HTTP_201_CREATED)
 def add_player_to_roster(
     session: SessionDep,
     roster_in: ChiTietDoiBongCreate,
-    current_user: Annotated[TaiKhoan, Depends(require_role("BTC", "QuanLyDoi"))]
+    current_user: Annotated[TaiKhoan, Depends(require_role("BTC", "QuanLyDoi", "CLB"))]
 ) -> ChiTietDoiBongPublic:
     """
     Register player to club roster for a season
     
-    **Requires BTC or QuanLyDoi role** - QuanLyDoi can only add to their own club
+    **Requires BTC, QuanLyDoi, or CLB role**
+    - BTC can add to any club
+    - QuanLyDoi/CLB can only add to their own club
     
     Validations performed:
     - Player exists
@@ -95,12 +304,12 @@ def add_player_to_roster(
     
     **Error Responses:**
     - 400: Validation failed (age, quota, shirt number)
-    - 403: QuanLyDoi trying to add to another club
+    - 403: QuanLyDoi/CLB trying to add to another club
     - 404: Player/Club/Season not found
     - 409: Player already registered to this club+season
     """
-    # Check ownership for QuanLyDoi
-    _check_club_ownership(current_user, roster_in.maclb)
+    # Check ownership for QuanLyDoi/CLB
+    _check_club_ownership(session, current_user, roster_in.maclb, roster_in.muagiai)
     
     # Check if already registered
     existing = crud.get_roster_player(
@@ -130,14 +339,16 @@ def update_roster_player(
     session: SessionDep,
     player_id: str,
     roster_in: ChiTietDoiBongUpdate,
-    current_user: Annotated[TaiKhoan, Depends(require_role("BTC", "QuanLyDoi"))],
+    current_user: Annotated[TaiKhoan, Depends(require_role("BTC", "QuanLyDoi", "CLB"))],
     maclb: str = Query(..., description="Club ID (required)"),
     muagiai: str = Query(..., description="Season ID (required)")
 ) -> ChiTietDoiBongPublic:
     """
     Update roster entry (e.g., change shirt number)
     
-    **Requires BTC or QuanLyDoi role** - QuanLyDoi can only update their own club
+    **Requires BTC, QuanLyDoi, or CLB role**
+    - BTC can update any club
+    - QuanLyDoi/CLB can only update their own club
     
     **Path:** `PATCH /rosters/{player_id}?maclb=CLB001&muagiai=2024-2025`
     
@@ -146,8 +357,8 @@ def update_roster_player(
     {"soaothidau": 99}
     ```
     """
-    # Check ownership for QuanLyDoi
-    _check_club_ownership(current_user, maclb)
+    # Check ownership for QuanLyDoi/CLB
+    _check_club_ownership(session, current_user, maclb, muagiai)
     
     # Get existing roster entry
     roster_entry = crud.get_roster_player(

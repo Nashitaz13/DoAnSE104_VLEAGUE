@@ -455,6 +455,52 @@ class RosterValidationResult(SQLModel):
     stats: dict[str, int | None] = Field(default_factory=dict)  # Values can be None (e.g., min_required from season)
 
 
+class RegisterPlayerRequest(SQLModel):
+    """
+    Request body for atomic player registration to roster.
+    Creates player + adds to roster in one transaction.
+    
+    Used by CLB/QuanLyDoi roles who cannot directly POST /players/.
+    Server generates macauthu automatically.
+    """
+    # Player info (required)
+    tencauthu: str = Field(min_length=1, max_length=100, description="Full name")
+    
+    # Player info (optional)
+    ngaysinh: Optional[datetime] = Field(default=None, description="Date of birth")
+    quoctich: Optional[str] = Field(default="Vietnam", description="Nationality")
+    vitrithidau: Optional[str] = Field(default="MF", description="Position: GK, DF, MF, FW")
+    chieucao: Optional[float] = Field(default=None, ge=50, le=250, description="Height in cm (50-250)")
+    cannang: Optional[float] = Field(default=None, ge=20, le=200, description="Weight in kg (20-200)")
+    
+    # Roster info (required)
+    soaothidau: int = Field(ge=1, le=99, description="Shirt number (1-99)")
+    muagiai: str = Field(description="Season ID, e.g. '2024-2025'")
+    
+    # Club (optional - will be overridden by server for CLB/QuanLyDoi roles)
+    maclb: Optional[str] = Field(default=None, description="Club ID (BTC can specify, CLB/QuanLyDoi auto-assigned)")
+
+
+class RegisterPlayerResponse(SQLModel):
+    """
+    Response for atomic player registration.
+    Returns both player and roster info.
+    """
+    # Player info
+    macauthu: str
+    tencauthu: str
+    ngaysinh: Optional[datetime] = None
+    quoctich: Optional[str] = None
+    vitrithidau: Optional[str] = None
+    chieucao: Optional[float] = None
+    cannang: Optional[float] = None
+    
+    # Roster info
+    maclb: str
+    muagiai: str
+    soaothidau: int
+
+
 # =============================================
 # MATCHES (LichThiDau) - Database Table
 # =============================================
@@ -922,6 +968,7 @@ __all__ = [
     # Rosters
     "ChiTietDoiBong", "ChiTietDoiBongPublic", "ChiTietDoiBongCreate", "ChiTietDoiBongUpdate",
     "RosterPlayerDetail", "RosterValidationResult",
+    "RegisterPlayerRequest", "RegisterPlayerResponse",
     # Matches
     "LichThiDau", "LichThiDauPublic", "LichThiDauCreate", "LichThiDauUpdate", "LichThiDauDetail",
     # Lineup

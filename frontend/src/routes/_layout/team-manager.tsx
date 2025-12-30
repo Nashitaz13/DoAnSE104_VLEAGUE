@@ -170,45 +170,66 @@ function ManagerDashboard() {
 // ====================================================================
 function AddPlayerModal({ isOpen, onClose, clubId, season }: { isOpen: boolean, onClose: () => void, clubId: string, season: string }) {
     const queryClient = useQueryClient();
+    const { toast } = useToast();
     const [formData, setFormData] = useState({
         tencauthu: "", soaothidau: "", vitrithidau: "MF", quoctich: "Vietnam", ngaysinh: "", chieucao: "", cannang: ""
     });
 
     const mutation = useMutation({
         mutationFn: async (newPlayer: any) => {
-            // 1. Tạo mã cầu thủ unique (timestamp-based)
-            const macauthu = `CT${Date.now()}`;
-            
-            // 2. Tạo cầu thủ mới trong bảng CauThu
-            const playerPayload = {
-                macauthu,
+            // Use NEW atomic endpoint POST /api/rosters/register-player
+            // Server will:
+            // - Auto-generate macauthu
+            // - Auto-assign maclb for CLB/QuanLyDoi roles
+            // - Create player + roster in single transaction
+            const payload = {
                 tencauthu: newPlayer.tencauthu,
                 ngaysinh: newPlayer.ngaysinh || null,
                 quoctich: newPlayer.quoctich || "Vietnam",
                 vitrithidau: newPlayer.vitrithidau || "MF",
                 chieucao: newPlayer.chieucao ? parseFloat(newPlayer.chieucao) : null,
                 cannang: newPlayer.cannang ? parseFloat(newPlayer.cannang) : null,
-            };
-            await PlayersService.createPlayer({ requestBody: playerPayload });
-            
-            // 3. Đăng ký vào roster với số áo
-            const rosterPayload = {
-                macauthu,
-                maclb: clubId,
-                muagiai: season,
                 soaothidau: parseInt(newPlayer.soaothidau, 10),
+                muagiai: season,
+                maclb: clubId, // Server will validate/override for CLB roles
             };
-            return await RostersService.addPlayerToRoster({ requestBody: rosterPayload });
+            
+            // Get token from localStorage
+            const token = localStorage.getItem("access_token");
+            
+            const response = await fetch("/api/rosters/register-player", {
+                method: "POST",
+                headers: {
+                    "Content-Type": "application/json",
+                    "Authorization": `Bearer ${token}`,
+                },
+                body: JSON.stringify(payload),
+            });
+            
+            if (!response.ok) {
+                const errorData = await response.json().catch(() => ({}));
+                throw { body: errorData, status: response.status };
+            }
+            
+            return response.json();
         },
         onSuccess: () => {
-            alert("Đăng ký thành công!");
+            toast({ title: "Thành công", description: "Đã đăng ký cầu thủ mới vào đội hình!" });
             queryClient.invalidateQueries({ queryKey: ['roster', clubId, season] });
             onClose();
             setFormData({ tencauthu: "", soaothidau: "", vitrithidau: "MF", quoctich: "Vietnam", ngaysinh: "", chieucao: "", cannang: "" });
         },
         onError: (err: any) => {
-            const msg = err?.body?.detail || err?.message || "Có lỗi xảy ra";
-            alert("Lỗi: " + msg);
+            let msg = err?.body?.detail || err?.message || "Có lỗi xảy ra";
+            
+            // Better error messages for specific cases
+            if (err?.status === 403) {
+                msg = "Không có quyền! CLB chỉ được quản lý đội của mình.";
+            } else if (err?.status === 400 && msg.includes("Shirt number")) {
+                msg = "Số áo đã được sử dụng. Vui lòng chọn số áo khác.";
+            }
+            
+            toast({ title: "Lỗi", description: msg, variant: "destructive" });
         },
     });
 
