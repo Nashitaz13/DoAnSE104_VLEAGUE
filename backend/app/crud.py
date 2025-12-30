@@ -1739,22 +1739,28 @@ def generate_round_robin_schedule(
         # Generate pairings for this round using circle method
         pairings = generate_round_pairings(clubs, round_num, is_return_leg=False)
         
+        match_index = 0  # Track match within round for time distribution
         for home_club, away_club in pairings:
             if home_club is None or away_club is None:
                 continue  # Skip bye
+            
+            # Distribute matches across the day (e.g., 17:00, 19:00, etc.)
+            # First match at 17:00, then every 2 hours
+            match_time = round_date.replace(hour=17, minute=0, second=0) + timedelta(hours=match_index * 2)
             
             try:
                 match_in = LichThiDauCreate(
                     matran=f"M_{request_in.muagiai}_R{round_num}_{home_club.maclb}_{away_club.maclb}",
                     muagiai=request_in.muagiai,
                     vong=round_num,
-                    thoigianthidau=round_date,
+                    thoigianthidau=match_time,
                     maclbnha=home_club.maclb,
                     maclbkhach=away_club.maclb,
                     masanvandong=home_club.masanvandong  # Use home stadium
                 )
                 create_match(session=session, match_in=match_in)
                 matches_created += 1
+                match_index += 1
             except Exception as e:
                 errors.append(f"Round {round_num}: {str(e)}")
     
@@ -1765,22 +1771,27 @@ def generate_round_robin_schedule(
         
         pairings = generate_round_pairings(clubs, round_num, is_return_leg=True)
         
+        match_index = 0  # Track match within round for time distribution
         for home_club, away_club in pairings:
             if home_club is None or away_club is None:
                 continue
+            
+            # Distribute matches across the day
+            match_time = round_date.replace(hour=17, minute=0, second=0) + timedelta(hours=match_index * 2)
             
             try:
                 match_in = LichThiDauCreate(
                     matran=f"M_{request_in.muagiai}_R{return_round_num}_{home_club.maclb}_{away_club.maclb}",
                     muagiai=request_in.muagiai,
                     vong=return_round_num,
-                    thoigianthidau=round_date,
+                    thoigianthidau=match_time,
                     maclbnha=home_club.maclb,
                     maclbkhach=away_club.maclb,
                     masanvandong=home_club.masanvandong
                 )
                 create_match(session=session, match_in=match_in)
                 matches_created += 1
+                match_index += 1
             except Exception as e:
                 errors.append(f"Round {return_round_num}: {str(e)}")
     
@@ -2009,7 +2020,7 @@ def compute_standings(
     matches = session.exec(
         select(LichThiDau)
         .where(LichThiDau.muagiai == muagiai)
-        .order_by(LichThiDau.ngaythidau, LichThiDau.giothidau)  # Chronological order
+        .order_by(LichThiDau.thoigianthidau)  # Chronological order
     ).all()
     
     # Get all clubs in season

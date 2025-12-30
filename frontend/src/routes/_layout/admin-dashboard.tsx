@@ -2,7 +2,7 @@ import { useState, useMemo, useEffect } from "react"
 import { createFileRoute, useRouter } from "@tanstack/react-router"
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query"
 import {
-  LayoutDashboard, FileText, Users, CalendarDays,
+  LayoutDashboard, FileText, Users, CalendarDays, MapPin,
   CheckCircle, XCircle, Search, Filter, AlertTriangle, Inbox, Clock, Plus, Loader2, Edit, ChevronLeft, ChevronRight, Gavel, Save, RefreshCw
 } from "lucide-react"
 
@@ -40,8 +40,120 @@ const TABS = [
   { id: 'overview', label: 'Tổng quan', icon: LayoutDashboard },
   { id: 'season-rules', label: 'Quản lý Mùa giải', icon: Gavel },
   { id: 'teams', label: 'Đội bóng tham dự', icon: Users },
+  { id: 'stadiums', label: 'Quản lý Sân vận động', icon: MapPin },
   { id: 'schedule', label: 'Lịch thi đấu', icon: CalendarDays },
 ]
+
+// STADIUM MANAGEMENT TAB
+function StadiumManagementTab({ selectedSeasonId }: { selectedSeasonId: string }) {
+  const queryClient = useQueryClient()
+  const { toast } = useToast()
+  const [isCreateOpen, setIsCreateOpen] = useState(false)
+  const [newStadium, setNewStadium] = useState({ masanvandong: "", tensanvandong: "", diachisvd: "", succhua: null as number | null, danhgiafifa: "" })
+
+  const { data: stadiumsData } = useQuery({
+    queryKey: ['stadiums', selectedSeasonId],
+    queryFn: async () => {
+      const token = localStorage.getItem("access_token");
+      const res = await fetch('http://localhost:8000/api/stadiums?muagiai=' + selectedSeasonId, {
+        headers: { 'Authorization': `Bearer ${token}` }
+      });
+      return res.json();
+    }
+  })
+
+  const stadiums = useMemo(() => Array.isArray(stadiumsData) ? stadiumsData : (stadiumsData as any)?.data || [], [stadiumsData])
+
+  const createMutation = useMutation({
+    mutationFn: async () => {
+      const token = localStorage.getItem("access_token");
+      const response = await fetch('http://localhost:8000/api/stadiums', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token}`
+        },
+        body: JSON.stringify({ ...newStadium, muagiai: selectedSeasonId, succhua: newStadium.succhua || 0 })
+      })
+      if (!response.ok) {
+        const err = await response.json()
+        throw new Error(err.detail || 'Failed: ' + response.statusText)
+      }
+      return response.json()
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['stadiums'] })
+      toast({ title: "Tạo sân thành công!" })
+      setIsCreateOpen(false)
+      setNewStadium({ masanvandong: "", tensanvandong: "", diachisvd: "", succhua: null, danhgiafifa: "" })
+    }
+  })
+
+  return (
+    <div className="space-y-6">
+      <div className="flex justify-between items-center">
+        <div>
+          <h2 className="text-xl font-bold flex items-center gap-2"><MapPin className="w-6 h-6" /> Quản lý Sân vận động</h2>
+          <p className="text-gray-500">Danh sách sân thi đấu mùa giải {selectedSeasonId}</p>
+        </div>
+        <Button onClick={() => setIsCreateOpen(true)} className="bg-blue-600">
+          <Plus className="mr-2 h-4 w-4" /> Tạo sân mới
+        </Button>
+      </div>
+
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+        {stadiums.map((stadium: any) => (
+          <Card key={stadium.masanvandong}>
+            <CardHeader className="pb-2">
+              <CardTitle className="text-lg">{stadium.tensanvandong}</CardTitle>
+              <CardDescription>{stadium.masanvandong}</CardDescription>
+            </CardHeader>
+            <CardContent>
+              <div className="text-sm text-gray-600">
+                <p>Địa chỉ: {stadium.diachisvd || "N/A"}</p>
+                <p>Sức chứa: {stadium.succhua?.toLocaleString() || "N/A"} người</p>
+                <p>Đánh giá FIFA: {stadium.danhgiafifa || "Chưa có"}</p>
+              </div>
+            </CardContent>
+          </Card>
+        ))}
+      </div>
+
+      <Dialog open={isCreateOpen} onOpenChange={setIsCreateOpen}>
+        <DialogContent className="max-w-md">
+          <DialogHeader>
+            <DialogTitle>Tạo sân vận động mới</DialogTitle>
+          </DialogHeader>
+          <div className="space-y-3 py-4">
+            <div>
+              <label className="text-sm font-medium">Mã sân *</label>
+              <Input value={newStadium.masanvandong} onChange={e => setNewStadium({ ...newStadium, masanvandong: e.target.value })} placeholder="VD: SVD_HCM" />
+            </div>
+            <div>
+              <label className="text-sm font-medium">Tên sân *</label>
+              <Input value={newStadium.tensanvandong} onChange={e => setNewStadium({ ...newStadium, tensanvandong: e.target.value })} placeholder="VD: Sân vận động Thống Nhất" />
+            </div>
+            <div>
+              <label className="text-sm font-medium">Địa chỉ</label>
+              <Input value={newStadium.diachisvd} onChange={e => setNewStadium({ ...newStadium, diachisvd: e.target.value })} placeholder="VD: 138 Đào Duy Từ..." />
+            </div>
+            <div>
+              <label className="text-sm font-medium">Sức chứa</label>
+              <Input type="number" value={newStadium.succhua || ""} onChange={e => setNewStadium({ ...newStadium, succhua: parseInt(e.target.value) || null })} placeholder="VD: 15000" />
+            </div>
+            <div>
+              <label className="text-sm font-medium">Đánh giá FIFA</label>
+              <Input value={newStadium.danhgiafifa} onChange={e => setNewStadium({ ...newStadium, danhgiafifa: e.target.value })} placeholder="VD: FIFA Standard" />
+            </div>
+            <Button onClick={() => createMutation.mutate()} className="w-full" disabled={!newStadium.masanvandong || !newStadium.tensanvandong}>
+              Tạo sân
+            </Button>
+          </div>
+        </DialogContent>
+      </Dialog>
+    </div>
+  )
+}
 
 function AdminDashboard() {
   const [activeTab, setActiveTab] = useState('overview')
@@ -123,6 +235,7 @@ function AdminDashboard() {
           {activeTab === 'season-rules' && <SeasonAndRulesTab selectedSeasonId={selectedSeasonId} onUpdate={refetchSeasons} />}
           {activeTab === 'schedule' && <ScheduleTab selectedSeasonId={selectedSeasonId} />}
           {activeTab === 'teams' && <TeamManagementTab selectedSeasonId={selectedSeasonId} />}
+          {activeTab === 'stadiums' && <StadiumManagementTab selectedSeasonId={selectedSeasonId} />}
         </div>
       </div>
     </div>
@@ -394,7 +507,20 @@ function TeamManagementTab({ selectedSeasonId }: { selectedSeasonId: string }) {
   const queryClient = useQueryClient()
   const { toast } = useToast()
   const [isRegisterOpen, setIsRegisterOpen] = useState(false)
+  const [isCreateNewOpen, setIsCreateNewOpen] = useState(false)
   const [searchTerm, setSearchTerm] = useState("");
+
+  // New team form state
+  const [newTeam, setNewTeam] = useState({
+    maclb: "",
+    tenclb: "",
+    diachitruso: "",
+    donvichuquan: "",
+    trangphucchunha: "",
+    trangphuckhach: "",
+    trangphucduphong: "",
+    masanvandong: null as string | null
+  });
 
   // Get teams for CURRENT season
   const { data: currentClubsData } = useQuery({
@@ -409,6 +535,14 @@ function TeamManagementTab({ selectedSeasonId }: { selectedSeasonId: string }) {
     queryFn: () => ClubsService.getClubs({ limit: 1000 }) // Get mostly everything
   });
 
+  // Fetch stadiums for dropdown
+  const { data: stadiumsData } = useQuery({
+    queryKey: ['stadiums', selectedSeasonId],
+    queryFn: () => fetch('http://localhost:8000/api/stadiums?limit=100').then(res => res.json()),
+    enabled: !!selectedSeasonId
+  });
+
+  const stadiums = useMemo(() => Array.isArray(stadiumsData) ? stadiumsData : (stadiumsData as any)?.data || [], [stadiumsData]);
   const currentClubs = useMemo(() => Array.isArray(currentClubsData) ? currentClubsData : (currentClubsData as any)?.data || [], [currentClubsData]);
   const historyClubs = useMemo(() => Array.isArray(allClubsData) ? allClubsData : (allClubsData as any)?.data || [], [allClubsData]);
 
@@ -450,7 +584,45 @@ function TeamManagementTab({ selectedSeasonId }: { selectedSeasonId: string }) {
       toast({ title: "Đã thêm đội bóng", description: "Đội bóng đã được đăng ký cho mùa giải này." });
     },
     onError: () => {
-      toast({ title: "Lỗi", description: "Không thể thêm đội bóng. Có thể ID đã tồn tại." });
+      toast({ title: "Lỗi đăng ký đội", variant: "destructive" });
+    }
+  });
+
+  // Create New Team Mutation
+  const createNewTeamMutation = useMutation({
+    mutationFn: async () => {
+      if (!newTeam.maclb || !newTeam.tenclb) {
+        throw new Error("Mã đội và tên đội là bắt buộc");
+      }
+      return await ClubsService.createClub({
+        requestBody: {
+          ...newTeam,
+          muagiai: selectedSeasonId,
+          masanvandong: newTeam.masanvandong || undefined
+        }
+      });
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['clubs', selectedSeasonId] });
+      toast({ title: "Tạo đội thành công!" });
+      setIsCreateNewOpen(false);
+      setNewTeam({
+        maclb: "",
+        tenclb: "",
+        diachitruso: "",
+        donvichuquan: "",
+        trangphucchunha: "",
+        trangphuckhach: "",
+        trangphucduphong: "",
+        masanvandong: null
+      });
+    },
+    onError: (err: any) => {
+      toast({
+        title: "Lỗi tạo đội",
+        description: err.body?.detail || err.message,
+        variant: "destructive"
+      });
     }
   });
 
@@ -461,9 +633,14 @@ function TeamManagementTab({ selectedSeasonId }: { selectedSeasonId: string }) {
           <h2 className="text-xl font-bold flex items-center gap-2"><Users className="w-6 h-6" /> Các đội tham dự ({selectedSeasonId})</h2>
           <p className="text-gray-500">Quản lý danh sách CLB chính thức</p>
         </div>
-        <Button onClick={() => setIsRegisterOpen(true)} className="bg-green-600 hover:bg-green-700">
-          <Plus className="mr-2 h-4 w-4" /> Đăng ký Đội từ DS cũ
-        </Button>
+        <div className="flex gap-2">
+          <Button onClick={() => setIsRegisterOpen(true)} variant="outline" className="border-green-600 text-green-600 hover:bg-green-50">
+            <Plus className="mr-2 h-4 w-4" /> Đăng ký Đội từ DS cũ
+          </Button>
+          <Button onClick={() => setIsCreateNewOpen(true)} className="bg-blue-600 hover:bg-blue-700">
+            <Plus className="mr-2 h-4 w-4" /> Tạo Đội Mới
+          </Button>
+        </div>
       </div>
 
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
@@ -525,6 +702,66 @@ function TeamManagementTab({ selectedSeasonId }: { selectedSeasonId: string }) {
           </div>
         </DialogContent>
       </Dialog>
+
+      {/* CREATE NEW TEAM DIALOG */}
+      <Dialog open={isCreateNewOpen} onOpenChange={setIsCreateNewOpen}>
+        <DialogContent className="max-w-md">
+          <DialogHeader>
+            <DialogTitle>Tạo đội bóng mới</DialogTitle>
+            <DialogDescription>Nhập thông tin để tạo đội bóng hoàn toàn mới</DialogDescription>
+          </DialogHeader>
+          <div className="space-y-3 py-4">
+            <div>
+              <label className="text-sm font-medium">Mã CLB *</label>
+              <Input value={newTeam.maclb} onChange={e => setNewTeam({ ...newTeam, maclb: e.target.value })} placeholder="VD: HPG" />
+            </div>
+            <div>
+              <label className="text-sm font-medium">Tên CLB *</label>
+              <Input value={newTeam.tenclb} onChange={e => setNewTeam({ ...newTeam, tenclb: e.target.value })} placeholder="VD: Hải Phòng FC" />
+            </div>
+            <div>
+              <label className="text-sm font-medium">Đơn vị chủ quản</label>
+              <Input value={newTeam.donvichuquan} onChange={e => setNewTeam({ ...newTeam, donvichuquan: e.target.value })} placeholder="VD: Công ty CP..." />
+            </div>
+            <div>
+              <label className="text-sm font-medium">Địa chỉ trụ sở</label>
+              <Input value={newTeam.diachitruso} onChange={e => setNewTeam({ ...newTeam, diachitruso: e.target.value })} placeholder="VD: 12 Đinh Tiên Hoàng" />
+            </div>
+            <div>
+              <label className="text-sm font-medium">Sân vận động</label>
+              <select
+                className="w-full border rounded p-2 text-sm"
+                value={newTeam.masanvandong || ""}
+                onChange={e => setNewTeam({ ...newTeam, masanvandong: e.target.value || null })}
+              >
+                <option value="">-- Chọn sân --</option>
+                {stadiums.map((stadium: any) => (
+                  <option key={stadium.masanvandong} value={stadium.masanvandong}>
+                    {stadium.tensanvandong}
+                  </option>
+                ))}
+              </select>
+            </div>
+            <div className="grid grid-cols-3 gap-2">
+              <div>
+                <label className="text-sm font-medium">Màu áo nhà</label>
+                <Input value={newTeam.trangphucchunha} onChange={e => setNewTeam({ ...newTeam, trangphucchunha: e.target.value })} placeholder="Đỏ" />
+              </div>
+              <div>
+                <label className="text-sm font-medium">Màu áo khách</label>
+                <Input value={newTeam.trangphuckhach} onChange={e => setNewTeam({ ...newTeam, trangphuckhach: e.target.value })} placeholder="Trắng" />
+              </div>
+              <div>
+                <label className="text-sm font-medium">Màu dự phòng</label>
+                <Input value={newTeam.trangphucduphong} onChange={e => setNewTeam({ ...newTeam, trangphucduphong: e.target.value })} placeholder="Xanh" />
+              </div>
+            </div>
+            <Button onClick={() => createNewTeamMutation.mutate()} className="w-full" disabled={!newTeam.maclb || !newTeam.tenclb}>
+              Tạo đội
+            </Button>
+          </div>
+        </DialogContent>
+      </Dialog>
     </div>
   )
 }
@@ -545,7 +782,11 @@ function ScheduleTab({ selectedSeasonId }: { selectedSeasonId: string }) {
 
   const matches = useMemo(() => {
     let list = Array.isArray(matchesData) ? matchesData : (matchesData as any)?.data || [];
-    return list.sort((a: any, b: any) => new Date(a.thoigianthidau).getTime() - new Date(b.thoigianthidau).getTime());
+    // Sort by round first, then by datetime within each round
+    return list.sort((a: any, b: any) => {
+      if (a.vong !== b.vong) return a.vong - b.vong;
+      return new Date(a.thoigianthidau).getTime() - new Date(b.thoigianthidau).getTime();
+    });
   }, [matchesData]);
 
   const { data: seasonDetail } = useQuery({
@@ -588,7 +829,9 @@ function ScheduleTab({ selectedSeasonId }: { selectedSeasonId: string }) {
       queryClient.invalidateQueries({ queryKey: ['matches'] });
     },
     onError: (err: any) => {
-      alert("Lỗi tạo lịch: " + err.body?.detail || err.message);
+      const errorMsg = err.body?.detail || err.message || "Lỗi không xác định";
+      alert("Lỗi tạo lịch: " + errorMsg);
+      console.error("Schedule generation error:", err);
     }
   })
 
