@@ -852,7 +852,7 @@ function MatchCenterPage() {
   // Đọc season từ localStorage để sync với trang khác
   const getInitialSeason = () => {
     const saved = localStorage.getItem("selectedSeason");
-    return saved || "2024-2025";
+    return saved || "2025-2026";
   };
 
   const [selectedSeason, setSelectedSeason] = useState<string>(getInitialSeason())
@@ -944,7 +944,7 @@ function MatchCenterPage() {
               <SelectContent>
                 {seasonOptions.length > 0 ? seasonOptions.map((s: string) => (
                   <SelectItem key={s} value={s}>{s}</SelectItem>
-                )) : <SelectItem value="2024-2025">2024-2025</SelectItem>}
+                )) : <SelectItem value="2025-2026">2025-2026</SelectItem>}
               </SelectContent>
             </Select>
 

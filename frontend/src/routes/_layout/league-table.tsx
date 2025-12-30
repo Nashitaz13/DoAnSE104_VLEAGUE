@@ -2,8 +2,8 @@ import { useState, useMemo, useEffect } from "react"
 import { createFileRoute } from "@tanstack/react-router"
 import { useQuery } from "@tanstack/react-query"
 import {
-    Trophy, Filter, Minus, TrendingUp, TrendingDown,
-    Shield, AlertCircle, Loader2, Download
+    Trophy, Filter, TrendingUp, TrendingDown,
+    Shield, Loader2
 } from "lucide-react"
 
 import {
@@ -13,7 +13,7 @@ import {
     SelectTrigger,
     SelectValue,
 } from "@/components/ui/select"
-import { Button } from "@/components/ui/button"
+
 
 import { StandingsService, SeasonManagementService } from "@/client"
 
@@ -25,9 +25,9 @@ function LeagueTablePage() {
     // Đọc season từ localStorage để sync với trang khác
     const getInitialSeason = () => {
         const saved = localStorage.getItem("selectedSeason");
-        return saved || "2024-2025";
+        return saved || "2025-2026";
     };
-    
+
     const [selectedSeason, setSelectedSeason] = useState<string>(getInitialSeason())
 
     // Lưu season vào localStorage khi thay đổi
@@ -121,10 +121,7 @@ function LeagueTablePage() {
         setSortConfig({ key, direction });
     };
 
-    // Handle Export (Placeholder)
-    const handleExport = (type: 'pdf' | 'excel') => {
-        alert(`Đang xuất dữ liệu bảng xếp hạng ra file ${type.toUpperCase()}...`);
-    }
+
 
     return (
         <div className="flex flex-col min-h-[calc(100vh-4rem)] bg-gray-50 font-sans pb-10">
@@ -170,9 +167,6 @@ function LeagueTablePage() {
                             </Select>
                         </div>
 
-                        <Button variant="outline" size="sm" onClick={() => handleExport('pdf')} className="text-red-700 border-red-200 bg-red-50 hover:bg-red-100">
-                            <Download className="w-4 h-4 mr-2" /> PDF
-                        </Button>
                     </div>
                 </div>
 
