@@ -494,8 +494,8 @@ def add_player_to_roster(
     - Player age meets requirements
     - Shirt number unique within club+season
     - Foreign player quota not exceeded
+    - Roster size limit (max players) not exceeded
     - Goalkeeper minimum count (warning only)
-    - Roster size limits (warning only)
     """
     # 1. Validate player exists
     player = get_player_by_id(session=session, macauthu=roster_in.macauthu)
@@ -561,7 +561,27 @@ def add_player_to_roster(
         new_player_nationality=player.quoctich
     )
     
-    # 7. Create roster entry
+    # 7. Validate roster size (max players check)
+    if season.socauthutoida:
+        from sqlalchemy import func
+        count_stmt = (
+            select(func.count())
+            .select_from(ChiTietDoiBong)
+            .where(
+                ChiTietDoiBong.maclb == roster_in.maclb,
+                ChiTietDoiBong.muagiai == roster_in.muagiai
+            )
+        )
+        current_count = session.exec(count_stmt).one()
+        
+        if current_count >= season.socauthutoida:
+            raise ValueError(
+                f"Roster size limit exceeded. Club {roster_in.maclb} already has "
+                f"{current_count}/{season.socauthutoida} players for season {roster_in.muagiai}. "
+                f"Cannot add more players."
+            )
+    
+    # 8. Create roster entry
     roster_entry = ChiTietDoiBong.model_validate(roster_in)
     session.add(roster_entry)
     session.commit()
