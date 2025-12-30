@@ -419,7 +419,7 @@ function SeasonAndRulesTab({ selectedSeasonId, onUpdate }: { selectedSeasonId: s
                 disabled={!isCreating} // ID cannot be changed once created
                 value={formData.muagiai || ""}
                 onChange={e => setFormData({ ...formData, muagiai: e.target.value })}
-                placeholder="VD: 2024-2025"
+                placeholder="VD: 2025-2026"
                 required
               />
             </div>
