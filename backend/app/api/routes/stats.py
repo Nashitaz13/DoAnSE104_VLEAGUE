@@ -107,14 +107,13 @@ def get_match_stats(
 def get_awards(
     *,
     session: SessionDep,
-    current_user: CurrentUserVLeague,
     muagiai: str = Query(..., description="Season ID (e.g., '2024-2025')"),
     limit: int = Query(10, ge=1, le=200, description="Max number to return (ties may exceed limit)")
 ) -> Any:
     """
     Get awards for top scorers and top assist providers.
     
-    **Authentication required** - Any authenticated user can view awards.
+    **Public endpoint** - No authentication required.
     
     **Algorithm:**
     - Top scorers: Count `loaisukien = "BanThang"` per player

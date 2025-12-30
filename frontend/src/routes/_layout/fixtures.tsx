@@ -828,9 +828,14 @@ function MatchCenterPage() {
     const saved = localStorage.getItem("selectedSeason");
     return saved || "2024-2025";
   };
-
+  
   const [selectedSeason, setSelectedSeason] = useState<string>(getInitialSeason())
   const [selectedRound, setSelectedRound] = useState<string>("all")
+
+  // Lưu season vào localStorage khi thay đổi
+  useEffect(() => {
+    localStorage.setItem("selectedSeason", selectedSeason);
+  }, [selectedSeason]);
 
   // Modal State
   const [selectedMatch, setSelectedMatch] = useState<any>(null)

@@ -1,4 +1,4 @@
-import { useState, useMemo } from "react"
+import { useState, useMemo, useEffect } from "react"
 import { createFileRoute } from "@tanstack/react-router"
 import { useQuery } from "@tanstack/react-query"
 import {
@@ -27,7 +27,7 @@ function LeagueTablePage() {
         const saved = localStorage.getItem("selectedSeason");
         return saved || "2024-2025";
     };
-
+    
     const [selectedSeason, setSelectedSeason] = useState<string>(getInitialSeason())
 
     // Lưu season vào localStorage khi thay đổi

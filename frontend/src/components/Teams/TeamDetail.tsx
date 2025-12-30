@@ -21,33 +21,50 @@ interface TeamDetailProps {
 export function TeamDetail({ teamId, stadiumMap, muagiai }: TeamDetailProps) {
     const [selectedPlayerId, setSelectedPlayerId] = useState<string | null>(null)
 
-    // 1. Gọi API lấy thông tin CLB
+    // 1. Gọi API lấy thông tin CLB (song song với roster)
     const { data: clubInfo } = useQuery({
         queryKey: ['club', teamId, muagiai],
         queryFn: () => ClubsService.getClub({ club_id: teamId, muagiai }),
+        staleTime: 5 * 60 * 1000, // Cache 5 phút
+        gcTime: 30 * 60 * 1000,
+        refetchOnWindowFocus: false,
+        refetchOnMount: false,
+        retry: 1,
     })
 
-    // 2. Gọi API lấy danh sách cầu thủ cho mùa giải ĐANG CHỌN (BM3.2 - 3.3)
+    // 2. Gọi API lấy danh sách cầu thủ cho mùa giải ĐANG CHỌN
     const { data: roster, isLoading } = useQuery({
         queryKey: ['roster', teamId, muagiai],
         queryFn: () => RostersService.getRoster({ maclb: teamId, muagiai: muagiai }),
         staleTime: 5 * 60 * 1000,
+        gcTime: 30 * 60 * 1000,
+        refetchOnWindowFocus: false,
+        refetchOnMount: false,
+        retry: 1,
     })
 
-    // 3. Gọi API lấy danh sách cầu thủ mùa 2025-2026 (DATA GỐC) để dự phòng
+    // Parse data
+    const rosterData = Array.isArray(roster) ? roster : (roster as any)?.data || [];
+
+    // 3. Conditional Backup: Chỉ gọi khi 2025-2026 VÀ roster rỗng
+    const shouldFetchBackup = muagiai === "2025-2026" && rosterData.length === 0;
+    
     const { data: rosterBackup } = useQuery({
-        queryKey: ['roster', teamId, '2025-2026'],
-        queryFn: () => RostersService.getRoster({ maclb: teamId, muagiai: '2025-2026' }),
-        enabled: muagiai !== '2025-2026' // Chỉ gọi khi không phải mùa này
-    })
+        queryKey: ['roster', teamId, "2024-2025"],
+        queryFn: () => RostersService.getRoster({ maclb: teamId, muagiai: "2024-2025" }),
+        enabled: shouldFetchBackup, // CHỈ fetch khi cần
+        staleTime: 5 * 60 * 1000,
+        gcTime: 30 * 60 * 1000,
+        refetchOnWindowFocus: false,
+        retry: 1,
+    });
 
-    // LOGIC FALLBACK: Nếu mùa hiện tại ít hơn 5 cầu thủ, dùng data backup (mùa 25-26)
-    let players = Array.isArray(roster) ? roster : (roster as any)?.data || [];
-    const backupPlayers = Array.isArray(rosterBackup) ? rosterBackup : (rosterBackup as any)?.data || [];
-
-    if (players.length < 5 && backupPlayers.length > 0) {
-        players = backupPlayers; // Trám dữ liệu thật vào
-    }
+    // Chọn data source
+    const players = rosterData.length > 0 
+        ? rosterData 
+        : (shouldFetchBackup && rosterBackup) 
+            ? (Array.isArray(rosterBackup) ? rosterBackup : (rosterBackup as any)?.data || [])
+            : [];
 
     // Nhóm theo vị trí
     const groupedPlayers = {

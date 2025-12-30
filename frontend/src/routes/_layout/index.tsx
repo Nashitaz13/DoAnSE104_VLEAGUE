@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react"
+import { useMemo } from "react"
 import { createFileRoute, Link } from "@tanstack/react-router"
 import { useQuery } from "@tanstack/react-query"
 import { 
@@ -16,40 +16,60 @@ export const Route = createFileRoute('/_layout/')({
 })
 
 function HomePage() {
-  const [currentSeason, setCurrentSeason] = useState<string>("")
-
-  // 1. Lấy danh sách mùa giải
-  const { data: seasonsData } = useQuery({
+  // 1. Query danh sách seasons (priority cao, fetch ngay, sync DB)
+  const { data: seasonsData, isLoading: loadingSeasons } = useQuery({
     queryKey: ["seasons"],
     queryFn: () => SeasonManagementService.getSeasons({ limit: 100 }),
+    staleTime: 0,
+    refetchOnMount: "always",
+    refetchOnWindowFocus: true,
   })
 
-  // 2. Logic chọn mùa giải "Hiện tại"
-  useEffect(() => {
+  // 2. Tính mùa giải MỚI NHẤT từ DB (không dùng localStorage)
+  const seasonToShow = useMemo(() => {
     const list = Array.isArray(seasonsData) ? seasonsData : (seasonsData as any)?.data || [];
-    if (list.length > 0) {
-      const sorted = [...list].sort((a: any, b: any) => a.muagiai.localeCompare(b.muagiai));
-      setCurrentSeason(sorted[sorted.length - 1].muagiai);
-    }
+    if (list.length === 0) return "";
+
+    // Sort theo ngaybatdau DESC (newest first), tie-break theo muagiai DESC
+    const sorted = [...list].sort((a: any, b: any) => {
+      const dateA = a.ngaybatdau ? new Date(a.ngaybatdau).getTime() : 0;
+      const dateB = b.ngaybatdau ? new Date(b.ngaybatdau).getTime() : 0;
+      
+      if (dateB !== dateA) return dateB - dateA; // Descending by date
+      
+      // Tie-break: sort by muagiai DESC
+      return (b.muagiai || "").localeCompare(a.muagiai || "");
+    });
+
+    return sorted[0]?.muagiai || "";
   }, [seasonsData]);
 
-  // 3. Gọi các API dữ liệu theo mùa giải đã chọn
-  const { data: matchesData } = useQuery({
-    queryKey: ["matches", currentSeason],
-    queryFn: () => MatchesService.getMatches({ muagiai: currentSeason, limit: 100 }),
-    enabled: !!currentSeason
+  // 3. Query matches/standings/awards - dùng seasonToShow (mùa mới nhất)
+  const { data: matchesData, isLoading: loadingMatches } = useQuery({
+    queryKey: ["matches", seasonToShow],
+    queryFn: () => MatchesService.readMatches({ muagiai: seasonToShow, limit: 100 }),
+    enabled: !!seasonToShow,
+    staleTime: 0,
+    refetchOnMount: "always",
+    refetchOnWindowFocus: true,
   })
 
-  const { data: standingsData } = useQuery({
-    queryKey: ["standings", currentSeason],
-    queryFn: () => StandingsService.getStandings({ muagiai: currentSeason }),
-    enabled: !!currentSeason
+  const { data: standingsData, isLoading: loadingStandings } = useQuery({
+    queryKey: ["standings", seasonToShow],
+    queryFn: () => StandingsService.getStandings({ muagiai: seasonToShow }),
+    enabled: !!seasonToShow,
+    staleTime: 0,
+    refetchOnMount: "always",
+    refetchOnWindowFocus: true,
   })
 
-  const { data: awardsData } = useQuery({
-    queryKey: ["awards", currentSeason],
-    queryFn: () => StatisticsService.getAwards({ muagiai: currentSeason, limit: 5 }),
-    enabled: !!currentSeason
+  const { data: awardsData, isLoading: loadingAwards } = useQuery({
+    queryKey: ["awards", seasonToShow],
+    queryFn: () => StatisticsService.getAwards({ muagiai: seasonToShow, limit: 5 }),
+    enabled: !!seasonToShow,
+    staleTime: 0,
+    refetchOnMount: "always",
+    refetchOnWindowFocus: true,
   })
 
   // --- XỬ LÝ DỮ LIỆU HIỂN THỊ ---
@@ -57,32 +77,53 @@ function HomePage() {
   
   const recentMatches = allMatches
     .filter((m: any) => {
-       const hasScore = m.ketqua && typeof m.ketqua === 'string' && m.ketqua.includes("-");
-       const isFinishedStatus = m.trangthai === "DaKetThuc" || m.trangthai === "Finished";
-       
-       return isFinishedStatus || hasScore;
+       const hasScore = m.tiso && typeof m.tiso === 'string' && m.tiso.includes("-");
+       return hasScore; // Trận có tỷ số là đã kết thúc
     })
     .sort((a: any, b: any) => {
-      return new Date(b.ngaythi_dau).getTime() - new Date(a.ngaythi_dau).getTime();
+      return new Date(b.thoigianthidau).getTime() - new Date(a.thoigianthidau).getTime();
     })
     .slice(0, 3);
 
   const upcomingMatches = allMatches
     .filter((m: any) => {
-        const noScore = !m.ketqua || m.ketqua === "";
-        const isScheduled = m.trangthai === "SapDienRa" || m.trangthai === "Scheduled";
-        return isScheduled || noScore;
+        const noScore = !m.tiso || m.tiso === "";
+        return noScore; // Trận chưa có tỷ số là sắp diễn ra
     })
     .sort((a: any, b: any) => {
-        return new Date(a.ngaythi_dau).getTime() - new Date(b.ngaythi_dau).getTime();
+        return new Date(a.thoigianthidau).getTime() - new Date(b.thoigianthidau).getTime();
     })
     .slice(0, 3);
 
-  const standings = (standingsData as any)?.standings?.slice(0, 5) || [];
+  // Xử lý bảng xếp hạng: Sort theo điểm -> hiệu số -> bàn thắng (V-League rules)
+  const standingsRaw = (standingsData as any)?.standings || [];
+  const standings = [...standingsRaw]
+    .sort((a: any, b: any) => {
+      // Rule 1: Sort by points (descending)
+      if (b.points !== a.points) return b.points - a.points;
+      
+      // Rule 2: Sort by goal difference (descending)
+      const gdA = a.goal_difference ?? (a.goals_for - a.goals_against);
+      const gdB = b.goal_difference ?? (b.goals_for - b.goals_against);
+      if (gdB !== gdA) return gdB - gdA;
+      
+      // Rule 3: Sort by goals for (descending)
+      return (b.goals_for ?? 0) - (a.goals_for ?? 0);
+    })
+    .slice(0, 5);
+    
   const topScorers = (awardsData as any)?.top_scorers?.slice(0, 5) || [];
 
-  if (!currentSeason) {
-    return <div className="flex h-screen items-center justify-center"><Loader2 className="animate-spin" /></div>
+  // Loading state: Chờ seasons load và seasonToShow được tính
+  if (loadingSeasons || !seasonToShow) {
+    return (
+      <div className="flex h-screen items-center justify-center">
+        <div className="text-center space-y-4">
+          <Loader2 className="animate-spin w-12 h-12 mx-auto text-primary" />
+          <p className="text-muted-foreground">Đang tải dữ liệu mùa giải...</p>
+        </div>
+      </div>
+    );
   }
 
   return (
@@ -98,7 +139,7 @@ function HomePage() {
           <div className="space-y-4 text-center md:text-left">
             
             <h1 className="text-4xl md:text-6xl font-extrabold tracking-tight drop-shadow-lg">
-              V-League 1 <br/> <span className="text-red-300">{currentSeason}</span>
+              V-League 1 <br/> <span className="text-red-300">{seasonToShow}</span>
             </h1>
             <p className="text-red-100 max-w-lg text-lg drop-shadow-md">
               Giải đấu bóng đá hàng đầu Việt Nam với sự tham gia của các đội bóng mạnh nhất cả nước.
@@ -154,16 +195,16 @@ function HomePage() {
                   <CardContent className="p-0 flex flex-col sm:flex-row">
                     <div className="flex-1 flex items-center justify-between p-4 bg-gradient-to-r from-background to-muted/20">
                       <div className="flex items-center gap-3 w-1/3">
-                        <div className="font-bold text-base truncate text-right w-full">{m.clbnha}</div>
+                        <div className="font-bold text-base truncate text-right w-full">{m.ten_clb_nha || m.maclbnha}</div>
                       </div>
                       <div className="flex flex-col items-center justify-center w-1/3 px-2">
                          <div className="text-2xl font-black text-primary bg-primary/10 px-4 py-1 rounded-full">
-                            {m.ketqua}
+                            {m.tiso}
                          </div>
                          <span className="text-xs text-muted-foreground mt-1">Đã kết thúc</span>
                       </div>
                       <div className="flex items-center gap-3 w-1/3 justify-end">
-                        <div className="font-bold text-base truncate text-left w-full">{m.clbkhach}</div>
+                        <div className="font-bold text-base truncate text-left w-full">{m.ten_clb_khach || m.maclbkhach}</div>
                       </div>
                     </div>
                   </CardContent>
@@ -186,14 +227,14 @@ function HomePage() {
                 <Card key={m.matran} className="border-l-4 border-l-blue-500">
                   <CardContent className="p-4">
                     <div className="flex justify-between items-center text-sm font-semibold mb-2">
-                       <span>{m.clbnha}</span>
+                       <span>{m.ten_clb_nha || m.maclbnha}</span>
                        <span className="text-muted-foreground text-xs">VS</span>
-                       <span>{m.clbkhach}</span>
+                       <span>{m.ten_clb_khach || m.maclbkhach}</span>
                     </div>
                     <div className="flex items-center gap-2 text-xs text-muted-foreground mt-2 border-t pt-2">
-                       <Calendar className="w-3 h-3"/> {new Date(m.ngaythi_dau).toLocaleDateString('vi-VN')}
+                       <Calendar className="w-3 h-3"/> {new Date(m.thoigianthidau).toLocaleDateString('vi-VN')}
                        <span className="mx-1">•</span>
-                       <MapPin className="w-3 h-3"/> {m.sanvandong || "Sân nhà"}
+                       <MapPin className="w-3 h-3"/> {m.ten_san || "Sân nhà"}
                     </div>
                   </CardContent>
                 </Card>
@@ -230,15 +271,14 @@ function HomePage() {
                             <tbody>
                                 {standings.length > 0 ? (
                                   standings.map((team: any, idx: number) => {
-                                      // 1. Ép kiểu về số và mặc định là 0 nếu dữ liệu lỗi/null
-                                      const banThang = Number(team.ban_thang) || 0;
-                                      const banThua = Number(team.ban_thua) || 0;
+                                      // Backend fields: goals_for, goals_against
+                                      const banThang = Number(team.goals_for) || 0;
+                                      const banThua = Number(team.goals_against) || 0;
                                       
-                                      // 2. Tính hiệu số
-                                      const hieuSo = banThang - banThua;
+                                      // Tính hiệu số (hoặc dùng goal_difference từ backend)
+                                      const hieuSo = team.goal_difference ?? (banThang - banThua);
                                       
-                                      // 3. Xử lý hiển thị (Tránh NaN tuyệt đối)
-                                      // Nếu hieuSo dương thêm dấu +, nếu là NaN thì hiện 0
+                                      // Xử lý hiển thị
                                       const isValidNumber = !isNaN(hieuSo);
                                       const hieuSoDisplay = isValidNumber 
                                           ? (hieuSo > 0 ? `+${hieuSo}` : hieuSo) 
@@ -251,14 +291,14 @@ function HomePage() {
                                               </td>
                                               <td className="px-4 py-3 font-medium">
                                                   <div className="flex items-center gap-2">
-                                                      <span>{team.ten_clb || "CLB"}</span>
+                                                      <span>{team.tenclb || "CLB"}</span>
                                                       {idx < 1 && <span className="text-[10px] bg-green-100 text-green-700 px-1 rounded">ACL</span>}
                                                   </div>
                                               </td>
-                                              <td className="px-4 py-3 text-center text-muted-foreground">{team.so_tran || 0}</td>
+                                              <td className="px-4 py-3 text-center text-muted-foreground">{team.matches_played || 0}</td>
                                               {/* Hiển thị biến đã xử lý an toàn */}
                                               <td className="px-4 py-3 text-center text-muted-foreground font-medium">{hieuSoDisplay}</td>
-                                              <td className="px-4 py-3 text-center font-bold text-primary text-base">{team.diem || 0}</td>
+                                              <td className="px-4 py-3 text-center font-bold text-primary text-base">{team.points || 0}</td>
                                           </tr>
                                       )
                                   })
@@ -292,10 +332,10 @@ function HomePage() {
                                 </div>
                                 <div>
                                     <div className="font-bold text-sm">{p.tencauthu}</div>
-                                    <div className="text-xs text-muted-foreground">{p.clb || "CLB"}</div>
+                                    <div className="text-xs text-muted-foreground">{p.tenclb || "CLB"}</div>
                                 </div>
                             </div>
-                            <div className="font-bold text-primary">{p.ban_thang}</div>
+                            <div className="font-bold text-primary">{p.value}</div>
                         </div>
                     ))}
                     {topScorers.length === 0 && <p className="text-center text-muted-foreground text-sm">Chưa có dữ liệu</p>}
