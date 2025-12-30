@@ -22,8 +22,18 @@ export const Route = createFileRoute('/_layout/league-table')({
 })
 
 function LeagueTablePage() {
-    // Mặc định chọn 2024-2025
-    const [selectedSeason, setSelectedSeason] = useState<string>("2024-2025")
+    // Đọc season từ localStorage để sync với trang khác
+    const getInitialSeason = () => {
+        const saved = localStorage.getItem("selectedSeason");
+        return saved || "2024-2025";
+    };
+
+    const [selectedSeason, setSelectedSeason] = useState<string>(getInitialSeason())
+
+    // Lưu season vào localStorage khi thay đổi
+    useEffect(() => {
+        localStorage.setItem("selectedSeason", selectedSeason);
+    }, [selectedSeason]);
 
     // 1. Lấy danh sách Mùa giải
     const { data: seasonsData } = useQuery({
@@ -68,10 +78,24 @@ function LeagueTablePage() {
             diem: item.points ?? item.diem ?? 0,
         }));
 
-        // Default Sort (Points -> GD -> Goals)
-        // If sorting is active, apply it
+        // Default Sort (Points -> GD -> Goals) to get true rank
         mappedList.sort((a: any, b: any) => {
-            if (sortConfig) {
+            // Default V-League Rules: Points -> Head-to-Head (ignored for now) -> Goal Diff -> Goals
+            if (b.diem !== a.diem) return b.diem - a.diem;
+            const hsA = a.banthang - a.banthua;
+            const hsB = b.banthang - b.banthua;
+            if (hsB !== hsA) return hsB - hsA;
+            return b.banthang - a.banthang;
+        });
+
+        // Store original rank (thứ hạng gốc)
+        mappedList.forEach((team: any, index: number) => {
+            team.thuhanggoc = index + 1;
+        });
+
+        // If sorting is active, apply it (but keep thuhanggoc)
+        if (sortConfig) {
+            mappedList.sort((a: any, b: any) => {
                 const { key, direction } = sortConfig;
                 let valA = a[key] ?? 0;
                 let valB = b[key] ?? 0;
@@ -83,15 +107,8 @@ function LeagueTablePage() {
                 if (valA < valB) return direction === 'asc' ? -1 : 1;
                 if (valA > valB) return direction === 'asc' ? 1 : -1;
                 return 0;
-            }
-
-            // Default V-League Rules: Points -> Head-to-Head (ignored for now) -> Goal Diff -> Goals
-            if (b.diem !== a.diem) return b.diem - a.diem;
-            const hsA = a.banthang - a.banthua;
-            const hsB = b.banthang - b.banthua;
-            if (hsB !== hsA) return hsB - hsA;
-            return b.banthang - a.banthang;
-        });
+            });
+        }
 
         return mappedList;
     }, [standingsData, sortConfig]);
@@ -250,11 +267,11 @@ function LeagueTablePage() {
                                                 <td className="px-4 py-4 text-center relative">
                                                     {isTop && <div className="absolute left-0 top-0 bottom-0 w-1 bg-green-500"></div>}
                                                     {isBottom && <div className="absolute left-0 top-0 bottom-0 w-1 bg-red-500"></div>}
-                                                    <span className={`inline-flex items-center justify-center w-8 h-8 rounded-full font-bold ${rank === 1 ? 'bg-yellow-400 text-yellow-900 ring-2 ring-yellow-200' :
-                                                        rank === 2 ? 'bg-gray-300 text-gray-800' :
-                                                            rank === 3 ? 'bg-orange-300 text-orange-900' : 'text-gray-500'
+                                                    <span className={`inline-flex items-center justify-center w-8 h-8 rounded-full font-bold ${team.thuhanggoc === 1 ? 'bg-yellow-400 text-yellow-900 ring-2 ring-yellow-200' :
+                                                        team.thuhanggoc === 2 ? 'bg-gray-300 text-gray-800' :
+                                                            team.thuhanggoc === 3 ? 'bg-orange-300 text-orange-900' : 'text-gray-500'
                                                         }`}>
-                                                        {rank}
+                                                        {team.thuhanggoc || rank}
                                                     </span>
                                                 </td>
 
@@ -285,10 +302,15 @@ function LeagueTablePage() {
 
                                                 <td className="px-4 py-4 text-center">
                                                     <div className="flex items-center justify-center gap-1">
-                                                        {thang > 0 && <Badge type="W" />}
-                                                        {hoa > 0 && <Badge type="D" />}
-                                                        {thua > 0 && <Badge type="L" />}
-                                                        {soTran === 0 && <span className="text-gray-300">-</span>}
+                                                        {/* Show last 5 matches from backend 'form' field */}
+                                                        {team.form ? (
+                                                            team.form.slice(-5).split('').map((result: string, i: number) => (
+                                                                <Badge key={i} type={result as 'W' | 'D' | 'L'} />
+                                                            ))
+                                                        ) : (
+                                                            // No real data available - show placeholder
+                                                            <span className="text-gray-400 text-sm">Chưa có dữ liệu</span>
+                                                        )}
                                                     </div>
                                                 </td>
                                             </tr>

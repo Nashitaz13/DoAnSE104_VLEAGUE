@@ -60,8 +60,8 @@ export function DisciplineTab({ muagiai }: { muagiai: string }) {
                         <tbody className="divide-y">
                             {leaderboard.filter((p: any) => p.red_cards > 0 || p.yellow_cards >= 3).map((p: any, idx: number) => (
                                 <tr key={idx} className="bg-red-50/30">
-                                    <td className="px-6 py-4 font-bold text-gray-800">{p.player_name}</td>
-                                    <td className="px-6 py-4 text-gray-600">{p.club_name}</td>
+                                    <td className="px-6 py-4 font-bold text-gray-800">{p.tencauthu}</td>
+                                    <td className="px-6 py-4 text-gray-600">{p.tenclb}</td>
                                     <td className="px-6 py-4 text-red-600 font-medium">
                                         {p.red_cards > 0 ? `${p.red_cards} Đỏ` : ""} {p.yellow_cards > 0 ? `${p.yellow_cards} Vàng` : ""}
                                     </td>
@@ -105,8 +105,8 @@ export function DisciplineTab({ muagiai }: { muagiai: string }) {
                                 {leaderboard.slice(0, 20).map((p: any, idx: number) => (
                                     <tr key={idx} className="hover:bg-gray-50">
                                         <td className="px-6 py-4 text-center text-gray-400">{idx + 1}</td>
-                                        <td className="px-6 py-4 font-bold text-gray-800">{p.player_name}</td>
-                                        <td className="px-6 py-4 text-gray-600">{p.club_name}</td>
+                                        <td className="px-6 py-4 font-bold text-gray-800">{p.tencauthu}</td>
+                                        <td className="px-6 py-4 text-gray-600">{p.tenclb}</td>
                                         <td className="px-6 py-4 text-center font-bold text-yellow-600 bg-yellow-50">{p.yellow_cards}</td>
                                         <td className="px-6 py-4 text-center font-bold text-red-600 bg-red-50">{p.red_cards}</td>
                                         <td className="px-6 py-4 text-center font-bold text-gray-600">{p.discipline_points}</td>

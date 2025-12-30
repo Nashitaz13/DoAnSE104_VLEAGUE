@@ -109,8 +109,8 @@ function AdminDashboard() {
               key={tab.id}
               onClick={() => setActiveTab(tab.id)}
               className={`flex items-center gap-2 px-6 py-3 rounded-lg text-sm font-bold transition-all flex-1 justify-center ${activeTab === tab.id
-                  ? 'bg-gray-100 text-gray-900 shadow-inner'
-                  : 'text-gray-500 hover:bg-gray-50 hover:text-gray-900'
+                ? 'bg-gray-100 text-gray-900 shadow-inner'
+                : 'text-gray-500 hover:bg-gray-50 hover:text-gray-900'
                 }`}
             >
               <tab.icon className="w-4 h-4" /> {tab.label}
@@ -429,14 +429,14 @@ function TeamManagementTab({ selectedSeasonId }: { selectedSeasonId: string }) {
     mutationFn: async (club: any) => {
       // Create a new club entry for this season based on the old one
       const newClubData = {
-        maclb: club.maclb, // Reuse ID? Usually ID is unique per record. wait.
-        // Models says `maclb` + `muagiai` is PK. So we can Reuse `maclb`.
-        muagiai: selectedSeasonId,
+        maclb: club.maclb, // Reuse club ID
+        muagiai: selectedSeasonId, // New season
         tenclb: club.tenclb,
-        masanvandong: club.masanvandong, // Reuse stadium ID? Stadium also has muagiai PK...
-        // Warning: If Stadium is Season-Scoped, we must Register Stadium First.
-        // Ideally backend handles this or we ignore stadium for now.
-        // Let's assume we copy basic info.
+        // IMPORTANT: Set masanvandong to null because:
+        // 1. Stadium has composite FK (masanvandong, muagiai)
+        // 2. Stadium from old season doesn't exist in new season
+        // 3. Admin needs to register stadium separately or update later
+        masanvandong: null,
         diachitruso: club.diachitruso,
         donvichuquan: club.donvichuquan,
         trangphucchunha: club.trangphucchunha,

@@ -54,13 +54,13 @@ export function TopScorersTab({ muagiai }: { muagiai: string }) {
                                 </thead>
                                 <tbody className="divide-y">
                                     {topScorers.map((p: any, idx: number) => (
-                                        <tr key={p.player_id + idx} className="hover:bg-gray-50">
+                                        <tr key={p.macauthu + idx} className="hover:bg-gray-50">
                                             <td className="px-6 py-4 text-center font-bold text-gray-400">
                                                 {idx === 0 ? <span className="text-yellow-500 text-xl">🥇</span> : idx + 1}
                                             </td>
-                                            <td className="px-6 py-4 font-bold text-gray-800">{p.player_name}</td>
-                                            <td className="px-6 py-4 text-gray-600">{p.club_name}</td>
-                                            <td className="px-6 py-4 text-center font-bold text-orange-600 text-lg">{p.goals}</td>
+                                            <td className="px-6 py-4 font-bold text-gray-800">{p.tencauthu}</td>
+                                            <td className="px-6 py-4 text-gray-600">{p.tenclb}</td>
+                                            <td className="px-6 py-4 text-center font-bold text-orange-600 text-lg">{p.value}</td>
                                         </tr>
                                     ))}
                                 </tbody>
@@ -92,13 +92,13 @@ export function TopScorersTab({ muagiai }: { muagiai: string }) {
                                 </thead>
                                 <tbody className="divide-y">
                                     {topAssists.map((p: any, idx: number) => (
-                                        <tr key={p.player_id + idx} className="hover:bg-gray-50">
+                                        <tr key={p.macauthu + idx} className="hover:bg-gray-50">
                                             <td className="px-6 py-4 text-center font-bold text-gray-400">
                                                 {idx === 0 ? <span className="text-blue-500 text-xl">🥇</span> : idx + 1}
                                             </td>
-                                            <td className="px-6 py-4 font-bold text-gray-800">{p.player_name}</td>
-                                            <td className="px-6 py-4 text-gray-600">{p.club_name}</td>
-                                            <td className="px-6 py-4 text-center font-bold text-blue-600 text-lg">{p.assists}</td>
+                                            <td className="px-6 py-4 font-bold text-gray-800">{p.tencauthu}</td>
+                                            <td className="px-6 py-4 text-gray-600">{p.tenclb}</td>
+                                            <td className="px-6 py-4 text-center font-bold text-blue-600 text-lg">{p.value}</td>
                                         </tr>
                                     ))}
                                 </tbody>
