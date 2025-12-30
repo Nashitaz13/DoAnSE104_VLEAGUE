@@ -16,7 +16,7 @@ export const logoutUser = () => {
 
 export const isBTC = () => {
     const user = getCurrentUser()
-    return user?.role === "admin"
+    return user?.role === "btc" || user?.role === "admin"  // Support both 'btc' and 'admin'
 }
 
 export const isQuanLyDoi = () => {

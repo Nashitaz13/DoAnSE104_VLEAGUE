@@ -4,7 +4,7 @@ from fastapi import APIRouter, HTTPException, Query
 
 from app.api.deps import CurrentUserVLeague, SessionDep
 from app import crud
-from app.models import PlayerStatsResponse, MatchStatsResponse, AwardsResponse, DisciplineResponse
+from app.models import PlayerStatsResponse, MatchStatsResponse, AwardsResponse, DisciplineResponse, MVPResponse
 
 router = APIRouter()
 
@@ -210,3 +210,47 @@ def get_discipline(
     
     return discipline
 
+
+@router.get("/mvp", response_model=MVPResponse)
+def get_mvp(
+    *,
+    session: SessionDep,
+    muagiai: str = Query(..., description="Season ID (e.g., '2024-2025')"),
+    limit: int = Query(10, ge=1, le=50, description="Max number of candidates to return")
+) -> Any:
+    """
+    Get MVP (Most Valuable Player) candidates for a season.
+    
+    **Public endpoint** - No authentication required.
+    
+    **Algorithm:**
+    - Calculates player rating based on:
+      - Goals: +3 points each
+      - Assists: +2 points each
+      - Matches played: +0.1 per match
+    - Rating normalized by matches played
+    - Sorted by rating DESC, goals DESC, assists DESC
+    
+    **Query Parameters:**
+    - `muagiai`: Season ID (required)
+    - `limit`: Maximum number of candidates (default 10, range 1-50)
+    
+    **Response:**
+    - `muagiai`: Season ID
+    - `mvp_candidates`: Top N players with calculated ratings
+    - `generated_at`: Timestamp
+    
+    **Example:**
+    ```
+    GET /api/stats/mvp?muagiai=2024-2025&limit=10
+    ```
+    """
+    try:
+        mvp_data = crud.compute_mvp(session=session, muagiai=muagiai, limit=limit)
+    except Exception as e:
+        raise HTTPException(
+            status_code=500,
+            detail=f"Failed to compute MVP statistics: {str(e)}"
+        )
+    
+    return mvp_data

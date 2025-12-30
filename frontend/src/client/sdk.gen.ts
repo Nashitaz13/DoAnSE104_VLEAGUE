@@ -669,6 +669,14 @@ export class StatisticsService {
             query: data
         });
     }
+
+    public static getMVP(data: any = {}): CancelablePromise<any> {
+        return __request(OpenAPI, {
+            method: 'GET',
+            url: '/api/stats/mvp',
+            query: data
+        });
+    }
 }
 
 export class ScheduleService {

@@ -1,0 +1,24 @@
+# =============================================
+# MVP SCHEMAS (Most Valuable Player)
+# =============================================
+
+class MVPPlayerRow(SQLModel):
+    """MVP candidate with calculated rating"""
+    macauthu: str
+    tencauthu: str
+    maclb: Optional[str] = None
+    tenclb: Optional[str] = None
+    vitrithidau: Optional[str] = None  # Position: GK, DF, MF, FW
+    goals: int
+    assists: int
+    man_of_match: int  # Number of matches as best player
+    average_rating: float  # Calculated rating score
+    matches_played: int
+    rank: int
+
+
+class MVPResponse(SQLModel):
+    """MVP response with top candidates"""
+    muagiai: str
+    mvp_candidates: list[MVPPlayerRow] = Field(default_factory=list)
+    generated_at: datetime

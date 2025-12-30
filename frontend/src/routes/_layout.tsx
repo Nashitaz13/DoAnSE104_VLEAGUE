@@ -42,16 +42,14 @@ export const Route = createFileRoute("/_layout")({
 })
 
 function Layout() {
-  const currentUser = getCurrentUser() 
+  const currentUser = getCurrentUser()
   const isAuth = isLoggedIn();
   const { theme, resolvedTheme, setTheme } = useTheme()
-  
+
   const handleLogout = () => {
-    if (window.confirm("Bạn có chắc chắn muốn đăng xuất không?")) {
-      localStorage.removeItem("access_token")
-      localStorage.removeItem("currentUser")
-      window.location.href = "/login"
-    }
+    localStorage.removeItem("access_token")
+    localStorage.removeItem("currentUser")
+    window.location.href = "/login"
   }
 
   const navItems = [
@@ -108,15 +106,15 @@ function Layout() {
                     size="sm"
                     className="text-white hover:bg-white/10 dark:hover:bg-white/10 [&.active]:bg-white [&.active]:text-red-700"
                   >
-                  <RouterLink
-                    to="/admin-dashboard"
-                    className="
+                    <RouterLink
+                      to="/admin-dashboard"
+                      className="
                       flex items-center gap-2 px-3 py-1.5 rounded-full border border-white/20 transition-all font-medium text-sm
                       text-white hover:bg-white/10 
                       [&.active]:bg-white [&.active]:text-red-700 [&.active]:font-bold [&.active]:shadow-md
                     "
-                  >
-                  <Shield className="w-4 h-4" />
+                    >
+                      <Shield className="w-4 h-4" />
                       Quản trị
                     </RouterLink>
                   </Button>
@@ -240,6 +238,7 @@ function Layout() {
               </div>
             </div>
 
+
             {/* Mobile Menu */}
             <div className="md:hidden pb-4 pt-1 border-t border-white/10">
               <div className="flex flex-wrap gap-2 justify-center">
@@ -257,6 +256,60 @@ function Layout() {
                     </RouterLink>
                   </Button>
                 ))}
+
+                {/* NÚT QUẢN TRỊ (BTC) - MOBILE */}
+                {isBTC() && (
+                  <Button
+                    asChild
+                    variant="ghost"
+                    size="sm"
+                    className="text-white hover:bg-white/10 [&.active]:bg-white [&.active]:text-red-700 h-8 px-3 text-xs"
+                  >
+                    <RouterLink
+                      to="/admin-dashboard"
+                      className="flex items-center gap-1.5"
+                    >
+                      <Shield className="h-3 w-3" />
+                      Quản trị
+                    </RouterLink>
+                  </Button>
+                )}
+
+                {/* NÚT QUẢN LÝ ĐỘI - MOBILE */}
+                {isQuanLyDoi() && (
+                  <Button
+                    asChild
+                    variant="ghost"
+                    size="sm"
+                    className="text-white hover:bg-white/10 [&.active]:bg-white [&.active]:text-blue-700 h-8 px-3 text-xs"
+                  >
+                    <RouterLink
+                      to="/team-manager"
+                      className="flex items-center gap-1.5"
+                    >
+                      <User className="h-3 w-3" />
+                      Quản lý đội
+                    </RouterLink>
+                  </Button>
+                )}
+
+                {/* NÚT QUAN CHỨC - MOBILE */}
+                {isQuanChuc() && (
+                  <Button
+                    asChild
+                    variant="ghost"
+                    size="sm"
+                    className="text-white hover:bg-white/10 [&.active]:bg-white [&.active]:text-purple-700 h-8 px-3 text-xs"
+                  >
+                    <RouterLink
+                      to="/official-dashboard"
+                      className="flex items-center gap-1.5"
+                    >
+                      <Flag className="h-3 w-3" />
+                      Quan chức
+                    </RouterLink>
+                  </Button>
+                )}
               </div>
             </div>
           </div>

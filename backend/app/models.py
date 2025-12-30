@@ -648,6 +648,7 @@ class LineupPlayerDetail(SQLModel):
     """Lineup entry with player details"""
     macauthu: str
     tencauthu: str
+    maclb: str  # Club ID - needed for frontend filtering
     vitri: Optional[str] = None
     vitrithidau: Optional[str] = None  # Player's actual position
     duocxuatphat: bool
@@ -847,6 +848,32 @@ class DisciplineResponse(SQLModel):
     rules: str = "Discipline points: Yellow card = 1, Second yellow (2 yellows in same match) = 2, Red card = 3"
 
 
+# =============================================
+# MVP SCHEMAS (Most Valuable Player)
+# =============================================
+
+class MVPPlayerRow(SQLModel):
+    """MVP candidate with calculated rating"""
+    macauthu: str
+    tencauthu: str
+    maclb: Optional[str] = None
+    tenclb: Optional[str] = None
+    vitrithidau: Optional[str] = None  # Position: GK, DF, MF, FW
+    goals: int
+    assists: int
+    man_of_match: int  # Number of matches as best player
+    average_rating: float  # Calculated rating score
+    matches_played: int
+    rank: int
+
+
+class MVPResponse(SQLModel):
+    """MVP response with top candidates"""
+    muagiai: str
+    mvp_candidates: list[MVPPlayerRow] = Field(default_factory=list)
+    generated_at: datetime
+
+
 class MatchStatsRow(SQLModel):
     """Match statistics for one team"""
     maclb: str
@@ -907,4 +934,6 @@ __all__ = [
     # Awards & Discipline
     "AwardLeaderRow", "AwardsResponse",
     "DisciplineRow", "DisciplineResponse",
+    # MVP
+    "MVPPlayerRow", "MVPResponse",
 ]

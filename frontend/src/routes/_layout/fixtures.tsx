@@ -17,7 +17,6 @@ import {
 } from "lucide-react"
 
 import { MatchesService, SeasonManagementService, ClubsService, RostersService, MatchEventsService, MatchRefereesService, MatchLineupService } from "@/client"
-import { useDisclosure } from "@/hooks/use-disclosure"
 import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
 import {
@@ -131,6 +130,7 @@ function MatchDetailModal({ match, isOpen, onClose }: { match: any; isOpen: bool
   const [isAdmin, setIsAdmin] = useState(false);
   const [scoreHome, setScoreHome] = useState("");
   const [scoreAway, setScoreAway] = useState("");
+  const [playerNames, setPlayerNames] = useState<Record<string, string>>({});
 
   const queryClient = useQueryClient()
 
@@ -154,6 +154,32 @@ function MatchDetailModal({ match, isOpen, onClose }: { match: any; isOpen: bool
       setScoreHome("");
       setScoreAway("");
     }
+  }, [match]);
+
+  // Fetch player names for event display
+  useEffect(() => {
+    async function fetchPlayerNames() {
+      if (!match) return;
+      try {
+        const [homeRes, awayRes] = await Promise.all([
+          RostersService.getRoster({ maclb: match.maclb_nha, muagiai: match.muagiai, limit: 100 }),
+          RostersService.getRoster({ maclb: match.maclb_khach, muagiai: match.muagiai, limit: 100 })
+        ]);
+
+        const homePlayers = Array.isArray(homeRes) ? homeRes : homeRes.data || [];
+        const awayPlayers = Array.isArray(awayRes) ? awayRes : awayRes.data || [];
+
+        const nameMap: Record<string, string> = {};
+        [...homePlayers, ...awayPlayers].forEach((p: any) => {
+          nameMap[p.macauthu] = p.cauthu?.hoten || p.tencauthu || p.macauthu;
+        });
+
+        setPlayerNames(nameMap);
+      } catch (e) {
+        console.error("Failed to fetch player names", e);
+      }
+    }
+    fetchPlayerNames();
   }, [match]);
 
   // Update Score Handler
@@ -195,7 +221,6 @@ function MatchDetailModal({ match, isOpen, onClose }: { match: any; isOpen: bool
 
   // Delete Event Handler
   const handleDeleteEvent = async (masukien: string) => {
-    if (!confirm("Bạn chắc chắn muốn xóa sự kiện này?")) return;
     try {
       await MatchEventsService.deleteEvent({ matran: match.matran, masukien });
       refetchEvents();
@@ -292,7 +317,7 @@ function MatchDetailModal({ match, isOpen, onClose }: { match: any; isOpen: bool
                     <div className="flex items-center gap-4">
                       <div className="font-bold text-blue-600 w-10">{evt.phutthidau}'</div>
                       <Badge variant="outline">{evt.loaisukien}</Badge>
-                      <span className="font-medium">Cầu thủ: {evt.macauthu}</span>
+                      <span className="font-medium">Cầu thủ: {playerNames[evt.macauthu] || evt.macauthu}</span>
                       <span className="text-gray-500 text-sm">({evt.maclb})</span>
                     </div>
                     {isAdmin && (
@@ -605,8 +630,8 @@ function MatchLineupTab({ match, isAdmin }: { match: any, isAdmin: boolean }) {
             {starters.map((p: any) => (
               <div key={p.macauthu} className="flex justify-between items-center text-sm p-1.5 hover:bg-gray-50 rounded border border-transparent hover:border-gray-100">
                 <div className="flex items-center gap-2">
-                  <span className="font-bold w-6 text-center bg-gray-100 rounded text-xs py-0.5">{p.soao || '-'}</span>
-                  <span>{p.hoten || p.cauthu?.hoten || p.macauthu}</span>
+                  <span className="font-bold w-6 text-center bg-gray-100 rounded text-xs py-0.5">{p.soaothidau || '-'}</span>
+                  <span>{p.tencauthu || p.macauthu}</span>
                   {p.ladoitruong && <span className="bg-yellow-400 text-[10px] px-1 rounded font-bold">C</span>}
                 </div>
                 {isAdmin && <Button variant="ghost" size="icon" className="h-6 w-6 text-red-400 hover:text-red-700" onClick={() => handleRemovePlayer(p.macauthu)}>&times;</Button>}
@@ -622,8 +647,8 @@ function MatchLineupTab({ match, isAdmin }: { match: any, isAdmin: boolean }) {
             {subs.map((p: any) => (
               <div key={p.macauthu} className="flex justify-between items-center text-sm p-1.5 hover:bg-gray-50 rounded border border-transparent hover:border-gray-100">
                 <div className="flex items-center gap-2">
-                  <span className="font-bold w-6 text-center bg-gray-100 rounded text-xs py-0.5">{p.soao || '-'}</span>
-                  <span className="text-gray-600">{p.hoten || p.cauthu?.hoten || p.macauthu}</span>
+                  <span className="font-bold w-6 text-center bg-gray-100 rounded text-xs py-0.5">{p.soaothidau || '-'}</span>
+                  <span className="text-gray-600">{p.tencauthu || p.macauthu}</span>
                 </div>
                 {isAdmin && <Button variant="ghost" size="icon" className="h-6 w-6 text-red-400 hover:text-red-700" onClick={() => handleRemovePlayer(p.macauthu)}>&times;</Button>}
               </div>
@@ -634,10 +659,11 @@ function MatchLineupTab({ match, isAdmin }: { match: any, isAdmin: boolean }) {
     );
   };
 
-  const allPlayers = Array.isArray(lineup) ? lineup : (lineup?.data || []);
+  // Combine starting XI and substitutes into one array
+  const allPlayers = [...(lineup?.starting_xi || []), ...(lineup?.substitutes || [])];
+
   const getPlayersByClub = (clubId: string) => {
-    if (lineup?.home && (lineup.home[0]?.maclb === clubId || match.maclb_nha === clubId)) return lineup.home;
-    if (lineup?.away && (lineup.away[0]?.maclb === clubId || match.maclb_khach === clubId)) return lineup.away;
+    // Filter players belonging to this club
     return allPlayers.filter((p: any) => p.maclb === clubId);
   };
 
@@ -666,7 +692,7 @@ function MatchLineupTab({ match, isAdmin }: { match: any, isAdmin: boolean }) {
                   <option value="">-- Chọn --</option>
                   {availablePlayers.map((p: any) => (
                     <option key={p.macauthu} value={p.macauthu}>
-                      {p.soao} - {p.cauthu?.hoten || p.macauthu}
+                      {p.soaothidau} - {p.tencauthu || p.macauthu}
                     </option>
                   ))}
                 </select>
@@ -777,7 +803,7 @@ function AdminEventForm({ match, onAdd }: { match: any, onAdd: (type: string, mi
             <option value="">-- Chọn cầu thủ --</option>
             {players.map(p => (
               <option key={p.macauthu} value={p.macauthu}>
-                {p.cauthu?.hoten || p.macauthu} ({p.soao}) - {p.teamName}
+                {p.tencauthu || p.macauthu} ({p.soaothidau}) - {p.teamName}
               </option>
             ))}
           </select>
