@@ -100,7 +100,7 @@ function StatisticsPage() {
 
           {/* BM7.4 - Cầu thủ xuất sắc nhất */}
           <TabsContent value="mvp" className="m-0">
-            <MVPTab />
+            <MVPTab muagiai={selectedSeason} />
           </TabsContent>
 
           {/* BM7.3 - Thống kê thẻ phạt & BM7.5 - Cấm thi đấu */}

@@ -1,168 +1,119 @@
-# VLEAGUE 1
+# ⚽ VLEAGUE Management System
 
-> ...
-
----
-
-## Sơ đồ kiến trúc
-
-
-
-## Tính năng chính
-
-### API Endpoints
-
-#### Players Management
-- `GET /api/players` - Lấy danh sách cầu thủ (hỗ trợ filter: keyword, quoctich, vitrithidau)
-- `GET /api/players/{id}` - Lấy thông tin chi tiết cầu thủ
-- `POST /api/players` - Tạo cầu thủ mới (BTC only)
-- `PUT /api/players/{id}` - Cập nhật thông tin cầu thủ (BTC only)
-- `DELETE /api/players/{id}` - Xóa cầu thủ (BTC only)
-
-#### Rosters Management
-- `GET /api/rosters` - Lấy danh sách đội hình (filter: maclb, muagiai)
-- `POST /api/rosters` - Đăng ký cầu thủ vào đội (BTC only)
-- `DELETE /api/rosters/{id}` - Xóa cầu thủ khỏi đội (BTC only)
-- `GET /api/rosters/validate` - Kiểm tra tính hợp lệ đội hình (BTC only)
-
-
+Hệ thống quản lý giải bóng đá V.League 1, bao gồm quản lý cầu thủ, đội bóng, lịch thi đấu và kết quả. Dự án được xây dựng với kiến trúc hiện đại, tách biệt Frontend và Backend, hỗ trợ deploy dễ dàng với Docker.
 
 ---
 
-## 🏗️ Công nghệ sử dụng: 
+## 🚀 Tech Stack
 
-- **Backend:** FastAPI + Python 3.12
-- **ORM:** SQLModel
-- **Auth:** JWT
-- **Database:** PostgreSQL 17
-- **Migration:** Alembic
+### Frontend
+- **Framework**: [React](https://react.dev/) + [Vite](https://vitejs.dev/)
+- **Language**: TypeScript
+- **State/Data Fetching**: [TanStack Query](https://tanstack.com/query)
+- **Routing**: [TanStack Router](https://tanstack.com/router)
+- **Styling**: [Tailwind CSS](https://tailwindcss.com/) + [Shadcn UI](https://ui.shadcn.com/)
+
+### Backend
+- **Framework**: [FastAPI](https://fastapi.tiangolo.com/) (Python 3.12)
+- **Database**: PostgreSQL 17
+- **ORM**: [SQLModel](https://sqlmodel.tiangolo.com/)
+- **Migration**: Alembic
+- **Auth**: JWT (JSON Web Tokens)
+
+### DevOps & Tools
+- **Containerization**: Docker & Docker Compose
+- **Package Manager**: `npm` (Frontend) & `uv`/`pip` (Backend)
+- **Linting/Formatting**: Biome (Frontend), Ruff (Backend)
 
 ---
 
-## ⚡️ Khởi động nhanh dự án
+## ✨ Tính năng chính
 
-### Clone code về máy
+- **Quản lý Cầu thủ**: Thêm, sửa, xóa, tra cứu thông tin cầu thủ.
+- **Quản lý Đội bóng**: Đăng ký đội hình, quản lý danh sách cầu thủ trong đội.
+- **Quản lý Lịch thi đấu**: Xếp lịch, cập nhật kết quả trận đấu.
+- **Bảng xếp hạng**: Tự động tính toán và cập nhật bảng xếp hạng sau mỗi vòng đấu.
+- **Báo cáo**: Xuất báo cáo giải đấu.
 
+---
+
+## 🛠️ Cài đặt và Chạy dự án (Quick Start)
+
+Cách đơn giản và khuyến nghị nhất để chạy toàn bộ dự án là sử dụng **Docker**.
+
+### Prerequisites
+- [Docker Desktop](https://www.docker.com/products/docker-desktop/)
+- [Git](https://git-scm.com/)
+
+### 1. Clone repository
 ```bash
 git clone https://github.com/Nashitaz13/DoAnSE104_VLEAGUE
+cd DoAnSE104_VLEAGUE
 ```
 
-### Chạy Local
+### 2. Cấu hình biến môi trường
+Dự án cần các biến môi trường để hoạt động. Bạn có thể sử dụng file `.env` mẫu.
 
-#### Cài đặt backend
+**Backend**:
+```bash
+cd backend
+cp .env.example .env
+# Chỉnh sửa file .env nếu cần thiết (DB credentials, Secret key...)
+```
+
+**Root (cho Docker)**:
+Tạo file `.env` ở thư mục gốc nếu cần chỉnh sửa cấu hình production, nhưng với môi trường dev mặc định, `docker-compose.yml` đã có cấu hình cơ bản.
+
+### 3. Khởi chạy với Docker Compose
+Tại thư mục gốc của dự án:
+
+```bash
+docker compose up -d
+```
+
+Sau khi chạy xong:
+- **Frontend**: http://localhost:5173
+- **Backend API Docs**: http://localhost/docs (qua Traefik/Proxy) hoặc http://localhost:8000/docs (direct)
+- **Adminer** (Quản lý DB): http://localhost:8080
+
+---
+
+## 💻 Development Workflow (Thủ công)
+
+Nếu bạn muốn chạy từng phần riêng lẻ để phát triển (không dùng Docker cho toàn bộ):
+
+### Backend
+Xem hướng dẫn chi tiết tại [backend/README.md](./backend/README.md).
 
 ```bash
 cd backend
-cp .env.example .env        # Tạo file .env và điền biến môi trường
+# Cài đặt dependency với uv hoặc pip
+uv sync
+# Active virtual environment
+source .venv/bin/activate
+# Chạy migration
+alembic upgrade head
+# Chạy server
+fastapi run --reload app/main.py
+```
+
+### Frontend
+Xem hướng dẫn chi tiết tại [frontend/README.md](./frontend/README.md).
+
+```bash
+cd frontend
 npm install
 npm run dev
 ```
 
-### Cấu trúc thư mục
-
-```bash
+## 📂 Cấu trúc thư mục
 
 ```
-
----
-
-## Chú ý workflow
-
-### 1. Tạo nhánh riêng cho mỗi người
-
-Ví dụ:
-
-#### Tạo nhánh
-
-```bash
-git checkout main
-git pull origin main
-git checkout -b feature/tam-auth
+DoAnSE104_VLEAGUE/
+├── backend/            # Source code Backend (FastAPI)
+├── frontend/           # Source code Frontend (React)
+├── database/           # Script database, SQL
+├── docker-compose.yml  # Cấu hình Docker cho toàn bộ dự án
+├── scripts/            # Các script tiện ích
+└── README.md           # Tài liệu chính
 ```
-
-#### Commit
-
-```bash
-git add .
-git commit -m "Add login API"
-git push -u origin feature/tam-auth
-```
-
-### 2. Khi hoàn thành 1 phần, lên GitHub tạo Pull Request (PR) từ nhánh feature/tam-auth về main
-
-Những người khác (hoặc leader) review, góp ý, đồng ý thì mới merge vào main.
-
-### 3. Lưu ý khi Merge
-
-Nếu nhiều bạn cùng sửa chung 1 file, sẽ dễ bị merge conflict. Nên trao đổi rõ ai làm phần nào, hoặc tách rõ folder/module.
-
-### 4. Đặt tên nhánh
-
-feature/tennguoi-chucnang hoặc tennguoi-chucnang (dễ nhớ, đồng bộ là được).
-
-## Tóm lại
-
-- **KHÔNG push thẳng lên main.**
-
-- **NÊN mỗi bạn 1 nhánh riêng, hoặc mỗi tính năng 1 nhánh.**
-
-- **Tạo PR, review rồi merge vào main.**
-
-## Chú ý trước khi merge vào main
-
-### Bước 1: Làm tính năng trên nhánh riêng của mình
-
-Code, commit, test tính năng.
-
-Push nhánh đó lên GitHub.
-
-### Bước 2: Merge vào branch dev trước
-
-Tạo Pull Request (PR) từ nhánh feature vào dev.
-
-Test tích hợp trên nhánh dev (có thể deploy lên dev server cho team review/test).
-
-Fix bug, resolve conflict nếu có.
-
-Không làm việc trực tiếp trên dev, chỉ merge từ feature branch vào.
-
-### Bước 3: Khi đã test xong trên dev → Tạo Pull Request từ dev vào main
-
-Chỉ merge dev vào main khi đã test ổn định.
-
-Không được merge thẳng, luôn tạo PR để review lại lần cuối.
-
-### Bước 4: Review kỹ trước khi merge vào main:
-
-Đảm bảo PR đã được duyệt (approve) đủ số người (leader hoặc reviewer).
-
-## Commit theo convention sau:
-
-```bash
-<loại_commit>(<phạm_vi>): <nội_dung_ngắn_gọn>
-```
-
-- <loại_commit>: Loại thay đổi, ví dụ: feat, fix, refactor, docs, test, chore.
-- <phạm_vi>: Phần của dự án bị ảnh hưởng (ví dụ: course, user, api, ...).
-- <nội_dung_ngắn_gọn>: Diễn giải vắn tắt nội dung commit.
-
-### Một số loại commit thường dùng
-
-- feat: Thêm tính năng mới
-- fix: Sửa lỗi
-- refactor: Chỉnh sửa code, không thay đổi logic
-- docs: Cập nhật tài liệu
-- test: Thêm hoặc sửa test
-- chore: Các thay đổi lặt vặt khác
-
-### Ví dụ
-
-```bash
-feat(course): add getCourses controller with filter and pagination
-fix(course): handle bug when filtering by rate
-docs: update README with setup instructions
-refactor(user): change user model structure
-```
-
-## 👥 Contributors :
-

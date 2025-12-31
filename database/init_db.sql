@@ -1,21 +1,659 @@
--- ============================================================
--- DATA SAMPLE FOR V-LEAGUE DATABASE (POSTGRESQL)
--- Mùa giải: 2025-2026
--- Số lượng đội: 10
--- ============================================================
 
--- 1. DỮ LIỆU NHÓM NGƯỜI DÙNG & TÀI KHOẢN
+
+-- Nhóm người dùng / Vai trò
+CREATE TABLE NhomNguoiDung (
+    MaNhom SERIAL PRIMARY KEY,
+    TenNhom VARCHAR(50) NOT NULL UNIQUE,
+    MoTa VARCHAR(255)
+);
+
+-- Tài khoản người dùng
+CREATE TABLE TaiKhoan (
+    MaTaiKhoan SERIAL PRIMARY KEY,
+    TenDangNhap VARCHAR(100) NOT NULL UNIQUE,
+    MatKhau VARCHAR(255) NOT NULL,
+    HoTen VARCHAR(100),
+    Email VARCHAR(100),
+    MaNhom INTEGER REFERENCES NhomNguoiDung(MaNhom),
+    IsActive BOOLEAN DEFAULT TRUE,
+    CreatedAt TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    UpdatedAt TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);
+-- 1. Bảng MuaGiai (Bảng gốc)
+-- Tên khóa chính trong ảnh là: MuaGiai
+CREATE TABLE MuaGiai (
+    MuaGiai VARCHAR(50) PRIMARY KEY,
+    NgayBatDau DATE,
+    NgayKetThuc DATE,
+    SoClbThamDuToiDa INT,
+    LePhiThamGia DECIMAL(18, 2),
+    SoCauThuToiThieu INT,
+    SoCauThuToiDa INT,
+    SoThuMonToiThieu INT,
+    TuoiCauThuToiThieu INT,
+    TuoiCauThuToiDa INT,
+    SucChuaToiThieu INT,
+    YeuCauSVD TEXT,
+    ChungChiHLV VARCHAR(100),
+    SoCauThuDangKyThiDauToiDa INT,
+    ThoiDiemGhiBanToiDa INT,
+    TrangThai VARCHAR(50)
+);
+
+-- 2. Bảng SanVanDong
+-- Khóa chính: MaSanVanDong, MuaGiai (theo ảnh)
+CREATE TABLE SanVanDong (
+    MaSanVanDong VARCHAR(50),
+    MuaGiai VARCHAR(50), -- Tên cột này trong ảnh là MuaGiai
+    TenSanVanDong VARCHAR(100),
+    DiaChiSvd TEXT,
+    SucChua INT,
+    DanhGiaFifa VARCHAR(50),
+    
+    PRIMARY KEY (MaSanVanDong, MuaGiai),
+    FOREIGN KEY (MuaGiai) REFERENCES MuaGiai(MuaGiai)
+);
+
+-- 3. Bảng CauLacBo
+-- Khóa chính: MaClb, MuaGiai (theo ảnh)
+CREATE TABLE CauLacBo (
+    MaClb VARCHAR(50),
+    MuaGiai VARCHAR(50), 
+    TenClb VARCHAR(100),
+    DiaChiTruSo TEXT,
+    DonViChuQuan VARCHAR(100),
+    TrangPhucChuNha VARCHAR(100),
+    TrangPhucKhach VARCHAR(100),
+    TrangPhucDuPhong VARCHAR(100),
+    MaSanVanDong VARCHAR(50),
+    
+    PRIMARY KEY (MaClb, MuaGiai),
+    FOREIGN KEY (MuaGiai) REFERENCES MuaGiai(MuaGiai),
+    -- Liên kết FK tới SanVanDong: Cần khớp MaSanVanDong và MuaGiai
+    FOREIGN KEY (MaSanVanDong, MuaGiai) REFERENCES SanVanDong(MaSanVanDong, MuaGiai)
+);
+
+-- 4. Bảng CauThu
+CREATE TABLE CauThu (
+    MaCauThu VARCHAR(50) PRIMARY KEY,
+    TenCauThu VARCHAR(100),
+    NgaySinh DATE,
+    NoiSinh VARCHAR(100),
+    -- Trong ảnh có 2 dòng NoiSinh, tôi chỉ tạo 1 cột để tránh lỗi cú pháp SQL
+    QuocTich VARCHAR(50),
+    QuocTichKhac VARCHAR(50),
+    ViTriThiDau VARCHAR(50),
+    ChieuCao FLOAT,
+    CanNang FLOAT
+);
+
+-- 5. Bảng LoaiCauThu
+CREATE TABLE LoaiCauThu (
+    MaLoaiCauThu VARCHAR(50) PRIMARY KEY,
+    TenLoaiCauThu VARCHAR(100),
+    SoCauThuToiDa INT,
+    MuaGiai VARCHAR(50), -- Trong ảnh là MuaGiai
+    FOREIGN KEY (MuaGiai) REFERENCES MuaGiai(MuaGiai)
+);
+
+-- 6. Bảng ChiTietDoiBong
+-- PK: MaCauThu, MaClb, MuaGiai
+CREATE TABLE ChiTietDoiBong (
+    MaCauThu VARCHAR(50),
+    MaClb VARCHAR(50),
+    MuaGiai VARCHAR(50), -- Trong ảnh là MuaGiai
+    SoAoThiDau INT,
+    
+    PRIMARY KEY (MaCauThu, MaClb, MuaGiai),
+    FOREIGN KEY (MaCauThu) REFERENCES CauThu(MaCauThu),
+    -- Map FK tới CauLacBo: (MaClb, MuaGiai) -> (MaClb, MuaGiai)
+    FOREIGN KEY (MaClb, MuaGiai) REFERENCES CauLacBo(MaClb, MuaGiai)
+);
+
+-- 7. Bảng LichThiDau
+CREATE TABLE LichThiDau (
+    MaTran VARCHAR(50) PRIMARY KEY,
+    MuaGiai VARCHAR(50), -- Trong ảnh là MuaGiai
+    Vong INT,
+    ThoiGianThiDau TIMESTAMP,
+    MaClbNha VARCHAR(50),
+    MaClbKhach VARCHAR(50),
+    MaSanVanDong VARCHAR(50),
+    SoKhanGia INT,
+    NhietDo FLOAT,
+    BuGioHiep1 INT,
+    BuGioHiep2 INT,
+    TiSo VARCHAR(20),
+    
+    FOREIGN KEY (MuaGiai) REFERENCES MuaGiai(MuaGiai),
+    FOREIGN KEY (MaClbNha, MuaGiai) REFERENCES CauLacBo(MaClb, MuaGiai),
+    FOREIGN KEY (MaClbKhach, MuaGiai) REFERENCES CauLacBo(MaClb, MuaGiai),
+    FOREIGN KEY (MaSanVanDong, MuaGiai) REFERENCES SanVanDong(MaSanVanDong, MuaGiai)
+);
+
+-- 8. Bảng SuKienTranDau
+CREATE TABLE SuKienTranDau (
+    MaSuKien VARCHAR(50) PRIMARY KEY,
+    LoaiSuKien VARCHAR(50),
+    PhutThiDau INT,
+    BuGio INT,
+    MoTaSuKien TEXT,
+    CauThuLienQuan VARCHAR(50),
+    MaTran VARCHAR(50),
+    MaClb VARCHAR(50),
+    MaCauThu VARCHAR(50),
+    
+    FOREIGN KEY (MaTran) REFERENCES LichThiDau(MaTran),
+    FOREIGN KEY (MaCauThu) REFERENCES CauThu(MaCauThu)
+);
+
+-- 9. Bảng DoiHinhXuatPhat
+CREATE TABLE DoiHinhXuatPhat (
+    MaTran VARCHAR(50),
+    MaCauThu VARCHAR(50),
+    ViTri VARCHAR(50),
+    DuocXuatPhat BOOLEAN,
+    LaDoiTruong BOOLEAN,
+    
+    PRIMARY KEY (MaTran, MaCauThu),
+    FOREIGN KEY (MaTran) REFERENCES LichThiDau(MaTran),
+    FOREIGN KEY (MaCauThu) REFERENCES CauThu(MaCauThu)
+);
+
+-- 10. Bảng ChiTietTrongTai
+-- Đã chỉnh PK thành (MaTran, TenTrongTai) theo yêu cầu của bạn
+CREATE TABLE ChiTietTrongTai (
+    MaTran VARCHAR(50),
+    TenTrongTai VARCHAR(100),
+    ViTri VARCHAR(50),
+    
+    PRIMARY KEY (MaTran, TenTrongTai),
+    FOREIGN KEY (MaTran) REFERENCES LichThiDau(MaTran)
+);
+
+-- 11. Bảng Diem
+CREATE TABLE Diem (
+    MuaGiai VARCHAR(50) PRIMARY KEY, -- Trong ảnh là MuaGiai
+    DiemThang INT,
+    DiemHoa INT,
+    DiemThua INT,
+    FOREIGN KEY (MuaGiai) REFERENCES MuaGiai(MuaGiai)
+);
+
+-- 12. Bảng ThongKeCauThu
+CREATE TABLE ThongKeCauThu (
+    MaCauThu VARCHAR(50) PRIMARY KEY,
+    SoTranDaChoi INT DEFAULT 0,
+    SoPhutDaChoi INT DEFAULT 0,
+    KienTao INT DEFAULT 0,
+    BanThang INT DEFAULT 0,
+    TheVang INT DEFAULT 0,
+    TheVangThu2 INT DEFAULT 0,
+    TheDo INT DEFAULT 0,
+    GiuSachLuoi INT DEFAULT 0,
+    ThungLuoi INT DEFAULT 0,
+    FOREIGN KEY (MaCauThu) REFERENCES CauThu(MaCauThu)
+);
+
+-- 13. Bảng BXH_DoiBong
+CREATE TABLE BXH_DoiBong (
+    MuaGiai VARCHAR(50), -- Trong ảnh là MuaGiai (FK1)
+    MaClb VARCHAR(50),   -- FK2
+    SoTran INT DEFAULT 0,
+    Thang INT DEFAULT 0,
+    Hoa INT DEFAULT 0,
+    Thua INT DEFAULT 0,
+    BanThang INT DEFAULT 0,
+    BanThua INT DEFAULT 0,
+    Diem INT DEFAULT 0,
+    ThuHang INT,
+    
+    PRIMARY KEY (MuaGiai, MaClb),
+
+    FOREIGN KEY (MaClb, MuaGiai) REFERENCES CauLacBo(MaClb, MuaGiai)
+);
+
+-- 14. Bảng ThongKeTranDau
+CREATE TABLE ThongKeTranDau (
+    MaTran VARCHAR(50),
+    MaClb VARCHAR(50),
+    KiemSoatBong FLOAT,
+    Sut INT,
+    SutTrungDich INT,
+    PhatGoc INT,
+    PhamLoi INT,
+    VietVi INT,
+    CauThuXuatSac varchar(50),    
+    PRIMARY KEY (MaTran, MaClb),
+    FOREIGN KEY (MaTran) REFERENCES LichThiDau(MaTran)
+);
+
+
+-- >>> END schema.sql <<<
+
+-- >>> BEGIN auth_setup.sql <<<
+-- ====================================================
+-- V-League Authentication Helper Functions
+-- Sử dụng pgcrypto extension để hash password với bcrypt
+-- ====================================================
+
+-- Kích hoạt extension pgcrypto (cần quyền SUPERUSER lần đầu)
+CREATE EXTENSION IF NOT EXISTS pgcrypto;
+
+-- ====================================================
+-- Hàm hash password với bcrypt (tương tự AUTH_example.sql)
+-- ====================================================
+CREATE OR REPLACE FUNCTION vleague_hash_password(p_password text)
+RETURNS text
+LANGUAGE sql
+AS $$
+    SELECT crypt(p_password, gen_salt('bf', 12));
+$$;
+
+-- ====================================================
+-- Hàm tạo tài khoản an toàn với password hash
+-- ====================================================
+CREATE OR REPLACE FUNCTION vleague_create_account(
+    p_tendangnhap text, 
+    p_password text, 
+    p_hoten text DEFAULT NULL,
+    p_email text DEFAULT NULL,
+    p_manhom int DEFAULT NULL
+)
+RETURNS void
+LANGUAGE plpgsql
+AS $$
+BEGIN
+    -- Validate password length
+    IF p_password IS NULL OR length(trim(p_password)) < 8 THEN
+        RAISE EXCEPTION 'Mật khẩu quá ngắn (cần >= 8 ký tự)';
+    END IF;
+    
+    -- Check if username already exists
+    IF EXISTS (SELECT 1 FROM taikhoan WHERE tendangnhap = p_tendangnhap) THEN
+        RAISE EXCEPTION 'Tên đăng nhập % đã tồn tại', p_tendangnhap;
+    END IF;
+    
+    -- Insert with hashed password
+    INSERT INTO taikhoan (tendangnhap, matkhau, hoten, email, manhom, isactive, createdat, updatedat)
+    VALUES (
+        p_tendangnhap, 
+        vleague_hash_password(p_password), 
+        p_hoten, 
+        p_email, 
+        p_manhom,
+        true,
+        NOW(),
+        NOW()
+    );
+END;
+$$;
+
+-- ====================================================
+-- Hàm thay đổi password
+-- ====================================================
+CREATE OR REPLACE FUNCTION vleague_change_password(
+    p_tendangnhap text,
+    p_new_password text
+)
+RETURNS void
+LANGUAGE plpgsql
+AS $$
+BEGIN
+    IF p_new_password IS NULL OR length(trim(p_new_password)) < 8 THEN
+        RAISE EXCEPTION 'Mật khẩu quá ngắn (cần >= 8 ký tự)';
+    END IF;
+    
+    UPDATE taikhoan 
+    SET matkhau = vleague_hash_password(p_new_password),
+        updatedat = NOW()
+    WHERE tendangnhap = p_tendangnhap;
+    
+    IF NOT FOUND THEN
+        RAISE EXCEPTION 'Không tìm thấy tài khoản %', p_tendangnhap;
+    END IF;
+END;
+$$;
+
+-- ====================================================
+-- Tạo các nhóm người dùng (roles) mặc định
+-- ==================================================== 
 INSERT INTO NhomNguoiDung (TenNhom, MoTa) VALUES 
 ('Admin', 'Quản trị viên hệ thống'),
 ('BTC', 'Ban tổ chức giải đấu'),
 ('TrongTai', 'Tổ trọng tài'),
 ('CLB', 'Đại diện câu lạc bộ');
 
-INSERT INTO TaiKhoan (TenDangNhap, MatKhau, HoTen, Email, MaNhom, IsActive) VALUES
-('admin', 'admin123', 'Nguyen Van Admin', 'admin@vleague.vn', 1, TRUE),
-('btc_user', 'btc123', 'Tran Van BTC', 'btc@vleague.vn', 2, TRUE);
+INSERT INTO nhomnguoidung (tennhom, mota) 
+VALUES ('Viewer', 'Người xem - Chỉ đọc')
+ON CONFLICT (tennhom) DO NOTHING;
+
+-- ====================================================
+-- Tạo tài khoản admin mặc định
+-- Password: admin123 (đã được hash với bcrypt)
+-- ====================================================
+SELECT vleague_create_account(
+    'admin',              -- tendangnhap
+    'admin123',           -- password (sẽ được hash)
+    'Administrator',      -- hoten
+    'admin@vleague.vn',  -- email
+    (SELECT manhom FROM nhomnguoidung WHERE tennhom = 'BTC' LIMIT 1)  -- manhom
+);
+
+-- ====================================================
+-- Tạo thêm một số tài khoản test (optional)
+-- ====================================================
+-- Tài khoản quản lý đội
+SELECT vleague_create_account(
+    'quanlydoi1',
+    'manager123',
+    'Quản lý Hà Nội FC',
+    'qldoi1@vleague.vn',
+    (SELECT manhom FROM nhomnguoidung WHERE tennhom = 'QuanLyDoi' LIMIT 1)
+);
+
+-- Tài khoản viewer
+SELECT vleague_create_account(
+    'viewer1',
+    'viewer123',
+    'Người xem',
+    'viewer@vleague.vn',
+    (SELECT manhom FROM nhomnguoidung WHERE tennhom = 'Viewer' LIMIT 1)
+);
+
+-- ====================================================
+-- THÔNG TIN QUAN TRỌNG
+-- ====================================================
+/*
+CÁC TÀI KHOẢN ĐÃ TẠO:
+
+1. Admin (BTC):
+   - Username: admin
+   - Password: admin123
+   
+2. Quản lý đội:
+   - Username: quanlydoi1
+   - Password: manager123
+   
+3. Viewer:
+   - Username: viewer1
+   - Password: viewer123
+
+LƯU Ý:
+- Tất cả passwords đã được hash với bcrypt
+- API Python sẽ tự động verify được vì đều dùng bcrypt
+- Để tạo user mới, dùng function: 
+  SELECT vleague_create_account('username', 'password', 'Họ tên', 'email@example.com', manhom_id);
+- Để đổi password:
+  SELECT vleague_change_password('username', 'new_password');
+*/
+
+-- >>> END auth_setup.sql <<<
+
+-- >>> BEGIN triggers_thongkecauthu.sql <<<
+-- ==========================================================
+-- AUTO UPDATE ThongKeCauThu VIA FUNCTIONS + TRIGGERS (PostgreSQL)
+-- Depends on existing tables: ThongKeCauThu, DoiHinhXuatPhat, SuKienTranDau
+-- ==========================================================
+
+-- Helper: normalize event types to constants
+DO $$ BEGIN
+  IF NOT EXISTS (SELECT 1 FROM pg_type WHERE typname = 'event_type_enum') THEN
+    CREATE TYPE event_type_enum AS ENUM ('BanThang','KienTao','TheVang','TheVangThu2','TheDo');
+  END IF;
+END $$;
+
+-- Recompute stats for a single player from source tables
+CREATE OR REPLACE FUNCTION recompute_thongkecauthu(ma_cauthu TEXT)
+RETURNS VOID AS $$
+BEGIN
+  -- Ensure player row exists
+  INSERT INTO ThongKeCauThu (MaCauThu, SoTranDaChoi, SoPhutDaChoi, KienTao, BanThang, TheVang, TheVangThu2, TheDo, GiuSachLuoi, ThungLuoi)
+  VALUES (ma_cauthu, 0, 0, 0, 0, 0, 0, 0, 0, 0)
+  ON CONFLICT (MaCauThu) DO NOTHING;
+
+  -- Compute matches played and minutes from DoiHinhXuatPhat
+  UPDATE ThongKeCauThu t
+  SET SoTranDaChoi = COALESCE(src.so_tran, 0),
+      SoPhutDaChoi = COALESCE(src.so_phut, 0)
+  FROM (
+    SELECT d.MaCauThu,
+           COUNT(*) FILTER (WHERE d.DuocXuatPhat = TRUE) + COUNT(*) FILTER (WHERE d.DuocXuatPhat = FALSE) AS so_tran,
+           -- Simple minutes: 90 for starters, 30 for subs (can refine later)
+           (COUNT(*) FILTER (WHERE d.DuocXuatPhat = TRUE) * 90) + (COUNT(*) FILTER (WHERE d.DuocXuatPhat = FALSE) * 30) AS so_phut
+    FROM DoiHinhXuatPhat d
+    WHERE d.MaCauThu = ma_cauthu
+    GROUP BY d.MaCauThu
+  ) src
+  WHERE t.MaCauThu = src.MaCauThu;
+
+  -- Compute goals, assists, cards from SuKienTranDau
+  UPDATE ThongKeCauThu t
+  SET BanThang = COALESCE(ev.banthang, 0),
+      KienTao  = COALESCE(ev.kientao, 0),
+      TheVang  = COALESCE(ev.thevang, 0),
+      TheVangThu2 = COALESCE(ev.thevang2, 0),
+      TheDo    = COALESCE(ev.thedo, 0)
+  FROM (
+    SELECT s.MaCauThu,
+           COUNT(*) FILTER (WHERE s.LoaiSuKien = 'BanThang') AS banthang,
+           COUNT(*) FILTER (WHERE s.LoaiSuKien = 'KienTao') AS kientao,
+           COUNT(*) FILTER (WHERE s.LoaiSuKien = 'TheVang') AS thevang,
+           COUNT(*) FILTER (WHERE s.LoaiSuKien = 'TheVangThu2') AS thevang2,
+           COUNT(*) FILTER (WHERE s.LoaiSuKien = 'TheDo') AS thedo
+    FROM SuKienTranDau s
+    WHERE s.MaCauThu = ma_cauthu
+    GROUP BY s.MaCauThu
+  ) ev
+  WHERE t.MaCauThu = ev.MaCauThu;
+
+  -- Compute clean sheets and conceded for goalkeepers based on match results if available
+  -- NOTE: DoiHinhXuatPhat doesn't carry MaClb, so we can't safely
+  -- infer team side for the goalkeeper to compute conceded/clean sheets
+  -- without additional linkage. Skipping GiuSachLuoi/ThungLuoi update
+  -- here to avoid referencing a non-existent column (d.MaClb).
+END;
+$$ LANGUAGE plpgsql;
+
+-- Trigger function: recompute affected player from DoiHinhXuatPhat changes
+CREATE OR REPLACE FUNCTION trg_doi_hinh_recompute()
+RETURNS TRIGGER AS $$
+DECLARE
+  affected_player TEXT;
+BEGIN
+  affected_player := COALESCE(NEW.MaCauThu::TEXT, OLD.MaCauThu::TEXT);
+  PERFORM recompute_thongkecauthu(affected_player);
+  RETURN COALESCE(NEW, OLD);
+END;
+$$ LANGUAGE plpgsql;
+
+-- Trigger function: recompute affected player from SuKienTranDau changes
+CREATE OR REPLACE FUNCTION trg_su_kien_recompute()
+RETURNS TRIGGER AS $$
+DECLARE
+  affected_player TEXT;
+BEGIN
+  affected_player := COALESCE(NEW.MaCauThu::TEXT, OLD.MaCauThu::TEXT);
+  PERFORM recompute_thongkecauthu(affected_player);
+  RETURN COALESCE(NEW, OLD);
+END;
+$$ LANGUAGE plpgsql;
+
+-- Attach triggers
+DROP TRIGGER IF EXISTS thkc_t_doi_hinh_ins ON DoiHinhXuatPhat;
+DROP TRIGGER IF EXISTS thkc_t_doi_hinh_upd ON DoiHinhXuatPhat;
+DROP TRIGGER IF EXISTS thkc_t_doi_hinh_del ON DoiHinhXuatPhat;
+
+CREATE TRIGGER thkc_t_doi_hinh_ins AFTER INSERT ON DoiHinhXuatPhat
+FOR EACH ROW EXECUTE FUNCTION trg_doi_hinh_recompute();
+CREATE TRIGGER thkc_t_doi_hinh_upd AFTER UPDATE ON DoiHinhXuatPhat
+FOR EACH ROW EXECUTE FUNCTION trg_doi_hinh_recompute();
+CREATE TRIGGER thkc_t_doi_hinh_del AFTER DELETE ON DoiHinhXuatPhat
+FOR EACH ROW EXECUTE FUNCTION trg_doi_hinh_recompute();
+
+DROP TRIGGER IF EXISTS thkc_t_su_kien_ins ON SuKienTranDau;
+DROP TRIGGER IF EXISTS thkc_t_su_kien_upd ON SuKienTranDau;
+DROP TRIGGER IF EXISTS thkc_t_su_kien_del ON SuKienTranDau;
+
+CREATE TRIGGER thkc_t_su_kien_ins AFTER INSERT ON SuKienTranDau
+FOR EACH ROW EXECUTE FUNCTION trg_su_kien_recompute();
+CREATE TRIGGER thkc_t_su_kien_upd AFTER UPDATE ON SuKienTranDau
+FOR EACH ROW EXECUTE FUNCTION trg_su_kien_recompute();
+CREATE TRIGGER thkc_t_su_kien_del AFTER DELETE ON SuKienTranDau
+FOR EACH ROW EXECUTE FUNCTION trg_su_kien_recompute();
+
+-- Optional: batch recompute all players
+CREATE OR REPLACE FUNCTION recompute_all_players()
+RETURNS VOID AS $$
+DECLARE r RECORD;
+BEGIN
+  FOR r IN SELECT MaCauThu FROM CauThu LOOP
+    PERFORM recompute_thongkecauthu(r.MaCauThu);
+  END LOOP;
+END;
+$$ LANGUAGE plpgsql;
 
 
+select recompute_all_players();
+
+select * from ThongKeCauThu;
+
+
+-- >>> END triggers_thongkecauthu.sql <<<
+
+-- >>> BEGIN bxh.sql <<<
+-- =================================================================
+-- SCRIPT TÍNH TOÁN VÀ CẬP NHẬT BẢNG XẾP HẠNG (BXH)
+-- Mùa giải: 2024-2025
+-- =================================================================
+CREATE OR REPLACE FUNCTION UpdateBXH_DoiBong()
+RETURNS void AS $$
+BEGIN
+    INSERT INTO BXH_DoiBong (MuaGiai, MaClb, SoTran, Thang, Hoa, Thua, BanThang, BanThua, Diem, ThuHang)
+    WITH TranDauDaDau AS (
+        SELECT 
+            MaTran,
+            MaClbNha,
+            MaClbKhach,
+            CAST(SPLIT_PART(TiSo, '-', 1) AS INT) AS BanThangNha,
+            CAST(SPLIT_PART(TiSo, '-', 2) AS INT) AS BanThangKhach
+        FROM LichThiDau
+        WHERE MuaGiai = '2024-2025' 
+          AND TiSo IS NOT NULL 
+          AND TiSo LIKE '%-%'
+    ),
+    KetQuaTungDoi AS (
+        SELECT 
+            MaClbNha AS MaClb,
+            1 AS SoTran,
+            CASE WHEN BanThangNha > BanThangKhach THEN 1 ELSE 0 END AS Thang,
+            CASE WHEN BanThangNha = BanThangKhach THEN 1 ELSE 0 END AS Hoa,
+            CASE WHEN BanThangNha < BanThangKhach THEN 1 ELSE 0 END AS Thua,
+            BanThangNha AS BanThang,
+            BanThangKhach AS BanThua,
+            CASE 
+                WHEN BanThangNha > BanThangKhach THEN 3 
+                WHEN BanThangNha = BanThangKhach THEN 1 
+                ELSE 0 
+            END AS Diem
+        FROM TranDauDaDau
+        
+        UNION ALL
+        
+        SELECT 
+            MaClbKhach AS MaClb,
+            1 AS SoTran,
+            CASE WHEN BanThangKhach > BanThangNha THEN 1 ELSE 0 END AS Thang,
+            CASE WHEN BanThangKhach = BanThangNha THEN 1 ELSE 0 END AS Hoa,
+            CASE WHEN BanThangKhach < BanThangNha THEN 1 ELSE 0 END AS Thua,
+            BanThangKhach AS BanThang,
+            BanThangNha AS BanThua,
+            CASE 
+                WHEN BanThangKhach > BanThangNha THEN 3 
+                WHEN BanThangKhach = BanThangNha THEN 1 
+                ELSE 0 
+            END AS Diem
+        FROM TranDauDaDau
+    ),
+    TongHopBXH AS (
+        SELECT 
+            MaClb,
+            SUM(SoTran) AS TongSoTran,
+            SUM(Thang) AS TongThang,
+            SUM(Hoa) AS TongHoa,
+            SUM(Thua) AS TongThua,
+            SUM(BanThang) AS TongBanThang,
+            SUM(BanThua) AS TongBanThua,
+            SUM(Diem) AS TongDiem
+        FROM KetQuaTungDoi
+        GROUP BY MaClb
+    ),
+    XepHangCuoiCung AS (
+        SELECT 
+            '2024-2025' AS MuaGiai,
+            MaClb,
+            TongSoTran,
+            TongThang,
+            TongHoa,
+            TongThua,
+            TongBanThang,
+            TongBanThua,
+            TongDiem,
+            RANK() OVER (
+                ORDER BY 
+                    TongDiem DESC,
+                    (TongBanThang - TongBanThua) DESC,
+                    TongBanThang DESC
+            ) AS ThuHang
+        FROM TongHopBXH
+    )
+    SELECT * FROM XepHangCuoiCung
+    ON CONFLICT (MuaGiai, MaClb) 
+    DO UPDATE SET
+        SoTran = EXCLUDED.SoTran,
+        Thang = EXCLUDED.Thang,
+        Hoa = EXCLUDED.Hoa,
+        Thua = EXCLUDED.Thua,
+        BanThang = EXCLUDED.BanThang,
+        BanThua = EXCLUDED.BanThua,
+        Diem = EXCLUDED.Diem,
+        ThuHang = EXCLUDED.ThuHang;
+END;
+$$ LANGUAGE plpgsql;
+
+SELECT UpdateBXH_DoiBong();
+
+-- =================================================================
+SELECT 
+    b.ThuHang,
+    c.TenClb, 
+    b.SoTran, 
+    b.Thang, 
+    b.Hoa, 
+    b.Thua, 
+    b.BanThang, 
+    b.BanThua, 
+    (b.BanThang - b.BanThua) as HieuSo,
+    b.Diem
+FROM BXH_DoiBong b
+JOIN CauLacBo c ON b.MaClb = c.MaClb AND b.MuaGiai = c.MuaGiai
+WHERE b.MuaGiai = '2024-2025'
+ORDER BY b.ThuHang ASC;
+-- >>> END bxh.sql <<<
+
+-- >>> ADDING BTC USER (From data.sql) <<<
+
+SELECT vleague_create_account(
+    'btc_user', 
+    'btc123', 
+    'Tran Van BTC', 
+    'btc@vleague.vn', 
+    (SELECT manhom FROM nhomnguoidung WHERE tennhom = 'BTC' LIMIT 1)
+);
+
+-- >>> END BTC USER <<<
+
+-- >>> BEGIN data.sql (Filtered) <<<
 -- 2. DỮ LIỆU MÙA GIẢI
 -- Dữ liệu Mùa giải 2023-2024 (Đang diễn ra/Vừa kết thúc)
 INSERT INTO MuaGiai (
@@ -2077,3 +2715,4 @@ INSERT INTO SuKienTranDau (MaSuKien, LoaiSuKien, PhutThiDau, MoTaSuKien, MaTran,
 ('SK_V6_05_02', 'BanThang', 58, 'Quế Ngọc Hải gỡ hòa cho Bình Dương', 'MT_V6_05', 'CLB_BINHDUONG', '34'),
 ('SK_V6_05_03', 'TheVang', 47, 'Đinh Xuân Tiến nhận thẻ vàng', 'MT_V6_05', 'CLB_SLNA', '86'),
 ('SK_V6_05_04', 'TheVang', 70, 'Tống Anh Tỷ nhận thẻ vàng', 'MT_V6_05', 'CLB_BINHDUONG', '44');
+-- >>> END data.sql <<<
